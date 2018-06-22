@@ -1,2 +1,3 @@
 $ cat .gitattributes
-*.nb linguist-documentation
+scripts/* linguist-documentation
+source/tests/* linguist-documentation
