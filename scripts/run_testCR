@@ -13,7 +13,7 @@ FNAME="Kinds"; . ./compile_it
 FNAME="FileIO_Utilities"; . ./compile_it
 
 #TEST PROGRAM
-SRC_PATH="../source/tests/"
+SRC_PATH="../testing/"
 BLD_PATH="../build/"
 FNAME="testCR"
 echo "Compiling and linking testCR..."
