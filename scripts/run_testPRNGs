@@ -16,7 +16,7 @@ FNAME="PRNGs"; . ./compile_it
 FNAME="Random_Numbers"; . ./compile_it
 
 #TEST PROGRAM
-SRC_PATH="../source/tests/"
+SRC_PATH="../testing/PRNGs/"
 BLD_PATH="../build/"
 FNAME="testPRNGs"
 echo "Compiling and linking testPRNGs..."
