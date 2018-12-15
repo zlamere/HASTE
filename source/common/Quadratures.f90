@@ -19,7 +19,6 @@ Module Quadratures
     Implicit None
     Private
     Public :: Romberg_Quad
-    Public :: Romberg_Simpson_Quad
     Public :: Composite_Quad
     Public :: Composite_Trapezoid
     Public :: Composite_Simpson
@@ -32,28 +31,57 @@ Module Quadratures
     Public :: GaussLegendre16
     Public :: GaussLegendre96
     Public :: GaussLegendreN
+    Public :: Progressive_GaussLegendre
     
     Real(dp), Parameter :: one_third = 1._dp / 3._dp
     Real(dp), Parameter :: one_sixth = 1._dp / 6._dp
     Real(dp), Parameter :: one_fifteenth = 1._dp / 15._dp
-    !Precomuted parameters for Romberg Quadrature routines
-    Real(dp), Parameter :: Romb1(1:10) = (/ 4._dp, &
-                                          & 4._dp**2, &
-                                          & 4._dp**3, &
-                                          & 4._dp**4, &
-                                          & 4._dp**5, &
-                                          & 4._dp**6, &
-                                          & 4._dp**7, &
-                                          & 4._dp**8, &
-                                          & 4._dp**9, &
-                                          & 4._dp**10 /)
-    Real(dp), Parameter :: Romb2(1:10) = 1._dp / (Romb1 - 1._dp)
     
+    Interface Romberg_Quad
+        Module Procedure Romb_Quad
+        Module Procedure Romb_Quad_ranges
+    End Interface
+
 Contains
 
-Function Romberg_Quad(f,a,b,aTol,rTol) Result(q)
+Function Romb_Quad_ranges(f,ab,aTol,rTol,p) Result(q)
+    Use Kinds, Only: dp
+    Implicit None
+    Real(dp) :: q
+    Interface
+        Function f(x)    !the function to be integrated
+            Use Kinds,Only: dp
+            Implicit None
+            Real(dp) :: f
+            Real(dp), Intent(In) :: x
+        End Function f
+    End Interface
+    Real(dp), Intent(In) :: ab(:)        !limits of integration
+    Real(dp), Intent(In) :: rTol,aTol  !relative and absolute tolerances for convergence
+    Real(dp), Intent(Out), Optional :: p  !estimated precision achived in the final estimate
+    Real(dp) :: h,hi
+    Integer :: n,i
+    Real(dp) :: p_i
+
+    q = 0._dp
+    n = Size(ab)
+    h = ab(n) - ab(1)
+    Do i = 1,n-1
+        hi = ab(i+1) - ab(i)
+        If (Present(p)) Then
+            q = q + Romb_Quad(f,ab(i),ab(i+1),(hi/h)*aTol,rTol,p_i)
+            p = Min(p,p_i)
+        Else
+            q = q + Romb_Quad(f,ab(i),ab(i+1),(hi/h)*aTol,rTol)
+        End If
+    End Do
+End Function Romb_Quad_ranges
+
+Function Romb_Quad(f,a,b,aTol,rTol,p,n_ord,n_ext) Result(q)
+    !Integrates f(x) on (a,b) by extrapolation on successive composite trapezoid
     Use Kinds, Only: dp
     Use Utilities, Only: Converged
+    Use Utilities, Only: Prec
     Implicit None
     Real(dp):: q    !the result of the integration
     Interface
@@ -64,197 +92,116 @@ Function Romberg_Quad(f,a,b,aTol,rTol) Result(q)
             Real(dp), Intent(In) :: x
         End Function f
     End Interface
-    Real(dp), Intent(In) :: a,b    !limits of integration
+    Real(dp), Intent(In) :: a,b        !limits of integration
     Real(dp), Intent(In) :: rTol,aTol  !relative and absolute tolerances for convergence
-    Real(dp) :: R(0:10,0:10)  !Romberg table
-    Integer :: n,i,j
-    Real(dp) :: h,s
+    Real(dp), Intent(Out), Optional :: p  !estimated precision achived in the final estimate
+    Integer, Intent(Out), Optional :: n_ord  !total number of function evaluations (ordinates)
+    Integer, Intent(Out), Optional :: n_ext  !total number of extrapolation stages (rows in the table)
+    Integer, Parameter :: Tmax = 15  !maximum number of extrapolations in the table
+    Real(dp) :: T(0:Tmax)  !Extrapolation table previous row
+    Real(dp) :: Tk0,Tk  !Extrapolation table current row values
+    Integer :: i,j,k  !counters: i for table row, j for quadrature ordinates, k for table column
+    Integer :: n      !number of intervals
+    Real(dp) :: h0,h  !spacing between quadrature ordinates
+    Real(dp) :: fk    !multiplier for extrapolation steps
+    Real(dp) :: s     !sum of function values at quadrature ordinates
+    Real(dp) :: Prec0 !precision of the previous extrapolation (used to monitor convergence)
+    Integer :: ifin   !final number of extrapolations performed
+    !    If the preprocessor directive ROMB_TABLES is set at compile-time, 
+    ! then the tables of computed values are dumped to file in the working 
+    ! directory as the routine runs.
+#   if ROMB_TABLES
+        Integer :: unit
+#   endif
 
+    !Initial trapezoid estimate
     n = 1
-    h = b - a
     s = 0.5_dp * (f(a) + f(b))
-    R(0,0) = h * s
-    Do i = 1,10
-        !compute trapezoid estimate for next row of table
+    h0 = b - a
+    T(0) = h0 * s
+    Prec0 = -1._dp
+#   if ROMB_TABLES
+        Open(NEWUNIT=unit,FILE='Romb_Tables.tst',ACTION='WRITE',STATUS='UNKNOWN',POSITION='APPEND')
+        Do k = 0,Tmax
+            Write(unit,'(I24)',ADVANCE='NO') k
+        End Do
+        Write(unit,'(ES24.15)') T(0)
+        Close(unit)
+#   endif
+    Do i = 1,Tmax !up to Tmax rows in the table
+        !Trapezoid estimate for the 0-th column of the i-th row of table
         n = n * 2
-        h = (b - a) / Real(n,dp)
-        Do j = 1,n-1,2  !only odd values of j, these are the NEW points at which to evaluate f
+        h = h0 / Real(n,dp)
+        Do j = 1,n-1,2  !Odd values of j are NEW points at which to evaluate f
             s = s + f(a + Real(j,dp)*h)
         End Do
-        R(0,i) = h * s
-        !fill out Romberg table row
-        Do j = 1,i
-            R(j,i) = Romb2(j) * (Romb1(j) * R(j-1,i) - R(j-1,i-1))
+        Tk0 = h * s
+        !Fill i-th row, columns k = 1:i, with extrapolated estimates
+        fk = 1._dp
+        Do k = 1,i  !up to i columns this row
+            fk = fk * 4._dp
+            Tk = (fk * Tk0 - T(k-1)) / (fk - 1._dp)
+            If (k .LT. i) Then
+                T(k-1) = Tk0  !store Tk0 for next i
+                Tk0 = Tk  !store Tk for next k
+            End If !otherwise, skip storage steps if working final column
         End Do
-        !check for convergence
-        If (Converged(R(i-1,i-1),R(i,i),rTol,aTol)) Then
-            q = R(i,i)  !R(i,i) is the position of the highest precision converged value
+        !Check for convergence
+        If (Converged(T(i-1),Tk,rTol,aTol)) Then
+            q = Tk
+#           if ROMB_TABLES
+                T(i-1) = Tk0
+                T(i) = Tk
+                Open(NEWUNIT=unit,FILE='Romb_Tables.tst',ACTION='WRITE',STATUS='UNKNOWN',POSITION='APPEND')
+                Do k = 0,i
+                    Write(unit,'(ES24.15)',ADVANCE='NO') T(k)
+                End Do
+                Write(unit,'(A)') '*'
+                Write(unit,*)
+                Close(unit)
+#           endif
+            If (Present(p)) p = Prec(T(i-1),Tk)
+            If (Present(n_ord)) n_ord = n
+            If (Present(n_ext)) n_ext = i
             Return  !Normal exit
+        Else  !Check for failures and prep for the next time though the loop
+            !check for exit conditions other than convergence (failures)
+            If (i .EQ. Tmax) Then  !maximum extrapolation has been reached without convergence
+                ifin = Tmax
+                Exit
+            Else If (i.GT.Tmax/2) Then
+                If (Prec(T(i-1),Tk).LT.Prec0) Then  !precision was LOST instead of gained on this extrapolation, convergence will not occur
+                    ifin = i
+                    Exit
+                End If
+            End If
+            !store Tk0 and Tk for next i, and update precision monitor
+            Prec0 = Prec(T(i-1),Tk)
+            T(i-1) = Tk0
+            T(i) = Tk
+#           if ROMB_TABLES
+                Open(NEWUNIT=unit,FILE='Romb_Tables.tst',ACTION='WRITE',STATUS='UNKNOWN',POSITION='APPEND')
+                Do k = 0,i
+                    Write(unit,'(ES24.15)',ADVANCE='NO') T(k)
+                End Do
+                Write(unit,*)
+                Close(unit)
+#           endif
         End If
     End Do
     !If we get this far, we did not converge
-    Call Continue_Romberg(f,a,b,rTol,aTol,s,10,R(:,10),2,q)
-End Function Romberg_Quad
-
-Recursive Subroutine Continue_Romberg(f,a,b,rTol,aTol,s,d,R0,level,q)  !adds 10 more rows to the previous Romberg_Quad table
-    Use Kinds, Only: dp
-    Use Utilities, Only: Converged
-    Implicit None
-    Interface
-        Function f(x)    !the function to be integrated
-            Use Kinds,Only: dp
-            Implicit None
-            Real(dp) :: f
-            Real(dp), Intent(In) :: x
-        End Function f
-    End Interface
-    Real(dp), Intent(In) :: a,b    !limits of integration
-    Real(dp), Intent(In) :: rTol,aTol  !relative and absolute tolerances for convergence
-    Real(dp), Intent(InOut) :: s  !previous sum of ordinates
-    Integer, Intent(In) :: d  !length of final row in OLD Romberg Table
-    Real(dp), Intent(In) :: R0(0:d)  !final row of OLD romberg table
-    Integer, Intent(In) :: level
-    Real(dp), Intent(Out) :: q    !the result of the integration, if convergence attained
-    Real(dp) :: R(0:d+10,0:10)  !Romberg table extension
-    Integer :: n,i,j
-    Real(dp) :: h
-    Integer :: fours
-    
-    R(0:d,0) = R0
-    Do i = 1,10
-        !compute trapezoid estimate for next row of table
-        n = 2**(d+i)
-        h = (b - a) / Real(n,dp)
-        Do j = 1,n-1,2  !only odd values of j, these are the NEW points at which to evaluate f
-            s = s + f(a + Real(j,dp)*h)
-        End Do
-        R(0,i) = h * s
-        !fill out Romberg table row
-        fours = 1
-        Do j = 1,d+i
-            fours = fours * 4
-            R(j,i) = (Real(fours,dp) * R(j-1,i) - R(j-1,i-1)) / Real(fours - 1,dp)
-            !R(j,i) = (((4._dp)**j) * R(j-1,i) - R(j-1,i-1)) / (((4._dp)**j) - 1._dp)
-        End Do
-        !check for convergence
-        If (Converged(R(d+i-1,i-1),R(d+i,i),rTol,aTol)) Then
-            q = R(d+i,i)
-            Return  !Normal exit
-        End If
-    End Do
-    If (level .GT. 10) Then !max allowed recursion depth, interval has been split 100 times...
-        Print *,"ERROR:  Quadratures: Continue_Romberg:  Failed to converge before reaching max recursion depth."
-        ERROR STOP
-    End If
-    !If we get this far, we did not converge, recurse to add 10 more rows
-    Call Continue_Romberg(f,a,b,rTol,aTol,s,d+10,R(:,10),level+1,q)
-End Subroutine Continue_Romberg
-
-Function Romberg_Simpson_Quad(f,a,b,aTol,rTol) Result(q)
-    Use Kinds, Only: dp
-    Use Utilities, Only: Converged
-    Implicit None
-    Real(dp):: q    !the result of the integration
-    Interface
-        Function f(x)    !the function to be integrated
-            Use Kinds,Only: dp
-            Implicit None
-            Real(dp) :: f
-            Real(dp), Intent(In) :: x
-        End Function f
-    End Interface
-    Real(dp), Intent(In) :: a,b    !limits of integration
-    Real(dp), Intent(In) :: rTol,aTol  !relative and absolute tolerances for convergence
-    Real(dp) :: R(0:10,0:10)  !Romberg table
-    Integer :: n,i,j
-    Real(dp) :: h,s1,s2,s3
-    
-    n = 1
-    h = 0.5_dp * (b - a)
-    s1 = f(a) + f(b)
-    s2 = 0._dp
-    s3 = f(0.5_dp*(a+b))
-    R(0,0) = h * (s1 + 4._dp*s3) * one_third
-    Do i = 1,10
-        !compute simpson estimate for next row of table
-        n = n * 2
-        s2 = s2 + s3
-        h = (b - a) / Real(2*n,dp)
-        s3 = 0._dp
-        Do j = 1,2*n-1,2  !only odd values of j, these are the NEW points at which to evaluate f
-            s3 = s3 + f(a + Real(j,dp)*h)
-        End Do
-        R(0,i) = h * (s1 + 2._dp*s2 + 4._dp*s3) * one_third
-        !fill out Romberg table row
-        Do j = 1,i
-            !R(j,i) = (((4._dp)**j) * R(j-1,i) - R(j-1,i-1)) / (((4._dp)**j) - 1._dp)
-            R(j,i) = Romb2(j) * (Romb1(j) * R(j-1,i) - R(j-1,i-1))
-        End Do
-        !check for convergence
-        If (Converged(R(i-1,i-1),R(i,i),rTol,aTol)) Then
-            q = R(i,i)  !R(i,i) is the position of the highest precision converged value
-            Return  !Normal exit
-        End If
-    End Do
-    !If we get this far, we did not converge
-    Call Continue_Romberg_Simpson(f,a,b,rTol,aTol,s1,s2,s3,10,R(:,10),2,q)
-End Function Romberg_Simpson_Quad
-
-Recursive Subroutine Continue_Romberg_Simpson(f,a,b,rTol,aTol,s1,s2,s3,d,R0,level,q)  !adds 10 more rows to the previous Romberg_Quad table
-    Use Kinds, Only: dp
-    Use Utilities, Only: Converged
-    Implicit None
-    Interface
-        Function f(x)    !the function to be integrated
-            Use Kinds,Only: dp
-            Implicit None
-            Real(dp):: f
-            Real(dp), Intent(In):: x
-        End Function f
-    End Interface
-    Real(dp), Intent(In) :: a,b    !limits of integration
-    Real(dp), Intent(In) :: rTol,aTol  !relative and absolute tolerances for convergence
-    Real(dp), Intent(InOut) :: s1,s2,s3  !previous sum of ordinates
-    Integer, Intent(In) :: d  !length of final row in OLD Romberg Table
-    Real(dp), Intent(In) :: R0(0:d)  !final row of OLD romberg table
-    Integer, Intent(In) :: level
-    Real(dp), Intent(Out) :: q    !the result of the integration, if convergence attained
-    Real(dp) :: R(0:d+10,0:10)  !Romberg table extension
-    Integer :: n,i,j
-    Real(dp) :: h
-    Integer :: fours
-    
-    R(0:d,0) = R0
-    Do i = 1,10
-        !compute simpson estimate for next row of table
-        n = 2**(d+i)
-        s2 = s2 + s3
-        h = (b - a) / Real(2*n,dp)
-        s3 = 0._dp
-        Do j = 1,2*n-1,2  !only odd values of j, these are the NEW points at which to evaluate f
-            s3 = s3 + f(a + Real(j,dp)*h)
-        End Do
-        R(0,i) = h * (s1 + 2._dp*s2 + 4._dp*s3) * one_third
-        !fill out Romberg table row
-        fours = 1
-        Do j = 1,d+i
-            fours = fours * 4
-            R(j,i) = (Real(fours,dp) * R(j-1,i) - R(j-1,i-1)) / Real(fours - 1,dp)
-            !R(j,i) = (((4._dp)**j) * R(j-1,i) - R(j-1,i-1)) / (((4._dp)**j) - 1._dp)
-        End Do
-        !check for convergence
-        If (Converged(R(d+i-1,i-1),R(d+i,i),rTol,aTol)) Then
-            q = R(d+i,i)
-            Return  !Normal exit
-        End If
-    End Do
-    If (level .GT. 10) Then !max allowed recursion depth, interval has been split 100 times...
-        Print *,"ERROR:  Quadratures: Continue_Romberg_Simpson:  Failed to converge before reaching max recursion depth."
-        ERROR STOP
-    End If
-    !If we get this far, we did not converge, recurse to add 10 more rows
-    Call Continue_Romberg_Simpson(f,a,b,rTol,aTol,s1,s2,s3,d+10,R(:,10),level+1,q)
-End Subroutine Continue_Romberg_Simpson
+    Write(*,*)
+    Write(*,'(A,I0,A)')                'WARNING:  Quadratures: Romberg_Quad:  Failed to converge in ',ifin,' extrapolations.'
+    If (ifin .LT. Tmax) Write(*,'(A)') '          Extrapolation was terminated for loss of precision.'
+    Write(*,'(A,ES23.15,A,F0.5,A)')    '          Final estimated value: ',Tk,' (~',Prec(T(ifin-1),Tk),' good digits)'
+    Write(*,'(A,2(ES10.3,A))')         '          Final Extrapolation Error: ',Abs(Tk-T(ifin-1)),' (abs), ',Abs(Tk-T(ifin-1))/Tk,' (rel)'
+    Write(*,'(A,2(ES10.3,A))')         '          Convergence Criteria:      ',atol,             ' (abs), ',rtol,                ' (rel)'
+    q = Tk
+    If (Present(p)) p = Prec(T(ifin-1),Tk)
+    If (Present(n_ord)) n_ord = n
+    If (Present(n_ext)) n_ext = ifin
+    ! ERROR STOP
+End Function Romb_Quad
 
 Function Adaptive_Quad(f,a,b,Quad,rTol,aTol) Result(q)
     Use Kinds, Only: dp
@@ -334,8 +281,8 @@ Recursive Function Continue_Adaptive_Quad(f,a,b,Quad,q0,rTol,aTol,level) Result(
     q2 = Quad(f,0.5_dp*(a+b),b)
     q = q1 + q2
     If (Converged(q,q0,rTol,aTol)) Return  !check convergence with specified tolerances
-    If (level .GT. 100) Then !max allowed recursion depth, interval has been split 101 times...
-        Print *,"ERROR:  Quadratures: Continue_Adaptive_Quad:  Failed to converge before reaching max recursion depth."
+    If (level .GT. 30) Then !max allowed recursion depth, interval has been split 31 times...
+        Write(*,'(A)') 'ERROR:  Quadratures: Continue_Adaptive_Quad:  Failed to converge before reaching max recursion depth.'
         ERROR STOP
     End If
     !otherwise, recurse to refine grid
@@ -416,8 +363,8 @@ Recursive Function Continue_Adaptive_Simpson(f,x1,x3,x5,y1,y3,y5,q0,rTol,aTol,le
         q = q1 + q2 + err_est
         Return
     End If
-    If (level .GT. 100) Then !max allowed recursion depth, interval has been split 101 times...
-        Print *,"ERROR:  Quadratures: Continue_Adaptive_Simpson:  Failed to converge before reaching max recursion depth."
+    If (level .GT. 30) Then !max allowed recursion depth, interval has been split 31 times...
+        Write(*,'(A)') 'ERROR:  Quadratures: Continue_Adaptive_Simpson:  Failed to converge before reaching max recursion depth.'
         ERROR STOP
     End If
     !Otherwise, recurse to refine grid
@@ -459,7 +406,7 @@ Function Composite_Quad(f,a,b,Quad,aTol,rTol) Result(q)
     
     n = 1
     qOld = Quad(f,a,b)
-    Do i = 1,100  !max intervals is bounded by splitting interval 100 times
+    Do i = 1,31  !max intervals is bounded by splitting interval 31 times
         q = 0._dp
         n = n*2
         h = (b-a) / Real(n,dp)
@@ -470,7 +417,7 @@ Function Composite_Quad(f,a,b,Quad,aTol,rTol) Result(q)
         qOld = q
     End Do
     !if we get this far, we failed to converge
-    Print *,"ERROR:  Quadratures: Composite_Quad:  Failed to converge on ",n," intervals."
+    Write(*,'(A,I0,A)') 'ERROR:  Quadratures: Composite_Quad:  Failed to converge on ',n,' intervals.'
     ERROR STOP
 End Function Composite_Quad
 
@@ -545,10 +492,10 @@ Function Composite_Trapezoid(f,a,b,aTol,rTol) Result(q)
     
     n = 1
     s = 0.5_dp * (f(a) + f(b))
-    qOld = (b-a) * s
-    Do i = 1,100
-        n = n*2
-        h = (b-a) / Real(n,dp)
+    qOld = (b - a) * s
+    Do i = 1,31
+        n = n * 2
+        h = (b - a) / Real(n,dp)
         Do j = 1,n-1,2  !only odd values of j, these are the NEW points at which to evaluate f
             s = s + f(a + Real(j,dp)*h)
         End Do
@@ -557,7 +504,7 @@ Function Composite_Trapezoid(f,a,b,aTol,rTol) Result(q)
         qOld = q
     End Do
     !if we get this far, we failed to converge
-    Print *,"ERROR:  Quadratures: Composite_Trapezoid:  Failed to converge on ",n," intervals."
+    Write(*,'(A,I0,A)') 'ERROR:  Quadratures: Composite_Trapezoid:  Failed to converge on ',n,' intervals.'
     ERROR STOP
 End Function Composite_Trapezoid
 
@@ -579,17 +526,17 @@ Function Composite_Simpson(f,a,b,aTol,rTol) Result(q)
     Integer :: i,j,n
     Real(dp) :: qOld,s1,s2,s3,h
     
-    n = 1
+    n = 2
     s1 = f(a) + f(b)
     s2 = 0._dp
-    s3 = f(0.5_dp*(a+b))
-    qOld = (b-a) * (s1 + 4._dp*s3) * one_sixth
-    Do i = 1,100
-        n = n*2
-        h = (b-a) / Real(2*n,dp)
+    s3 = f(0.5_dp * (a + b))
+    qOld = (b - a) * (s1 + 4._dp*s3) * one_sixth
+    Do i = 1,31
+        n = n * 2
+        h = (b - a) / Real(n,dp)
         s2 = s2 + s3
         s3 = 0._dp
-        Do j = 1,2*n-1,2  !only odd values of j, these are the NEW points at which to evaluate f
+        Do j = 1,n-1,2  !only odd values of j, these are the NEW points at which to evaluate f
             s3 = s3 + f(a + Real(j,dp)*h)
         End Do
         q = h * (s1 + 2._dp*s2 + 4._dp*s3) * one_third
@@ -597,7 +544,7 @@ Function Composite_Simpson(f,a,b,aTol,rTol) Result(q)
         qOld = q
     End Do
     !if we get this far, we failed to converge
-    Print *,"ERROR:  Quadratures: Composite_Simpson:  Failed to converge on ",n," intervals."
+    Write(*,'(A)') 'ERROR:  Quadratures: Composite_Simpson:  Failed to converge on ',n,' intervals.'
     ERROR STOP
 End Function Composite_Simpson
 
@@ -1159,10 +1106,56 @@ Function GaussLegendreN(N,f,a,b) Result(q)
             wi = w150
             ai = a150
         Case Default
-            Print *,'ERROR:  Quadratures: GaussLegendreN:  Unknown N, n = ',N
+            Write(*,'(A,I0)') 'ERROR:  Quadratures: GaussLegendreN:  Unsupported N, n = ',N
             ERROR STOP
     End Select
     q = GaussLegendre(f,a,b,n,wi,ai)
 End Function GaussLegendreN
+
+Function Progressive_GaussLegendre(f,a,b,rtol,atol,n_start,n_stride,n_done) Result(q)
+    Use Kinds, Only: dp
+    Use Utilities, Only: Converged
+    Implicit None
+    Real(dp) :: q
+    Interface
+        Function f(x)
+            Use Kinds, Only: dp
+            Implicit None
+            Real(dp) :: f
+            Real(dp), Intent(In) :: x
+        End Function
+    End Interface
+    Real(dp), Intent(In) :: a,b
+    Real(dp), Intent(In) :: rtol,atol
+    Integer, Intent(In), Optional :: n_start,n_stride
+    Integer, Intent(Out), Optional :: n_done
+    Real(dp) :: q_old
+    Integer :: n,dn
+    Integer :: i
+    
+    If (Present(n_start)) Then
+        n = n_start
+    Else
+        n = 1
+    End If
+    If (Present(n_stride)) Then
+        dn = n_stride
+    Else
+        dn = 1
+    End If
+    q_old = GaussLegendreN(n,f,a,b)
+    Do i = n+dn,150,dn !Gauss-Legendre weights and abscissa are available up to 150 points
+        q = GaussLegendreN(i,f,a,b)
+        If (Converged(q,q_old,rtol,atol)) Then
+            If (Present(n_done)) n_done = i
+            RETURN !NORMAL EXIT
+        End If
+        q_old = q
+    End Do
+    !If we get this far, we failed to converge on 150-point Gauss
+    If (Present(n_done)) n_done = -1
+    Write(*,'(A,I0,A)') 'ERROR:  Quadratures: Progressive_GaussLegendre:  Failed to converge with ',i-dn,' Gauss-points.'
+    ERROR STOP
+End Function Progressive_GaussLegendre
 
 End Module Quadratures
