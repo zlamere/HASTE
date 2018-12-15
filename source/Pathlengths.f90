@@ -351,6 +351,69 @@ Subroutine EPL_orbit_upward_full(atm,z0,zeta0,h,xi,p,e,rp,L,z1_in)
     L = Sum(Lb)
 End Subroutine EPL_orbit_upward_full
 
+# if CHECK_L
+Subroutine Check_EPL(L,z0,z1,zeta0,b,atm)
+    !UNSTANDARD: ABORT (GFORT) is an extension
+    Use Kinds, Only: dp
+    Use Atmospheres, Only: Atmosphere_Type
+    Use Global, Only: R_Earth
+    Use Quadratures, Only: Romberg_Quad
+    Use Utilities, Only: Prec
+    Use Utilities, Only: Bisection_Search
+    Implicit None
+    Real(dp), Intent(In) :: L
+    Real(dp), Intent(In) :: z0,z1,zeta0
+    Integer, Intent(In) :: b
+    Type(Atmosphere_Type), Intent(In) :: atm
+    Real(dp) :: r0,dZ,Smax
+    Real(dp) :: L0
+    Real(dp) :: Pgoal
+    Real(dp) :: zeta00
+    Real(dp), Parameter :: two_thirds = 2._dp / 3._dp
+
+    r0 = R_Earth + z0
+    dZ = z1 - z0
+    Smax = dZ * (2._dp * r0 + dZ) / ( zeta0 * r0 + Sqrt( (zeta0 * r0)**2 + dZ * (2._dp * r0 + dZ) ) )
+    L0 = Romberg_Quad(EPL_Integrand,0._dp,Smax,aTol=0._dp,rTol=1.E-9_dp)
+    Pgoal = two_thirds * Real(atm%EPL_Prec,dp)
+    If (Prec(L0,L) .GT. Pgoal) Return !computed EPLs agree to at least two thirds of the desired precision
+    Write(*,*)
+    Write(*,'(A,ES24.16)')           'ERROR:  PATHLENGTHS failed integral check:  L = ',L
+    Write(*,'(A,ES24.16)')           '                                           L0 = ',L0
+    Write(*,'(A,ES24.16)')           '                                            p = ',Prec(L0,L)
+    Write(*,'(A,ES24.16,A,ES24.16)') '        z0 = ',z0,         '  z1 = ',z1
+    Write(*,'(A,ES24.16,A,ES24.16)') '       Zbs = ',atm%zb(b-1),'  ---  ',atm%zb(b)
+    Write(*,'(A,ES24.16)')           '     zeta0 = ',zeta0
+    dZ = atm%Zb(b) - atm%zb(b-1)
+    r0 = R_Earth + atm%zb(b-1)
+    If (z0 .NE. atm%zb(b-1)) Then
+        zeta00 = zeta_upward(R_earth+z0,R_earth+z0-r0,zeta0)
+    Else
+        zeta00 = zeta0
+    End If
+    Write(*,'(A,ES24.16)')           '    zeta00 = ',zeta00
+    Write(*,'(A,ES24.16,A,F6.2,A)')  '         S = ',Smax,' (',100._dp * (Smax / (dZ * (2._dp * r0 + dZ) / ( zeta00 * r0 + Sqrt( (zeta00 * r0)**2 + dZ * (2._dp * r0 + dZ) ) ))),'% of full layer path)'
+#   if GFORT
+        Call abort  !<--GFORT implementation
+#   else
+        ERROR STOP
+#   endif   
+Contains
+    Function EPL_Integrand(s) Result(f)
+        Use Kinds, Only: dp
+        Use Utilities, Only: Smaller_Quadratic_Root
+        Use Atmospheres, Only: inv_rho_SL
+        Implicit None
+        Real(dp) :: f
+        Real(dp), Intent(In) :: s
+        Real(dp) :: deltaZ
+
+        deltaZ = Smaller_Quadratic_root(r0,s*(2._dp*r0*zeta0 + s))
+        f = inv_rho_SL * atm%rho(z0 + deltaZ)
+    End Function EPL_Integrand
+End Subroutine
+# endif
+
 Subroutine EPL_straight_upward_layers(atm,r0,zeta0,z0,nb,bb,Lb,z1_in)
     Use Kinds, Only: dp
     Use Atmospheres, Only: Atmosphere_Type
@@ -391,6 +454,9 @@ Subroutine EPL_straight_upward_layers(atm,r0,zeta0,z0,nb,bb,Lb,z1_in)
         Else
             Lb = EPL_S_partial_layer(r0,z0,z1,zeta0,b0,atm%EPL_lay(b0)%nS,atm)
         End If
+#       if CHECK_L
+            Call Check_EPL(Lb(1),z0,z1,zeta0,b0,atm)
+#       endif
         bb(1) = b0
         Return
     Else
@@ -402,12 +468,18 @@ Subroutine EPL_straight_upward_layers(atm,r0,zeta0,z0,nb,bb,Lb,z1_in)
             Else
                 Lb(1) = EPL_S_partial_layer(r0,z0,atm%Zb(b0),zeta0,b0,atm%EPL_lay(b0)%nS,atm)
             End If
+#           if CHECK_L
+                Call Check_EPL(Lb(1),z0,atm%Zb(b0),zeta0,b0,atm)
+#           endif
         Else  !full first layer
             If (zeta0 .GE. 0.1_dp) Then
                 Lb(1) = EPL_Z_known_layer(atm%EPL_lay(b0),zeta0)
             Else
                 Lb(1) = EPL_S_known_layer(zeta0,b0,atm)
             End If
+#           if CHECK_L
+                Call Check_EPL(Lb(1),atm%Zb(b0-1),atm%Zb(b0),zeta0,b0,atm)
+#           endif
         End If
         !full layers from b0+1 to b1-1
         i = 2
@@ -419,6 +491,9 @@ Subroutine EPL_straight_upward_layers(atm,r0,zeta0,z0,nb,bb,Lb,z1_in)
             Else
                 Lb(i) = EPL_S_known_layer(zeta1,b,atm)
             End If
+#           if CHECK_L
+                Call Check_EPL(Lb(i),atm%Zb(b-1),atm%Zb(b),zeta1,b,atm)
+#           endif
             i = i + 1
         End Do
         !last layer may or may not be partial
@@ -426,16 +501,22 @@ Subroutine EPL_straight_upward_layers(atm,r0,zeta0,z0,nb,bb,Lb,z1_in)
         zeta1 = zeta_upward(r0,atm%Zb(b1-1)-z0,zeta0)
         If (partial_last_layer) Then
             If (zeta1 .GE. 0.1_dp) Then
-                Lb(nb) = EPL_Z_partial_layer(atm%Rb(b1),atm%Zb(b1-1),z1,zeta1,b1,atm%EPL_lay(b1)%nZ,atm)
+                Lb(nb) = EPL_Z_partial_layer(atm%Rb(b1-1),atm%Zb(b1-1),z1,zeta1,b1,atm%EPL_lay(b1)%nZ,atm)
             Else
-                Lb(nb) = EPL_S_partial_layer(atm%Rb(b1),atm%Zb(b1-1),z1,zeta1,b1,atm%EPL_lay(b1)%nS,atm)
+                Lb(nb) = EPL_S_partial_layer(atm%Rb(b1-1),atm%Zb(b1-1),z1,zeta1,b1,atm%EPL_lay(b1)%nS,atm)
             End If
+#           if CHECK_L
+                Call Check_EPL(Lb(nb),atm%Zb(b1-1),z1,zeta1,b1,atm)
+#           endif
         Else
             If (zeta1 .GE. 0.1_dp) Then
                 Lb(nb) = EPL_Z_known_layer(atm%EPL_lay(b),zeta1)
             Else
                 Lb(nb) = EPL_S_known_layer(zeta1,b,atm)
             End If
+#           if CHECK_L
+                Call Check_EPL(Lb(nb),atm%Zb(b1-1),atm%Zb(b1),zeta1,b1,atm)
+#           endif
         End If
     End If
 End Subroutine EPL_straight_upward_layers
@@ -928,7 +1009,7 @@ Function L_to_S_from_top_of_segment(atm,b,L,Lmax,Smax,r1,z1,zeta1) Result(S)
         End If
         !Check for convergence
         If (Converged(S,S_old,rTol = 1.E-9_dp,aTol = 1.E-9_dp)) Return  !NORMAL EXIT for convergence on S
-        If (Converged(L,L_this_S,rTol = 1.E-9_dp,aTol = 1.E-12_dp)) Return  !NORMAL EXIT for guessing correct L
+        If (Converged(L,L_this_S,rTol = 1.E-12_dp,aTol = 1.E-12_dp)) Return  !NORMAL EXIT for guessing correct L
     End Do
     !If we get this far, Newton with False Position helpler did not converge
     ! Use bisection instead

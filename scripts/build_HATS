@@ -20,8 +20,8 @@ FNAME="PRNGs"; . ./compile_it
 FNAME="Random_Numbers"; . ./compile_it
 FNAME="Statistics"; . ./compile_it
 #FNAME="Root_Solvers"; . ./compile_it
-#FNAME="Gauss_Legendre_w_a"; . ./compile_it
-#FNAME="Quadratures"; . ./compile_it
+FNAME="Gauss_Legendre_w_a"; . ./compile_it
+FNAME="Quadratures"; . ./compile_it
 
 # ASTRO MODULES
 SRC_PATH="../source/astro/"
@@ -65,4 +65,5 @@ gfortran $GFORT_FLAGS -o ${BLD_PATH}HATS.out ${SRC_PATH}${FNAME}.f90 $OBJ_FILES 
 echo "Copying resource files..."
 rm -r ${BLD_PATH}Resources
 cp -r ../source/resources ${BLD_PATH}Resources
+mv -f ${BLD_PATH}Resources/HATS_Setup.txt ${BLD_PATH}HATS_Setup.txt
 echo "Done."

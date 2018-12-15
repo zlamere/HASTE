@@ -1,34 +1,61 @@
 #!/bin/sh
+set -e
 
 # Peprocessor definitions for conditional compilation:
 #  - Operating System (default Windows, -DLIN_OS for Linux)
 #  - Intel MKL PRNGs (default off, -DIMKL for Intel MKL)
 #  - Coarray support (default off, -DCAF enables coarrays)
 #  - Compiler vendor (-DGFORT for gFortran, -DIFORT for Intel)
+#  - Runtime checking (use '-k' to enable all)
+#    - Checking of atmosphere base layer selections (-DCHECK_B)
+#    - Checking of pathlength integral quadratures (-DCHECK_L)
 PREP_FLAGS="-cpp -DLIN_OS -DGFORT"
+# Additional preprocessor flags may be appended to this using the '-p' flag from the command line
 
 # General compiler flags (applies to all builds)
 OBJ_DIR="../build/obj/"
 DIR_FLAGS="-I${OBJ_DIR} -J${OBJ_DIR}"
-ALWAYS_FLAGS="-ffree-line-length-0 -fimplicit-none ${DIR_FLAGS}"
+MATH_FLAGS="-ffinite-math-only -fno-signed-zeros -fwrapv"
+ALWAYS_FLAGS="${MATH_FLAGS} -ffree-line-length-0 -fimplicit-none -fexceptions -fnon-call-exceptions -ffpe-trap=invalid,zero,overflow -fmax-errors=5 ${DIR_FLAGS}"
 # DEVELOPMENT Flags (fastest compile cycle, no object files, no linking)
-#COMP_FLAGS="-O0 -fmax-errors=5 -Wall -pedantic ${ALWAYS_FLAGS} -fsyntax-only"
-# DEBUG Compiler Flags (for debug builds, fast compile with debug information)
-COMP_FLAGS="-Og -fmax-errors=5 -Wall -pedantic -fcheck=all -fbacktrace ${ALWAYS_FLAGS}"
+SYNTAX_FLAGS="-O0 -fmax-errors=5 -Wall -Wextra -pedantic ${ALWAYS_FLAGS} -fsyntax-only"
+# DEBUG Compiler Flags (for debug builds, fast compile with full debug information)
+DEBUG_FLAGS="-g -Og -Wall -pedantic -fcheck=all -fbacktrace ${ALWAYS_FLAGS}"
 # RELEASE Compiler Flags (optimize for runtime speed)
-#COMP_FLAGS="-Ofast ${ALWAYS_FLAGS}"
+RELEASE_FLAGS="-Ofast ${ALWAYS_FLAGS}"
+# RASPBERRY PI RELEASE Compiler Flags (because this development environment is super-high performance!)
+RELEASE_FLAGS_PI="-Ofast -mcpu=cortex-a53 -mfloat-abi=hard -mfpu=neon-fp-armv8 -mneon-for-64bits -mtune=cortex-a53 ${ALWAYS_FLAGS}"
+
+# Set compiler flags based on command flag
+COMP_FLAGS="${DEBUG_FLAGS}"
+while getopts 'sdrqwp:ck' flag; do
+  case "${flag}" in
+    s) COMP_FLAGS="${SYNTAX_FLAGS}"
+       ;;
+    d) COMP_FLAGS="${DEBUG_FLAGS}"
+       ;;
+    r) COMP_FLAGS="${RELEASE_FLAGS}"
+       ;;
+    q) COMP_FLAGS="${RELEASE_FLAGS_PI}"
+       ;;
+    w) PREP_FLAGS="${PREP_FLAGS} -ULIN_OS"
+       ;;
+    p) PREP_FLAGS="${PREP_FLAGS} ${OPTARG}"
+       ;;
+    c) 
+       PREP_FLAGS="${PREP_FLAGS} -DCAF"
+       #COMP_FLAGS="${COMP_FLAGS} -fcoarray=single"
+       #LIB_FLAGS="${COMP_FLAGS} -lcaf_single"
+       COMP_FLAGS="${COMP_FLAGS} -fcoarray=lib"
+       LIB_FLAGS="${COMP_FLAGS} -lcaf_mpi"
+       ;;
+    k) PREP_FLAGS="${PREP_FLAGS} -DCHECK_B -DCHECK_L"
+       ;;
+  esac
+done
 
 # LINKER Flags
 LINK_FLAGS="-flto -fuse-linker-plugin"
-
-# Uncomment to enable SINGLE coarray behavior
-#PREP_FLAGS="${PREP_FLAGS} -DCAF"
-#COMP_FLAGS="${COMP_FLAGS} -fcoarray=single"
-#LIB_FLAGS="${COMP_FLAGS} -lcaf_single"
-# Uncomment to enable full coarray execution
-#PREP_FLAGS="${PREP_FLAGS} -DCAF"
-#COMP_FLAGS="${COMP_FLAGS} -fcoarray=lib"
-#LIB_FLAGS="${COMP_FLAGS} -lcaf_mpi"
 
 GFORT_FLAGS="${PREP_FLAGS} ${COMP_FLAGS} ${LINK_FLAGS}"
 GFORT_FLAGS_o="${GFORT_FLAGS} -c"
