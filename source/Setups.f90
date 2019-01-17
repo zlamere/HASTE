@@ -557,6 +557,21 @@ Subroutine Write_Setup_Information(n_img,t_runs,t_waits,n_h_hit,n_h_run,RNG,path
     Write(unit,'(A)') full_dash_line
     Write(unit,'(A)') paths_files%app_title
     Write(unit,'(A)') full_dash_line
+    Write(unit,'(A)') '   Copyright (C) 2017  Whitman T. Dailey'
+    Write(unit,*)
+    Write(unit,'(A)') '   This program is free software: you can redistribute it and/or modify'
+    Write(unit,'(A)') '   it under the terms of the GNU General Public License version 3 as'
+    Write(unit,'(A)') '   published by the Free Software Foundation.'
+    Write(unit,*)
+    Write(unit,'(A)') '   This program is distributed in the hope that it will be useful,'
+    Write(unit,'(A)') '   but WITHOUT ANY WARRANTY; without even the implied warranty of'
+    Write(unit,'(A)') '   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the'
+    Write(unit,'(A)') '   GNU General Public License for more details.'
+    Write(unit,*)
+    Write(unit,'(A)') '   You should have received a copy of the GNU General Public License'
+    Write(unit,'(A)') '   along with this program.  If not, see <http://www.gnu.org/licenses/>.'
+    Write(unit,'(A)') full_dash_line
+    Write(unit,*)
     Write(unit,'(2A)') '  Run Complete: ',Date_Time_string()
     Write(unit,'(A,F11.3,A)') '  Total Compute Time: ',Sum(t_runs),' sec'
     Write(unit,'(A,F11.3,A)') '  Min Compute Time:   ',MinVal(t_runs),' sec'
