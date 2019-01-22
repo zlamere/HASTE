@@ -2,7 +2,7 @@
 !   Copyright (C) 2017  Whitman T. Dailey
 !   
 !   This program is free software: you can redistribute it and/or modify
-!   it under the terms of the GNU General Public License version 3 as 
+!   it under the terms of the GNU General Public License version 3 as
 !   published by the Free Software Foundation.
 !   
 !   This program is distributed in the hope that it will be useful,
@@ -33,7 +33,7 @@ Function Tabular_Cosine_pdf(mu0cm,n1,ua1,n2,ua2,Econv) Result(p)
     Real(dp), Intent(In) :: Econv
     Integer :: i
     Real(dp) :: p1,p2
-    
+
     i = Bisection_Search(mu0cm,ua1(:,1),n1)
     p1 = Exp(Linear_Interp(mu0cm,ua1(i-1,1),ua1(i,1),Log(ua1(i-1,2)),Log(ua1(i,2))))
     i = Bisection_Search(mu0cm,ua2(:,1),n2)
