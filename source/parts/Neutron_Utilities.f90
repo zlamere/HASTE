@@ -2,7 +2,7 @@
 !   Copyright (C) 2017  Whitman T. Dailey
 !   
 !   This program is free software: you can redistribute it and/or modify
-!   it under the terms of the GNU General Public License version 3 as 
+!   it under the terms of the GNU General Public License version 3 as
 !   published by the Free Software Foundation.
 !   
 !   This program is distributed in the hope that it will be useful,
@@ -14,7 +14,7 @@
 !   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 !-------------------------------------------------------------------------------
 Module Neutron_Utilities
-    
+
     Implicit None
     Private
     Public :: Neutron_Energy
@@ -24,7 +24,7 @@ Module Neutron_Utilities
         Module Procedure Neutron_Energy_from_Speed
         Module Procedure Neutron_Energy_from_Velocity
     End Interface
-    
+
 Contains
 
 Function Neutron_Speed(E) Result(v)
@@ -43,7 +43,7 @@ Function Neutron_Energy_From_Speed(v) Result(E)
     Implicit None
     Real(dp):: E                ! neutron energy [keV]
     Real(dp), Intent(In):: v    ! neutron speed  [km/s]
-    
+
     E = (v / neutron_speed_conversion)**2
 End Function Neutron_Energy_From_Speed
 
@@ -53,7 +53,7 @@ Function Neutron_Energy_From_Velocity(v) Result(E)
     Implicit None
     Real(dp):: E                ! neutron energy [keV]
     Real(dp), Intent(In):: v(1:3)    ! neutron velocity  [km/s]
-    
+
     E = Neutron_Energy_From_Speed(Vector_Length(v))
 End Function Neutron_Energy_From_Velocity
 
