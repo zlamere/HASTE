@@ -2,7 +2,7 @@
 !   Copyright (C) 2017  Whitman T. Dailey
 !   
 !   This program is free software: you can redistribute it and/or modify
-!   it under the terms of the GNU General Public License version 3 as 
+!   it under the terms of the GNU General Public License version 3 as
 !   published by the Free Software Foundation.
 !   
 !   This program is distributed in the hope that it will be useful,
@@ -14,7 +14,7 @@
 !   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 !-------------------------------------------------------------------------------
 Module n_Cross_Sections
-    
+
     Use Kinds, Only: dp
     Use Global, Only: k_Boltzmann
     Implicit None
@@ -24,7 +24,7 @@ Module n_Cross_Sections
     Public :: Setup_Cross_Sections
     Public :: Write_Cross_Sections
     Public :: Read_CS_file
-    
+
     Type :: sig_Type
         Integer :: n_sig
         Real(dp), Allocatable :: sig(:) ![barns]  has dimension 1:n_sig
@@ -34,7 +34,7 @@ Module n_Cross_Sections
         Integer :: n_interp_r  !number of interpolation ranges
         Integer, Allocatable :: interp(:,:)  !has dimension 1:n_interp_r and 1:2, dim 1 is sig index up to which to use the interpolation method specified in dim 2
     End Type
-    
+
     Type :: da_List_Type
         Integer :: n_a  !number of coeffs/points
         Logical :: is_Legendre
@@ -42,14 +42,14 @@ Module n_Cross_Sections
         Real(dp), Allocatable :: a(:)  !has dim 0:n_a, list of legendre coefficients or pdf values
         Real(dp), Allocatable :: ua(:,:)  !has dim 1:n_a,1:2, for tabulated cosine pdf, list of cosines
     End Type
-    
+
     Type :: da_Type
         Integer :: n_da
         Type(da_List_Type), Allocatable :: da(:) ![barns]  has dimension 1:n_da
         Integer, Allocatable :: E_map(:)  !has dimension 1:n_E_uni, indexes for each value in unified energy grid to indexes in da
         Integer, Allocatable :: E_key(:)  !has dimension 1:n_da, indexes for each value in da to an energy in unified energy list
     End Type
-    
+
     Type :: lev_sig_Type
         Integer :: n_lev
         Real(dp), Allocatable :: Q(:)  ![positive keV]  has dimension 0:n_lev, Q-value for each level
@@ -57,13 +57,13 @@ Module n_Cross_Sections
         Type(sig_Type), Allocatable :: sig(:)  !has dimension 0:n_lev, cross sections for each level
         Type(da_Type), Allocatable :: da(:)  !has dimension 0:n_lev, angular cross sections for each level
     End Type
-    
+
     Type :: abs_sig_Type
         Integer :: n_modes
         Integer, Allocatable :: thresh(:)  !has dimension 1:modes, index of mode threshold energy in unified energy grid
         Type(sig_Type), Allocatable :: sig(:)  !has dim 1:n_modes, cross sections for each absorption mode
     End Type
-    
+
     Type :: res_sig_Type
         !HACK Resonance CS is included as linearly interpolable listing rather than by actual resonance reconstruction, this violates the small-memory intent of this cross sections implementation
         Real(dp) :: E_range(1:2)  ![keV] Lower and upper limits of the range over which resonant cross sections are included
@@ -71,7 +71,7 @@ Module n_Cross_Sections
         Real(dp), Allocatable :: E(:)  ![keV] has dimension 1:n_E, energy points at which resonance cross section is given
         Real(dp), Allocatable :: sig(:,:)  ![barns] has dimension 1:n_E abd 1:2, dim 2 is 1=n-gamma resonance and 2=elastic scatter resonance
     End Type
-    
+
     Type :: CS_Type
         Integer :: n_E_uni  !number of energies in the unified energy list
         Real(dp), Allocatable :: E_uni(:) ![keV]  has dimension 1:n_E_uni, list of energies in the unified energy grid
@@ -83,7 +83,7 @@ Module n_Cross_Sections
         Integer :: n_a_max,n_a_tab_max  !max number of coefficents in angular distribution cross sections
         Type(lev_sig_Type), Allocatable :: lev_cs(:)  !has dimension 1:n_iso, cross sections and angular distributions for each inelastic level for each isotope
         Type(abs_sig_Type), Allocatable :: abs_cs(:)  !has dimension 1:n_iso, cross sections for each absorption type for each isotope
-        Logical, Allocatable :: has_res_cs(:)  !has dimension 1:n_iso, TRUE indicates resonance cross sections are included in an isotope's cross section representation
+        Logical, Allocatable :: has_res_cs(:)  !has dimension 1:n_iso, TRUE indicates resonance cross sections are included in an isotope cross section representation
         Type(res_sig_Type), Allocatable :: res_cs(:)  !has dimension 1:n_iso, resonance cross sections for each isotope
     Contains
         Procedure, Pass :: sig_T  !given energy, returns total microscopic cross section for the atmosphere
@@ -95,7 +95,7 @@ Module n_Cross_Sections
         Procedure, Pass :: sig_T_A_broad
         Procedure, Pass :: sig_S_iso_broad
     End Type
-    
+
     Real(dp), Parameter :: k_B = k_Boltzmann / 1000._dp**2  ![J/K]*[1 km^2 / 1000^2 m^2] Boltzmann constant with convenient units locally
     Real(dp), Parameter :: rTol = 1.E-5_dp  !relative tolerance for convergence of broadening integrals, cross section data has about 5 good digits...
     !Precomuted parameters for Romberg Quadrature routines
@@ -150,13 +150,13 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
     Integer :: ltt
     Logical :: has_resonance
     Real(dp) :: iso_fraction
-    
+
     NameList /csSetupList1/ n_elements
     NameList /csSetupList2/ el_fractions,n_isotopes
     NameList /csSetupList3/ isotope_names,diatomic
     NameList /isoSetupList1/ iso_fraction,n_absorption_modes,n_inelastic_lev,has_resonance
     NameList /isoSetupList2/ abs_mode_names
-    
+
     !read namelists from cross sections setup file
     Allocate(Character(max_path_len) :: file_name_start)
     file_name_start = resources_directory//'cs'//slash//'n_cs'//slash
@@ -279,7 +279,7 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
             End Do
         End If
     End Do
-    !E_scratch is now a HUGE list of all the energies in all the files we're going to use, sort and eliminate duplicates
+    !E_scratch is now a HUGE list of all the energies in all the files we are going to use, sort and eliminate duplicates
     Call Union_Sort(E_uni_scratch,n_energies,E_min,E_max)
     If (n_energies .GT. Huge(CS%n_E_uni)) Call Output_Message('ERROR:  Cross_Sections: Setup_Cross_Sections:  Length of unified energy grid exceeds available index',kill=.TRUE.)
     !Allocate and fill the unified energy list
@@ -369,7 +369,7 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
                     If (CS%lev_cs(i)%da(0)%da(k)%is_legendre) Then
                         If (CS%lev_cs(i)%da(0)%da(k)%n_a .GT. CS%n_a_max) CS%n_a_max = CS%lev_cs(i)%da(0)%da(k)%n_a
                     Else If (CS%lev_cs(i)%da(0)%da(k)%is_tab) Then
-                        If (CS%lev_cs(i)%da(0)%da(k)%n_a .GT. CS%n_a_tab_max) CS%n_a_tab_max = CS%lev_cs(i)%da(0)%da(k)%n_a                    
+                        If (CS%lev_cs(i)%da(0)%da(k)%n_a .GT. CS%n_a_tab_max) CS%n_a_tab_max = CS%lev_cs(i)%da(0)%da(k)%n_a
                     End If
                 End Do
             End If
@@ -404,7 +404,7 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
                             If (CS%lev_cs(i)%da(j)%da(k)%is_legendre) Then
                                 If (CS%lev_cs(i)%da(j)%da(k)%n_a .GT. CS%n_a_max) CS%n_a_max = CS%lev_cs(i)%da(j)%da(k)%n_a
                             Else If (CS%lev_cs(i)%da(j)%da(k)%is_tab) Then
-                                If (CS%lev_cs(i)%da(j)%da(k)%n_a .GT. CS%n_a_tab_max) CS%n_a_tab_max = CS%lev_cs(i)%da(j)%da(k)%n_a                    
+                                If (CS%lev_cs(i)%da(j)%da(k)%n_a .GT. CS%n_a_tab_max) CS%n_a_tab_max = CS%lev_cs(i)%da(j)%da(k)%n_a
                             End If
                         End Do
                     End If
@@ -437,12 +437,12 @@ Subroutine Read_CS_file(CS_file_name,Q,An,E_list,CS_list,Int_list,n_p,n_r,just_n
     Integer :: i
     Real(dp) :: trash
     Integer :: cs_unit, stat
-        
+
     Open(NEWUNIT = cs_unit , FILE = CS_file_name , ACTION = 'READ' , IOSTAT = stat)
     If (stat .NE. 0) Call Output_Message('ERROR:  Cross_Sections: Read_CS_file:  File open error, '//CS_file_name//', IOSTAT=',stat,kill=.TRUE.)
-    !the first line's second entry is the mass of the target in neutron masses
+    !the second entry of the first line is the mass of the target in neutron masses
     Read(cs_unit,'(2E11.6E1)') trash, An
-    !the next line's second entry is the Q-value for the reaction, the fifth and sixth entries are the number of interpolation ranges and energy levels in the file
+    !the second entry of the next line is the Q-value for the reaction, the fifth and sixth entries are the number of interpolation ranges and energy levels in the file
     Read(cs_unit,'(4E11.6E1,2I11)') trash, Q, trash, trash, n_r, n_p
     If (n_r .GT. 3) Call Output_Message('ERROR:  Cross_Sections: Read_CS_file:  Number of interpolation ranges greater than 3: '//CS_file_name//', n_r=',n_r,kill=.TRUE.)
     If (Present(just_n)) Then
@@ -498,7 +498,7 @@ Subroutine Read_Ang_Dist_file(Coeff_file_name,E_list,da_list,n_p,LTT,just_n)
     Integer :: LCT
     Integer :: n_p_add
     Logical :: new_line
-    
+
     Open(NEWUNIT = coeff_unit , FILE = Coeff_file_name , ACTION = 'READ' , IOSTAT = stat)
     If (stat .NE. 0) Call Output_Message('ERROR:  Cross_Sections: Read_Ang_Dist_file:  File open error, '//Coeff_file_name//', IOSTAT=',stat,kill=.TRUE.)
     !check the LTT value on the first line to ensure Legendre Coeffs format
@@ -650,7 +650,7 @@ Function Trim_CS_for_E(n_p,E_list,CS_list,n_r,Int_list,E_min,E_max) Result(bingo
     Real(dp), Allocatable :: CS_swap(:)
     Integer, Allocatable :: Int_swap(:,:)
     Integer :: i,j
-    
+
     bingo = .TRUE.
     If (E_list(1).GE.E_min .AND. E_list(n_p).LE.E_max) Return  !no trimming required
     If (E_list(1).GT.E_max .OR. E_list(n_p).LT.E_min) Then !there are no values in range
@@ -735,7 +735,7 @@ Function Trim_AD_for_E(n_p,E_list,AD_list,E_min,E_max) Result(bingo)
     Real(dp), Allocatable :: E_swap(:)
     Type(da_List_Type), Allocatable :: AD_swap(:)
     Integer :: i,j,m,k
-    
+
     bingo = .TRUE.
     If (E_list(1).GE.E_min .AND. E_list(n_p).LE.E_max) Return  !no trimming required
     If (E_list(1).GT.E_max .OR. E_list(n_p).LT.E_min) Then !there are no values in range
@@ -800,7 +800,7 @@ Subroutine Map_and_Store_CS(n_E_uni,E_uni,n_p,E_list,CS_list,n_r,Int_list,cs,i_t
     Type(sig_Type), Intent(Out) :: cs
     Integer, Optional, Intent(Out) :: i_thresh
     Integer :: i,j,t
-    
+
     !Determine index of threshold energy
     t = 1
     If (Present(i_thresh)) Then  !determine index of the threshold energy, index of map will start at the threshold energy
@@ -866,7 +866,7 @@ Subroutine Map_and_Store_AD(n_E_uni,E_uni,n_p,E_list,AD_list,ad,i_thresh)
     Type(da_Type), Intent(Out) :: ad
     Integer, Optional, Intent(In) :: i_thresh
     Integer :: i,j,t
-    
+
     !Determine index of threshold energy
     t = 1
     If (Present(i_thresh)) t = i_thresh
@@ -955,7 +955,7 @@ Function sig_S(CS,E,iE_get,iE_put)
     Integer, Intent(In), Optional :: iE_put
     Integer :: E_index
     Integer :: i
-    
+
     If (Present(iE_put)) Then
         E_index = iE_put
     Else
@@ -982,7 +982,7 @@ Function sig_S_iso(CS,iso,E,iE_get,iE_put)
     Integer, Intent(Out), Optional :: iE_get
     Integer, Intent(In), Optional :: iE_put
     Integer :: E_index
-    
+
     If (Present(iE_put)) Then
         E_index = iE_put
     Else
@@ -1006,7 +1006,7 @@ Function sig_A(CS,E,iE_get,iE_put)
     Integer, Intent(In), Optional :: iE_put
     Integer :: E_index
     Integer :: i
-    
+
     If (Present(iE_put)) Then
         E_index = iE_put
     Else
@@ -1016,7 +1016,6 @@ Function sig_A(CS,E,iE_get,iE_put)
     Do i = 1,CS%n_iso
         sig_A = sig_A + CS%iso_Fractions(i) * sig_Composite(E,CS%n_E_uni,CS%E_uni,CS%lnE_uni,E_index,1,CS%abs_cs(i)%n_modes,CS%abs_cs(i)%thresh,CS%abs_cs(i)%sig)
         If (CS%has_res_cs(i)) Then
-            !If (E.GT.CS%res_cs(i)%E_range(1) .AND. E.LT.CS%res_cs(i)%E_range(2)) sig_A = sig_A + CS%iso_Fractions(i) * sig_res(E,CS%res_cs(i)%n_E,CS%res_cs(i)%E,CS%res_cs(i)%sig(:,1))
             If (E.LT.CS%res_cs(i)%E_range(2)) sig_A = sig_A + CS%iso_Fractions(i) * sig_res(E,CS%res_cs(i)%n_E,CS%res_cs(i)%E,CS%res_cs(i)%sig(:,1))
         End If
     End Do
@@ -1047,7 +1046,7 @@ Function sig_Composite(E,n_E,E_list,lnE_list,E_index,n1,n2,t_list,sig_list) Resu
     Integer, Parameter :: LinLog_interpolation = 3  !y is linear in ln(x) (linear-log)
     Integer, Parameter :: LogLin_interpolation = 4  !ln(y) is linear in x (log-linear)
     Integer, Parameter :: LogLog_interpolation = 5  !ln(y) is linear in ln(x) (log-log)
-    
+
     sig = 0._dp
     Do i = n1,n2
         If (E_index .LE. t_list(i)) Exit
@@ -1105,7 +1104,7 @@ Function sig_res(E,n_E,E_list,sig_list) Result(sig)
     Integer :: E_i
     Real(dp) :: E1,E2
     Real(dp) :: sig1,sig2
-    
+
     E_i = Bisection_Search(E,E_list,n_E)
     If (E_i .EQ. 1) Then
         E1 = E_list(1)
@@ -1140,8 +1139,8 @@ Subroutine Broad_sig_start(E,M,T,v,gamma,vRmin,vRmax)
     If (vT .LE. v) Then
         vRmin = v - vT
     Else
-        !HACK Use small VRmin instead of zero to prevent Log(E=0) from appearing in log interpolation cases... 1.E-16 equates to an energy of about 1.E-38 keV
-        vRmin = 1.E-16_dp!0._dp  
+        !NOTE Use small VRmin instead of zero to prevent Log(E=0) from appearing in log interpolation cases... 1.E-16 equates to an energy of about 1.E-38 keV
+        vRmin = 1.E-16_dp  !0._dp
     End If
     vRmax = v + vT
 End Subroutine Broad_sig_start
@@ -1165,7 +1164,7 @@ Subroutine sig_T_A_broad(CS,E,T,sigT,sigA)
     Integer :: i
     Integer, Parameter :: total = 1
     Integer, Parameter :: absor = 2
-    
+
     Call Broad_sig_start(E,CS%Mn,T,v,gamma,vR_min,vR_max)
     iE_min = Bisection_Search(Neutron_Energy(vR_min),CS%E_uni,CS%n_E_uni)
     If (Neutron_Energy(vR_max) .LE. CS%E_uni(iE_min)) Then  !only a single interval spanned in energy grid
@@ -1187,6 +1186,7 @@ Subroutine sig_T_A_broad(CS,E,T,sigT,sigA)
     sigA = sig_T_A(absor)
 End Subroutine sig_T_A_broad
 
+!TODO The following romberg quadratures need to be revised into a more memory-effectie implementation, same structure as found in Quadratures module
 Function Broad_Romberg_T_A(CS,iE,vR1,vR2,gamma,v) Result(sig_T_A)
     Use Kinds, Only: dp
     Use Neutron_Utilities, Only: Neutron_Energy
@@ -1234,63 +1234,8 @@ Function Broad_Romberg_T_A(CS,iE,vR1,vR2,gamma,v) Result(sig_T_A)
         End If
     End Do
     !if we get this far, we failed to converge
-    Call Continue_Broad_Romberg_T_A(CS,iE,vR1,vR2,gamma,v,s1,s2,10,R(:,:,10),2,sig_T_A)
-End Function Broad_Romberg_T_A
 
-Recursive Subroutine Continue_Broad_Romberg_T_A(CS,iE,vR1,vR2,gamma,v,s1,s2,d,R0,level,sig_T_A)
-    Use Kinds, Only: dp
-    Use Neutron_Utilities, Only: Neutron_Energy
-    Use FileIO_Utilities, Only: Output_Message
-    Implicit None
-    Type(CS_type), Intent(In) :: CS
-    Integer, Intent(In) :: iE
-    Real(dp), Intent(In) :: vR1,vR2
-    Real(dp), Intent(In) :: gamma,v
-    Real(dp), Intent(InOut) :: s1(1:2),s2(1:2)
-    Integer, Intent(In) :: d  !length of final row in OLD Romberg Table
-    Real(dp), Intent(In) :: R0(1:2,0:d)  !final row of OLD romberg table
-    Integer, Intent(In) :: level
-    Real(dp), Intent(Out) :: sig_T_A(1:2)    !the result of the integration, if convergence attained
-    Real(dp) :: h
-    Real(dp) :: sig_vR(1:2)
-    Real(dp) :: vR
-    Integer :: n,i,j
-    Real(dp) :: R(1:2,0:d+10,0:10)  !Romberg table extension
-    Integer :: fours
-    Integer, Parameter :: total = 1
-    Integer, Parameter :: absor = 2
-    
-    R(:,0:d,0) = R0
-    Do i = 1,10
-        !compute trapezoid estimate for next row of table
-        n = 2**(d+i)
-        h = (vR2 - vR1) / Real(n,dp)
-        Do j = 1,n-1,2  !only odd values of j, these are the NEW points at which to evaluate the integrand
-            vR = vR1 + Real(j,dp)*h
-            Call CS%sig_T_A(Neutron_Energy(vR),sig_vR(total),sig_vR(absor),iE_put=iE)
-            s1 = s1 + Broad_Integrand( vR,sig_vR,gamma,v)
-            s2 = s2 + Broad_Integrand(-vR,sig_vR,gamma,v)
-        End Do
-        R(:,0,i) = h * (s1 - s2)
-        !fill out Romberg table row
-        fours = 1
-        Do j = 1,i
-            fours = fours * 4
-            R(:,j,i) = (Real(fours,dp) * R(:,j-1,i) - R(:,j-1,i-1)) / Real(fours - 1,dp)
-            !R(:,j,i) = (((4._dp)**j) * R(:,j-1,i) - R(:,j-1,i-1)) / (((4._dp)**j) - 1._dp)
-        End Do
-        !check for convergence
-        If ( All( Abs(R(:,i-1,i-1) - R(:,i,i)) .LE. rTol * Abs(R(:,i,i)) ) ) Then
-            sig_T_A = R(:,i,i)  !R(i,i) is the position of the highest precision converged value
-            Return  !Normal exit
-        End If
-    End Do
-    If (level .GT. 5) Then !max allowed recursion depth, interval has been split 50 times...
-        Call Output_Message('ERROR:  Cross_Sections: Continue_Broad_Romberg_T_A:  Failed to converge before reaching max recursion depth.',kill=.TRUE.)
-    End If
-    !if we get this far, we failed to converge
-    Call Continue_Broad_Romberg_T_A(CS,iE,vR1,vR2,gamma,v,s1,s2,d+10,R(:,:,10),level+1,sig_T_A)
-End Subroutine Continue_Broad_Romberg_T_A
+End Function Broad_Romberg_T_A
 
 Function sig_T_broad(CS,E,T) Result(sigT)
     Use Kinds, Only: dp
@@ -1308,7 +1253,7 @@ Function sig_T_broad(CS,E,T) Result(sigT)
     Real(dp) :: vR_min,vR_max
     Integer :: iE_min,iE_max
     Integer :: i
-    
+
     Call Broad_sig_start(E,CS%Mn,T,v,gamma,vR_min,vR_max)
     iE_min = Bisection_Search(Neutron_Energy(vR_min),CS%E_uni,CS%n_E_uni)
     If (Neutron_Energy(vR_max) .LE. CS%E_uni(iE_min)) Then  !only a single interval spanned in energy grid
@@ -1341,7 +1286,7 @@ Function Broad_Romberg_T(CS,iE,vR1,vR2,gamma,v) Result(sigT)
     Real(dp) :: vR
     Integer :: n,i,j
     Real(dp) :: R(0:10,0:10)
-    
+
     sig_vR1 = CS%sig_T(Neutron_Energy(vR1),iE_put=iE)
     sig_vR2 = CS%sig_T(Neutron_Energy(vR2),iE_put=iE)
     h = vR2 - vR1
@@ -1371,61 +1316,8 @@ Function Broad_Romberg_T(CS,iE,vR1,vR2,gamma,v) Result(sigT)
         End If
     End Do
     !if we get this far, we failed to converge
-    Call Continue_Broad_Romberg_T(CS,iE,vR1,vR2,gamma,v,s1,s2,10,R(:,10),2,sigT)
-End Function Broad_Romberg_T
 
-Recursive Subroutine Continue_Broad_Romberg_T(CS,iE,vR1,vR2,gamma,v,s1,s2,d,R0,level,sigT)
-    Use Kinds, Only: dp
-    Use Neutron_Utilities, Only: Neutron_Energy
-    Use FileIO_Utilities, Only: Output_Message
-    Implicit None
-    Type(CS_type), Intent(In) :: CS
-    Integer, Intent(In) :: iE
-    Real(dp), Intent(In) :: vR1,vR2
-    Real(dp), Intent(In) :: gamma,v
-    Real(dp), Intent(InOut) :: s1,s2
-    Integer, Intent(In) :: d  !length of final row in OLD Romberg Table
-    Real(dp), Intent(In) :: R0(0:d)  !final row of OLD romberg table
-    Integer, Intent(In) :: level
-    Real(dp), Intent(Out) :: sigT
-    Real(dp) :: h
-    Real(dp) :: sig_vR
-    Real(dp) :: vR
-    Integer :: n,i,j
-    Real(dp) :: R(0:d+10,0:10)
-    Integer :: fours
-    
-    R(0:d,0) = R0
-    Do i = 1,10
-        !compute trapezoid estimate for next row of table
-        n = 2**(d+i)
-        h = (vR2 - vR1) / Real(n,dp)
-        Do j = 1,n-1,2  !only odd values of j, these are the NEW points at which to evaluate the integrand
-            vR = vR1 + Real(j,dp)*h
-            sig_vR = CS%sig_T(Neutron_Energy(vR),iE_put=iE)
-            s1 = s1 + Broad_Integrand( vR,sig_vR,gamma,v)
-            s2 = s2 + Broad_Integrand(-vR,sig_vR,gamma,v)
-        End Do
-        R(0,i) = h * (s1 - s2)
-        !fill out Romberg table row
-        fours = 1
-        Do j = 1,i
-            fours = fours * 4
-            R(j,i) = (Real(fours,dp) * R(j-1,i) - R(j-1,i-1)) / Real(fours - 1,dp)
-            !R(j,i) = (((4._dp)**j) * R(j-1,i) - R(j-1,i-1)) / (((4._dp)**j) - 1._dp)
-        End Do
-        !check for convergence
-        If ( Abs(R(i-1,i-1) - R(i,i)) .LE. rTol * Abs(R(i,i)) ) Then
-             sigT = R(i,i)
-            Return
-        End If
-    End Do
-    If (level .GT. 5) Then !max allowed recursion depth, interval has been split 50 times...
-        Call Output_Message('ERROR:  Cross_Sections: Continue_Broad_Romberg_T:  Failed to converge before reaching max recursion depth.',kill=.TRUE.)
-    End If
-    !if we get this far, we failed to converge
-    Call Continue_Broad_Romberg_T(CS,iE,vR1,vR2,gamma,v,s1,s2,d+10,R(:,10),level+1,sigT)
-End Subroutine Continue_Broad_Romberg_T
+End Function Broad_Romberg_T
 
 Function sig_S_iso_broad(CS,iso,E,T) Result(sigS)
     Use Kinds, Only: dp
@@ -1445,7 +1337,7 @@ Function sig_S_iso_broad(CS,iso,E,T) Result(sigS)
     Real(dp) :: vR_min,vR_max
     Integer :: iE_min,iE_max
     Integer :: i
-    
+
     Call Broad_sig_start(E,CS%An(iso)*neutron_mass,T,v,gamma,vR_min,vR_max)
     iE_min = Bisection_Search(Neutron_Energy(vR_min),CS%E_uni,CS%n_E_uni)
     If (Neutron_Energy(vR_max) .LE. CS%E_uni(iE_min)) Then  !only a single interval spanned in energy grid
@@ -1506,69 +1398,15 @@ Function Broad_Romberg_S_iso(CS,iso,iE,vR1,vR2,gamma,v) Result(sigS)
         End If
     End Do
     !if we get this far, we failed to converge
-    Call Continue_Broad_Romberg_S_iso(CS,iso,iE,vR1,vR2,gamma,v,s1,s2,10,R(:,10),2,sigS)
-End Function Broad_Romberg_S_iso
 
-Recursive Subroutine Continue_Broad_Romberg_S_iso(CS,iso,iE,vR1,vR2,gamma,v,s1,s2,d,R0,level,sigS)
-    Use Kinds, Only: dp
-    Use Neutron_Utilities, Only: Neutron_Energy
-    Use FileIO_Utilities, Only: Output_Message
-    Implicit None
-    Type(CS_type), Intent(In) :: CS
-    Integer, Intent(In) :: iso
-    Integer, Intent(In) :: iE
-    Real(dp), Intent(In) :: vR1,vR2
-    Real(dp), Intent(In) :: gamma,v
-    Real(dp), Intent(InOut) :: s1,s2
-    Integer, Intent(In) :: d  !length of final row in OLD Romberg Table
-    Real(dp), Intent(In) :: R0(0:d)  !final row of OLD romberg table
-    Integer, Intent(In) :: level
-    Real(dp), Intent(Out) :: sigS
-    Real(dp) :: h
-    Real(dp) :: sig_vR
-    Real(dp) :: vR
-    Integer :: n,i,j
-    Real(dp) :: R(0:d+10,0:10)
-    Integer :: fours
-    
-    R(0:d,0) = R0
-    Do i = 1,10
-        !compute trapezoid estimate for next row of table
-        n = 2**(d+i)
-        h = (vR2 - vR1) / Real(n,dp)
-        Do j = 1,n-1,2  !only odd values of j, these are the NEW points at which to evaluate the integrand
-            vR = vR1 + Real(j,dp)*h
-            sig_vR = CS%sig_S_iso(iso,Neutron_Energy(vR),iE_put=iE)
-            s1 = s1 + Broad_Integrand( vR,sig_vR,gamma,v)
-            s2 = s2 + Broad_Integrand(-vR,sig_vR,gamma,v)
-        End Do
-        R(0,i) = h * (s1 - s2)
-        !fill out Romberg table row
-        fours = 1
-        Do j = 1,i
-            fours = fours * 4
-            R(j,i) = (Real(fours,dp) * R(j-1,i) - R(j-1,i-1)) / Real(fours - 1,dp)
-            !R(j,i) = (((4._dp)**j) * R(j-1,i) - R(j-1,i-1)) / (((4._dp)**j) - 1._dp)
-        End Do
-        !check for convergence
-        If ( Abs(R(i-1,i-1) - R(i,i)) .LE. rTol * Abs(R(i,i)) ) Then
-             sigS = R(i,i)
-            Return
-        End If
-    End Do
-    If (level .GT. 5) Then !max allowed recursion depth, interval has been split 50 times...
-        Call Output_Message('ERROR:  Cross_Sections: Continue_Broad_Romberg_S_iso:  Failed to converge before reaching max recursion depth.',kill=.TRUE.)
-    End If
-    !if we get this far, we failed to converge
-    Call Continue_Broad_Romberg_S_iso(CS,iso,iE,vR1,vR2,gamma,v,s1,s2,d+10,R(:,10),level+1,sigS)
-End Subroutine Continue_Broad_Romberg_S_iso
+End Function Broad_Romberg_S_iso
 
 Elemental Function Broad_Integrand(vR,sig,gamma,v)
     Use Kinds, Only: dp
     Implicit None
     Real(dp) :: Broad_Integrand
     Real(dp), Intent(In) :: vR,sig,gamma,v
-    
+
     Broad_Integrand = vR**2 * sig * Exp( -((gamma * (v-vR))**2) )
 End Function Broad_Integrand
 
@@ -1582,7 +1420,7 @@ Subroutine Write_Cross_Sections(CS,Broadened_CS,file_name)
     Integer :: unit,stat
     Integer :: i
     Real(dp) :: sT,sA,sTb,sAb
-    
+
     Open(NEWUNIT = unit , FILE = file_name , STATUS = 'UNKNOWN' , ACTION = 'WRITE' , POSITION = 'APPEND' , IOSTAT = stat)
     If (stat .NE. 0) Then
         Print *,'ERROR:  Cross_Sections: Write_Cross_Sections:  File open error, '//file_name//', IOSTAT=',stat
@@ -1614,5 +1452,5 @@ Subroutine Write_Cross_Sections(CS,Broadened_CS,file_name)
     Write(unit,*)
     Close(unit)
 End Subroutine Write_Cross_Sections
-     
+
 End Module n_Cross_Sections
