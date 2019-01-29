@@ -26,8 +26,12 @@ RELEASE_FLAGS="-Ofast ${ALWAYS_FLAGS}"
 # RASPBERRY PI RELEASE Compiler Flags (because this development environment is super-high performance!)
 RELEASE_FLAGS_PI="-Ofast -mcpu=cortex-a53 -mfloat-abi=hard -mfpu=neon-fp-armv8 -mneon-for-64bits -mtune=cortex-a53 ${ALWAYS_FLAGS}"
 
-# Set compiler flags based on command flag
+# Set preprocessor/compiler/library flags based on command line flag(s)
+# Default to debugging settings
 COMP_FLAGS="${DEBUG_FLAGS}"
+# Default to no libraries
+LIB_FLAGS=""
+# Adjust based on command line flag(s)
 while getopts 'sdrqwp:ck' flag; do
   case "${flag}" in
     s) COMP_FLAGS="${SYNTAX_FLAGS}"
@@ -47,7 +51,7 @@ while getopts 'sdrqwp:ck' flag; do
        #COMP_FLAGS="${COMP_FLAGS} -fcoarray=single"
        #LIB_FLAGS="${COMP_FLAGS} -lcaf_single"
        COMP_FLAGS="${COMP_FLAGS} -fcoarray=lib"
-       LIB_FLAGS="${COMP_FLAGS} -lcaf_mpi"
+       LIB_FLAGS="${LIB_FLAGS} -lcaf_mpi"
        ;;
     k) PREP_FLAGS="${PREP_FLAGS} -DCHECK_B -DCHECK_L"
        ;;
