@@ -69,7 +69,19 @@ Module n_Cross_Sections
         Real(dp) :: E_range(1:2)  ![keV] Lower and upper limits of the range over which resonant cross sections are included
         Integer :: n_E
         Real(dp), Allocatable :: E(:)  ![keV] has dimension 1:n_E, energy points at which resonance cross section is given
-        Real(dp), Allocatable :: sig(:,:)  ![barns] has dimension 1:n_E abd 1:2, dim 2 is 1=n-gamma resonance and 2=elastic scatter resonance
+        Real(dp), Allocatable :: sig(:,:)  ![barns] has dimension 1:n_E and 1:2, dim 2 is 1=n-gamma resonance and 2=elastic scatter resonance
+    End Type
+    
+    Type :: res_sig_Type_new
+        Real(dp) :: k0
+        Real(dp) :: AP
+        Integer :: n_R  !total number of resonances with tabulate parameters
+        Integer :: n_L  !number of levels in which resonances are grouped
+        Integer, Allocatable :: nr(:)   !has dimension 1:n_L, number of resonances in each level
+        Real(dp), Allocatable :: Er(:)  ![keV] has dimension 1:n_R, energy points at which resonance parameters are given
+        Real(dp), Allocatable :: gJ(:)  !has dimension 1:n_R, total angular momentum for each resonance point
+        Real(dp), Allocatable :: sqrt_GnGr(:)  !has dimension 1:n_R, square root of the product of neutron and radiation widths  for each resonance point
+        Real(dp), Allocatable :: Gr(:)  !has dimension 1:n_R, radiation width for each resonance point
     End Type
 
     Type :: CS_Type
@@ -504,7 +516,7 @@ Subroutine Read_Ang_Dist_file(Coeff_file_name,E_list,da_list,n_p,LTT,just_n)
     !check the LTT value on the first line to ensure Legendre Coeffs format
     Read(coeff_unit,'(3E11.6E1,I11)') trash, trash, trash, LTT
     Read(coeff_unit,'(3E11.6E1,I11)') trash, trash, trash, LCT
-    !values must be in CM frame, check and thro error if they are not
+    !values must be in CM frame, check and throw error if they are not
     If (LCT .NE. 2) Call Output_Message('ERROR:  Cross_Sections: Read_Ang_Dist_file:  Incorrectly formatted file, '//Coeff_file_name//', LCT=',LCT,kill=.TRUE.)
     !Skip the next line
     Read (coeff_unit,*)
@@ -634,6 +646,172 @@ Subroutine Read_Ang_Dist_file(Coeff_file_name,E_list,da_list,n_p,LTT,just_n)
     !Convert E from eV to keV
     E_list = E_list / 1000._dp
 End Subroutine Read_Ang_Dist_file
+
+Subroutine Read_Res_File(Res_file_name,E_list,gJ_list,Gn_list,Gr_list,ap,awri)
+    Use Kinds, Only: dp
+    Use FileIO_Utilities, Only: Output_Message
+    Implicit None
+    Character(*), Intent(In) :: Res_file_name
+    Real(dp), Allocatable, Intent(Out) :: E_list(:)
+    Real(dp), Allocatable, Intent(Out) :: E_list(:)
+    Real(dp), Allocatable, Intent(Out) :: E_list(:)
+    Real(dp), Allocatable, Intent(Out) :: E_list(:)
+    Integer, Intent(Out):: ap,awri
+
+    Integer :: i,j
+    Real(dp) :: trash
+    Integer :: n_a_scratch
+    Integer :: res_unit,stat
+    Integer :: LRF
+    Integer :: n_p_add
+    Logical :: new_line
+
+    Open(NEWUNIT = res_unit , FILE = Res_file_name , ACTION = 'READ' , IOSTAT = stat)
+    If (stat .NE. 0) Call Output_Message('ERROR:  Cross_Sections: Read_Res_file:  File open error, '//Res_file_name//', IOSTAT=',stat,kill=.TRUE.)
+    !check the LRF value on the fourth line to ensure Reich-Moore format
+    Do i = 1,3
+        Read(coeff_unit,*)
+    End Do
+    Read(coeff_unit,'(3E11.6E1,I11)') trash, trash, trash, LRF
+    If (LCT .NE. 3) Call Output_Message('ERROR:  Cross_Sections: Read_Res_file:  Incorrectly formatted file, '//Coeff_file_name//', LRF=',LRF,kill=.TRUE.)
+    !read AP and n_L from the next line
+    Read(coeff_unit,'(4E11.6E1,I11)') trash, ap, trash, trash, n_L
+    !read awri and number of resonances in first layer from next line
+    Read(coeff_unit,'(4E11.6E1,I11)') trash, ap, trash, trash, n_L
+
+!UNDONE
+!UNDONE
+!UNDONE
+!UNDONE
+    !Skip the next line
+    Read (coeff_unit,*)
+    !the next line begins with the number of energy levels in the file
+    Read (coeff_unit,'(I11)') n_p
+    If (LTT .EQ. 3) Then !need to add more energies from later in the file
+        !advance in the file to the end of the Legendre section
+        Do i = 1,n_p
+            !The first line in each energy contains the energy in eV in the second position and the number of Legendre coefficents in the 5th position
+            Read(coeff_unit,'(4E11.6E1,I11)') trash, trash, trash, trash, n_a_scratch
+            Do j = 1,n_a_scratch
+                If (mod(j,6).EQ.0 .OR. j.EQ.n_a_scratch) Then !this is the last entry on a line, read and advance
+                    Read(coeff_unit,'(E11.6E1)', ADVANCE = 'YES') trash
+                    new_line = .TRUE.
+                Else !read the entry without advancing
+                    Read(coeff_unit,'(E11.6E1)', ADVANCE = 'NO') trash
+                    new_line = .FALSE.
+                End If
+            End Do
+        End Do
+        !advance one or two lines based on where Legendre Coeff reading finished
+        If (.NOT. new_line) Read(coeff_unit,*)
+        Read(coeff_unit,*)
+        !first entry of next line is number of additional energy points
+        Read (coeff_unit,'(I11)') n_p_add
+    Else
+        n_p_add = 0
+    End If
+    If (Present(just_n)) Then
+        If (just_n) Then  !this is the number of energies we need
+            Close(coeff_unit)
+            n_p = n_p + n_p_add
+            Return
+        End If
+    End If
+    !Allocate the data array to the number of provided energy levels
+    Allocate(E_list(1:n_p+n_p_add))
+    Allocate(da_list(1:n_p+n_p_add))
+    If (LTT .EQ. 1) Then  !da is lists of legendre coeffs
+        da_list%is_legendre = .TRUE.
+        da_list%is_tab = .FALSE.
+        Do i = 1,n_p
+            !The first line in each energy contains the energy in eV in the second position and the number of Legendre coefficents in the 5th position
+            Read(coeff_unit,'(4E11.6E1,I11)') trash, E_list(i), trash, trash, da_list(i)%n_a
+            Allocate(da_list(i)%a(0:da_list(i)%n_a))
+            da_list(i)%a(0) = 0.5_dp
+            Do j = 1,da_list(i)%n_a
+                If (mod(j,6).EQ.0 .OR. j.EQ.da_list(i)%n_a) Then !this is the last entry on a line, read and advance
+                    Read(coeff_unit,'(E11.6E1)', ADVANCE = 'YES') da_list(i)%a(j)
+                Else !read the entry without advancing
+                    Read(coeff_unit,'(E11.6E1)', ADVANCE = 'NO') da_list(i)%a(j)
+                End If
+                !multiply the coeff by (2k+1)/2
+                da_list(i)%a(j) = 0.5_dp * da_list(i)%a(j) * Real(2*j + 1,dp)
+            End Do
+        End Do
+    Else If (LTT .EQ. 2) Then  !da is tabulated
+        da_list%is_legendre = .FALSE.
+        da_list%is_tab = .TRUE.
+        Do i = 1,n_p
+            !The first line in each energy contains the energy in eV in the second position
+            Read(coeff_unit,'(2E11.6E1)') trash, E_list(i)
+            !the next line contains the number of tabulation points int he first position
+            Read(coeff_unit,'(I11)') da_list(i)%n_a
+            Allocate(da_list(i)%a(0:da_list(i)%n_a))
+            da_list(i)%a = 0._dp
+            Allocate(da_list(i)%ua(1:da_list(i)%n_a,1:2))
+            da_list(i)%ua = 0._dp
+            Do j = 1,da_list(i)%n_a
+                If (mod(j,3).EQ.0 .OR. j.EQ.da_list(i)%n_a) Then !this is the last entry on a line, read and advance
+                    Read(coeff_unit,'(2E11.6E1)', ADVANCE = 'YES') da_list(i)%ua(j,1), da_list(i)%ua(j,2)
+                Else !read the entry without advancing
+                    Read(coeff_unit,'(2E11.6E1)', ADVANCE = 'NO') da_list(i)%ua(j,1), da_list(i)%ua(j,2)
+                End If
+            End Do
+        End Do
+    Else If (LTT .EQ. 3) Then  !da is tabulated for high energies but legendre for low energies
+        !Read in low energy Legendre points
+        Do i = 1,n_p
+            da_list(i)%is_legendre = .TRUE.
+            da_list(i)%is_tab = .FALSE.
+            !The first line in each energy contains the energy in eV in the second position and the number of Legendre coefficents in the 5th position
+            Read(coeff_unit,'(4E11.6E1,I11)') trash, E_list(i), trash, trash, da_list(i)%n_a
+            Allocate(da_list(i)%a(0:da_list(i)%n_a))
+            da_list(i)%a(0) = 0.5_dp
+            Do j = 1,da_list(i)%n_a
+                If (mod(j,6).EQ.0 .OR. j.EQ.da_list(i)%n_a) Then !this is the last entry on a line, read and advance
+                    Read(coeff_unit,'(E11.6E1)', ADVANCE = 'YES') da_list(i)%a(j)
+                    new_line = .TRUE.
+                Else !read the entry without advancing
+                    Read(coeff_unit,'(E11.6E1)', ADVANCE = 'NO') da_list(i)%a(j)
+                    new_line = .FALSE.
+                End If
+                !multiply the coeff by (2k+1)/2
+                da_list(i)%a(j) = 0.5_dp * da_list(i)%a(j) * Real(2*j + 1,dp)
+            End Do
+        End Do
+        !advance one or two lines based on where Legendre Coeff reading finished
+        If (.NOT. new_line) Read(coeff_unit,*)
+        Read(coeff_unit,*)
+        !first entry of next line is number of additional energy points
+        Read (coeff_unit,'(I11)') n_p_add
+        !Read in high energy tabulated cosine points
+        Do i = n_p+1,n_p+n_p_add
+            da_list(i)%is_legendre = .FALSE.
+            da_list(i)%is_tab = .TRUE.
+            !The first line in each energy contains the energy in eV in the second position
+            Read(coeff_unit,'(2E11.6E1)') trash, E_list(i)
+            !the next line contains the number of tabulation points in the first position
+            Read(coeff_unit,'(I11)') da_list(i)%n_a
+            Allocate(da_list(i)%a(0:da_list(i)%n_a))
+            da_list(i)%a = 0._dp
+            Allocate(da_list(i)%ua(1:da_list(i)%n_a,1:2))
+            da_list(i)%ua = 0._dp
+            Do j = 1,da_list(i)%n_a
+                If (mod(j,3).EQ.0 .OR. j.EQ.da_list(i)%n_a) Then !this is the last entry on a line, read and advance
+                    Read(coeff_unit,'(2E11.6E1)', ADVANCE = 'YES') da_list(i)%ua(j,1), da_list(i)%ua(j,2)
+                Else !read the entry without advancing
+                    Read(coeff_unit,'(2E11.6E1)', ADVANCE = 'NO') da_list(i)%ua(j,1), da_list(i)%ua(j,2)
+                End If
+            End Do
+        End Do
+        !update total n_p
+        n_p = n_p + n_p_add
+    End If
+
+    Close(res_unit)
+    !Convert E from eV to keV
+    E_list = E_list / 1000._dp
+Ens Subroutine Read_Res_File
 
 Function Trim_CS_for_E(n_p,E_list,CS_list,n_r,Int_list,E_min,E_max) Result(bingo)
     Use Kinds, Only: dp
@@ -899,6 +1077,51 @@ Subroutine Map_and_Store_AD(n_E_uni,E_uni,n_p,E_list,AD_list,ad,i_thresh)
     Allocate(ad%da(1:n_p))
     ad%da = AD_list
 End Subroutine Map_and_Store_AD
+
+Subroutine sig_R_iso(r,E,sT,Ss)
+    Use Kinds, Only(dp)
+    Use Global, Only: imag_i
+    Use Global, Only: TwoPi
+    Implicit None
+    Type(sig_res_Type_new), Intent(In) :: r
+    Real(dp), Intent(In) :: E
+    Real(dp), Intent(Out) :: sT
+    Real(dp), Intent(Out) :: sS
+    Real(dp) :: k,rho
+    Integer :: ir,jr
+    Real(dp) :: phi
+    Complex(dp) :: p
+    Real(dp) :: a,b
+    Complex(dp), Parameter :: half_i = 0.5_dp * imag_i
+    
+    sT = 0._dp
+    sS = 0._dp
+    k = r%k0 / Sqrt(E)
+    rho = k * r%AP
+    ir = 1
+    Do l = 1,r%nL
+        phi = rho
+        If (l .GT. 1) Then
+            Select Case (l)
+                Case (2)
+                    phi = phi - ATAN(rho)
+                Case (3)
+                    phi = phi - ATAN(3._dp * rho / (3._dp - rho**2))
+                Case (4)
+                    phi = phi - ATAN(rho * (15._dp - rho)**2 / (15._dp - 6._dp * rho**2))
+            End Select
+        End If
+        jr = ir + r%nr(l)
+        p = CMPLX(1,KIND=dp) - half_i * Sum(CMPLX(r%sqrt_GnGr(ir:jr),KIND=dp) / (CMPLX(r%E(ir:jr) - E,KIND=dp) - half_i*CMPLX(r%Gr(ir:jr),KIND=dp))
+        a = (1._dp - Cos(2._dp * phi)) + 2._dp * Real(p*Exp(CMPLX(-2._dp*phi,KIND=dp)*imag_i),dp)
+        sT = Sum(r%gJ(ir:jr) * a)
+        b = a + 2._dp * (Abs(p)**2 - Real(p,KIND=dp))
+        sS = Sum(r%gJ(ir:jr) * b)
+        ir = jr + 1
+    End Do
+    sT = sT * TwoPi / k**2
+    sS = sS * TwoPi / k**2
+End Subroutine sig_R_iso
 
 Subroutine sig_T_A(CS,E,sT,sA,iE_get,iE_put)
     Use Kinds, Only: dp
