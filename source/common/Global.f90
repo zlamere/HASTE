@@ -38,6 +38,7 @@ Module Global
     Real(dp), Parameter :: X_Hat(1:3) = (/ 1._dp , 0._dp , 0._dp /)
     Real(dp), Parameter :: Y_Hat(1:3) = (/ 0._dp , 1._dp , 0._dp /)
     Real(dp), Parameter :: Z_Hat(1:3) = (/ 0._dp , 0._dp , 1._dp /)
+    Complex(dp), Parameter :: imag_i = ( 0._dp , 1._dp )
     
 ! NEUTRON constants
     Real(dp), Parameter :: neutron_mass = 1.674927471E-27_dp  ![kg]
