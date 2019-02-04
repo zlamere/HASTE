@@ -71,17 +71,24 @@ Module n_Cross_Sections
         Real(dp), Allocatable :: E(:)  ![keV] has dimension 1:n_E, energy points at which resonance cross section is given
         Real(dp), Allocatable :: sig(:,:)  ![barns] has dimension 1:n_E and 1:2, dim 2 is 1=n-gamma resonance and 2=elastic scatter resonance
     End Type
-    
+
+    Type ::  res_sig_spin_Type
+        Integer :: n_r  !number of resonant energies in this spin
+        Real(dp), Allocatable :: ErGnGr(:,:)  !has dimension 1:3 and 1:n_r, dim 1 is 1=Er[keV], dim 2 is neutron width, dim 3 is radiation width
+    End Type
+
+    Type ::  res_sig_level_Type
+        Integer :: n_J  !number of resonant spins in this level
+        Real(dp), Allocatable :: gJ(:)  !total angular momentum for each spin group
+        Real(dp), Allocatable :: dJ(:)  !second channel spin correction for each spin group
+        Type(res_sig_spin_Type), Allocatable :: J(:)  !has dimension 1:n_J, resonance parameters for each spin group
+    End Type
+
     Type :: res_sig_Type_new
-        Real(dp) :: k0
+        Real(dp) :: k0  !=2.196771E-3_dp*(AWRI/(AWRI+1._dp)), gives k when miltiplied by Sqrt(E)
         Real(dp) :: AP
-        Integer :: n_R  !total number of resonances with tabulate parameters
         Integer :: n_L  !number of levels in which resonances are grouped
-        Integer, Allocatable :: nr(:)   !has dimension 1:n_L, number of resonances in each level
-        Real(dp), Allocatable :: Er(:)  ![keV] has dimension 1:n_R, energy points at which resonance parameters are given
-        Real(dp), Allocatable :: gJ(:)  !has dimension 1:n_R, total angular momentum for each resonance point
-        Real(dp), Allocatable :: sqrt_GnGr(:)  !has dimension 1:n_R, square root of the product of neutron and radiation widths  for each resonance point
-        Real(dp), Allocatable :: Gr(:)  !has dimension 1:n_R, radiation width for each resonance point
+        Type(res_sig_level_Type), Allocatable :: L(:)   !has dimension 1:n_L, resonance parameters for each leval group
     End Type
 
     Type :: CS_Type
@@ -647,37 +654,101 @@ Subroutine Read_Ang_Dist_file(Coeff_file_name,E_list,da_list,n_p,LTT,just_n)
     E_list = E_list / 1000._dp
 End Subroutine Read_Ang_Dist_file
 
-Subroutine Read_Res_File(Res_file_name,E_list,gJ_list,Gn_list,Gr_list,ap,awri)
+Subroutine Read_Res_File(Res_file_name,res_List)
     Use Kinds, Only: dp
     Use FileIO_Utilities, Only: Output_Message
+    Use Sorting, Only: Union_Sort
     Implicit None
     Character(*), Intent(In) :: Res_file_name
-    Real(dp), Allocatable, Intent(Out) :: E_list(:)
-    Real(dp), Allocatable, Intent(Out) :: E_list(:)
-    Real(dp), Allocatable, Intent(Out) :: E_list(:)
-    Real(dp), Allocatable, Intent(Out) :: E_list(:)
-    Integer, Intent(Out):: ap,awri
+    Type(res_sig_Type_new) :: res_list
 
-    Integer :: i,j
+    Integer :: i
     Real(dp) :: trash
-    Integer :: n_a_scratch
     Integer :: res_unit,stat
-    Integer :: LRF
-    Integer :: n_p_add
-    Logical :: new_line
+    Integer :: LRF,NRO,NAPS,SPI
+    Integer :: nL,nR,nJ
+    Real(dp) :: awri
+    Real(dp), Allocatable :: res_scratch(:,:),Js(:)
 
     Open(NEWUNIT = res_unit , FILE = Res_file_name , ACTION = 'READ' , IOSTAT = stat)
     If (stat .NE. 0) Call Output_Message('ERROR:  Cross_Sections: Read_Res_file:  File open error, '//Res_file_name//', IOSTAT=',stat,kill=.TRUE.)
     !check the LRF value on the fourth line to ensure Reich-Moore format
+    !check the NRO and NAPS value on the fourth line to ensure energy independent scattering radius and use of SPI instead of channel radius
     Do i = 1,3
-        Read(coeff_unit,*)
+        Read(res_unit,*)
     End Do
-    Read(coeff_unit,'(3E11.6E1,I11)') trash, trash, trash, LRF
-    If (LCT .NE. 3) Call Output_Message('ERROR:  Cross_Sections: Read_Res_file:  Incorrectly formatted file, '//Coeff_file_name//', LRF=',LRF,kill=.TRUE.)
+    Read(res_unit,'(3E11.6E1,3I11)') trash, trash, trash, LRF, NRO, NAPS
+    If (LRF .NE. 3) Call Output_Message('ERROR:  Cross_Sections: Read_Res_file:  Incorrectly formatted file, '//Res_file_name//', LRF=',LRF,kill=.TRUE.)
+    If (NRO .NE. 0) Call Output_Message('ERROR:  Cross_Sections: Read_Res_file:  Incorrectly formatted file, '//Res_file_name//', NRO=',NRO,kill=.TRUE.)
+    If (NAPS .NE. 1) Call Output_Message('ERROR:  Cross_Sections: Read_Res_file:  Incorrectly formatted file, '//Res_file_name//', NAPS=',NAPS,kill=.TRUE.)
     !read AP and n_L from the next line
-    Read(coeff_unit,'(4E11.6E1,I11)') trash, ap, trash, trash, n_L
+    Read(res_unit,'(4E11.6E1,I11)') SPI, res_List%AP, trash, trash, nL
+    !allocate levels
+    res_List%n_L = nL
+    Allocate(res_List%L(1:nL))
     !read awri and number of resonances in first layer from next line
-    Read(coeff_unit,'(4E11.6E1,I11)') trash, ap, trash, trash, n_L
+    Read(res_unit,'(5E11.6E1,I11)') AWRI, trash, trash, trash, trash, nR
+    !compute k0
+    res_List%k0 = 2.196771E-3_dp*(AWRI/(AWRI+1._dp))
+    Do l = 1,nL
+        !Allocate a scratch array
+        If (l .GT. 1) Deallocate(res_scratch)
+        Allocate(res_scratch(1:6,1:nR))
+        res_scratch = -1._dp
+        Allocate(Js(1:nR))
+        Js = -1._dp
+        !read resonance parameters for this level
+        Do r = 1,nR
+            Read(res_unit,'(6E11.6E1)') res_scratch(1,r),res_scratch(2,r),res_scratch(3,r),res_scratch(4,r),res_scratch(5,r),res_scratch(6,r)
+        End Do
+        !check for fission resonances
+        If (Any(res_scratch(5:6,:).NE.0._dp)) Call Output_Message('ERROR:  Cross_Sections: Read_Res_file:  Dude, a fissionable atmospere is just ridiculous. '//Res_file_name,kill=.TRUE.)
+        !count unique spin values
+        Js = res_scratch(2,:)
+        Call Union_Sort(Js,nJ)
+        !Allocate and fill spin groups for this level
+        res_list%L(l)%n_J = nJ
+        !total angular momentum
+        Allocate(res_list%L(l)%gJ(1:nJ))
+        res_list%L(l)%gJ = 0.5_dp * (2._dp * Js(1:nJ) + 1._dp) / (2._dp * SPI + 1._dp)
+        !second channel spin flags
+        Allocate(res_list%L(l)%dJ(1:nJ))
+        res_list%L(l)%dJ = .FALSE.
+        s_min = Abs(SPI - 0.5_dp)
+        s_max = SPI + 0.5_dp
+        nS = 1
+        Do
+            If (s_min + Real(nS,dp)*0.5_dp .GT. s_max) Exit
+            nS = nS + 1
+        End Do
+        If (nS .GT. 1) Then !second channel flags must be set
+            !UNDONE
+            !UNDONE
+            !UNDONE
+        End If
+        !spin-grouped resonance lists
+        Allocate(res_list%L(l)%J(1:nJ))
+        Do J = 1,nJ
+            !count number of resonance parameters for this spin
+            nRj = 0
+            Do i = 1,nR
+                If (res_scratch(2,i) .EQ. Js(J)) nRj = nRj + 1
+            End Do
+            res_list%L(l)%J(J)%n_r = nRj
+            Allocate(res_list%L(l)%J(J)%ErGnGg(1:3,1:nRj))
+            k = 1
+            Do i = 1,nR
+                If (res_scratch(2,i) .EQ. Js(J)) Then
+                    res_list%L(l)%J(J)%ErGnGg(1,k) = res_scratch(1,i) / 1000._dp  !convert to keV
+                    res_list%L(l)%J(J)%ErGnGg(2,k) = res_scratch(3,i)
+                    res_list%L(l)%J(J)%ErGnGg(3,k) = res_scratch(4,i)
+                    res_scratch(4,i) = 0._dp
+                    If (k .GE. nRj) Exit
+                    k = k + 1
+                End If
+            End Do
+        End Do
+    End Do
 
 !UNDONE
 !UNDONE
@@ -1080,7 +1151,6 @@ End Subroutine Map_and_Store_AD
 
 Subroutine sig_R_iso(r,E,sT,Ss)
     Use Kinds, Only(dp)
-    Use Global, Only: imag_i
     Use Global, Only: TwoPi
     Implicit None
     Type(sig_res_Type_new), Intent(In) :: r
@@ -1088,36 +1158,51 @@ Subroutine sig_R_iso(r,E,sT,Ss)
     Real(dp), Intent(Out) :: sT
     Real(dp), Intent(Out) :: sS
     Real(dp) :: k,rho
-    Integer :: ir,jr
-    Real(dp) :: phi
-    Complex(dp) :: p
-    Real(dp) :: a,b
-    Complex(dp), Parameter :: half_i = 0.5_dp * imag_i
+    Integer :: l,J
+    Real(dp) :: two_phi
+    Complex(dp) :: Rnn,Unn
+    Real(dp) :: Dj
+    Complex(dp), Parameter :: half_i = CMPLX(0._dp,0.5_dp,KIND=dp)
+    Complex(dp), Parameter :: cmplx1 = CMPLX(1._dp,KIND=dp)
+    Complex(dp), Parameter :: cmplx2 = CMPLX(2._dp,KIND=dp)
     
     sT = 0._dp
     sS = 0._dp
-    k = r%k0 / Sqrt(E)
+    k = r%k0 * Sqrt(E)
     rho = k * r%AP
-    ir = 1
-    Do l = 1,r%nL
-        phi = rho
+    Do l = 1,r%n_L  !sum over levels (l)
+        two_phi = rho
         If (l .GT. 1) Then
             Select Case (l)
                 Case (2)
-                    phi = phi - ATAN(rho)
+                    two_phi = two_phi - ATAN(rho)
                 Case (3)
-                    phi = phi - ATAN(3._dp * rho / (3._dp - rho**2))
+                    two_phi = two_phi - ATAN(3._dp * rho / (3._dp - rho**2))
                 Case (4)
-                    phi = phi - ATAN(rho * (15._dp - rho)**2 / (15._dp - 6._dp * rho**2))
+                    two_phi = two_phi - ATAN(rho * (15._dp - rho)**2 / (15._dp - 6._dp * rho**2))
+                Case (5)
+                    two_phi = two_phi - ATAN(rho * (105._dp - 10._dp * rho**2) / (105._dp - rho**2 * (45._dp + rho**2)))
             End Select
         End If
-        jr = ir + r%nr(l)
-        p = CMPLX(1,KIND=dp) - half_i * Sum(CMPLX(r%sqrt_GnGr(ir:jr),KIND=dp) / (CMPLX(r%E(ir:jr) - E,KIND=dp) - half_i*CMPLX(r%Gr(ir:jr),KIND=dp))
-        a = (1._dp - Cos(2._dp * phi)) + 2._dp * Real(p*Exp(CMPLX(-2._dp*phi,KIND=dp)*imag_i),dp)
-        sT = Sum(r%gJ(ir:jr) * a)
-        b = a + 2._dp * (Abs(p)**2 - Real(p,KIND=dp))
-        sS = Sum(r%gJ(ir:jr) * b)
-        ir = jr + 1
+        two_phi = 2._dp * two_phi
+        !TODO See if the following loop can be vectorized (for speed, or at least compactness of notation)
+        Do J = 1,r%nJ(l)  !sum over spins (J)
+            !compute the R-function
+            Rnn = -half_i * Sum( &  !sum over r
+                                & CMPLX(r%L(l)%J(j)%ErGnGg(2,:),KIND=dp) / & 
+                                & (CMPLX(r%L(l)%J(j)%ErGnGg(1,:) - E,KIND=dp) - half_i*CMPLX(r%L(l)%J(j)%ErGnGg(3,:),KIND=dp)) &
+                                & )
+            !compute the element of the scattering matrix
+            Unn = Exp(CMPLX(0._dp,two_phi,KIND=dp)) * (cmplx2/Rnn - cmplx1)
+            !compute second channel contribution
+            If (r%L(l)%dj(J)) Then
+                Dj = 2._dp * (1._dp - Cos(two_phi))
+            Else
+                Dj = 0._dp
+            End If
+            sT = sT + r%L(l)%gj(J) * (1._dp - Real(Unn,dp) + Dj)
+            sS = sS + r%L(l)%gj(J) * (Abs(cmplx1 - Unn)**2 + Dj)
+        End Do
     End Do
     sT = sT * TwoPi / k**2
     sS = sS * TwoPi / k**2
