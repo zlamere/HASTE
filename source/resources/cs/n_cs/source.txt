@@ -2,8 +2,62 @@ ENDF 'tapes' retrieved 05 Feb 2019 from:
 
 https://www.nndc.bnl.gov/exfor/endf02.jsp
 
-Targets:    N-14, N-15, O-16, O-17, O-18, Ar-40
+Targets:    N-14, N-15, O-16, O-17, O-18, Ar-40, H-1, He-4
+            (one 'tape' retrieved per isotope)
 Projectile: n
 MT:         2,5,11,16,17,22-25,28-30,32-37,41-45,51-91,102-109,111-117,151
 MF:         2-6
 Library:    ENDF/B-VIII.0 (USA, 2018)
+
+MF Description
+2 - resonant cross sections
+3 - background interaction cross sections
+4 - angular distribution of ejected particles
+5 - energy distribution of ejected particles
+6 - coupled angle-energy distributions of ejected particles
+
+MT Description (incident particle is always a single neutron)
+2 - elastic
+5 - other (not accounted for in other MTs)
+11 - 2n+d
+16 - 2n
+17 - 3n
+22 - n+a
+23 - n+3a
+24 - 2n+a
+25 - 3n+a
+28 - n+p
+29 - n+2a
+30 - 2n+2a
+32 - n+d
+33 - n+t
+34 - n+He3
+35 - n+d+2a
+36 - n+t+2a
+37 - 4n
+41 - 2n+p
+42 - 3n+p
+44 - n+2p
+45 - n+p+a
+51-90 - n' (inelastic of the 'MT-minus-50'-th level)
+91 - n' (not accounted for in MT 51-90)
+102 - g
+103 - p
+104 - d
+105 - t
+106 - He3
+107 - a
+108 - 2a
+109 - 3a
+111 - 2p
+112 - p+a
+113 - t+2a
+114 - d+2a
+115 - p+d
+116 - p+t
+117 - d+a
+151 - resonances
+
+Notes:
+-Total interaction cross section is found by summing ALL of the listed MTs
+-Absorption cross section is found by summing MTs 102-117
