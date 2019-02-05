@@ -86,8 +86,8 @@ Module n_Cross_Sections
 
     Type :: res_sig_Type_new
         Real(dp) :: k0  !=2.196771E-3_dp*(AWRI/(AWRI+1._dp)), gives k when miltiplied by Sqrt(E)
-        Real(dp) :: AP
         Integer :: n_L  !number of levels in which resonances are grouped
+        Real(dp), Allocatable :: AP(:)  !has dimension 1:n_L, scattering radius for each level
         Type(res_sig_level_Type), Allocatable :: L(:)   !has dimension 1:n_L, resonance parameters for each leval group
     End Type
 
@@ -665,7 +665,7 @@ Subroutine Read_Res_File(Res_file_name,res_List)
     Integer :: i
     Real(dp) :: trash
     Integer :: res_unit,stat
-    Integer :: LRF,NRO,NAPS,SPI
+    Integer :: LRF,NRO,NAPS,SPI,AP
     Integer :: nL,nR,nJ
     Real(dp) :: awri
     Real(dp), Allocatable :: res_scratch(:,:),Js(:)
@@ -682,15 +682,16 @@ Subroutine Read_Res_File(Res_file_name,res_List)
     If (NRO .NE. 0) Call Output_Message('ERROR:  Cross_Sections: Read_Res_file:  Incorrectly formatted file, '//Res_file_name//', NRO=',NRO,kill=.TRUE.)
     If (NAPS .NE. 1) Call Output_Message('ERROR:  Cross_Sections: Read_Res_file:  Incorrectly formatted file, '//Res_file_name//', NAPS=',NAPS,kill=.TRUE.)
     !read AP and n_L from the next line
-    Read(res_unit,'(4E11.6E1,I11)') SPI, res_List%AP, trash, trash, nL
+    Read(res_unit,'(4E11.6E1,I11)') SPI, AP, trash, trash, nL
     !allocate levels
     res_List%n_L = nL
+    Allocate(res_List%AP(1:nL))
+    res_List%AP = AP  !default value
     Allocate(res_List%L(1:nL))
-    !read awri and number of resonances in first layer from next line
-    Read(res_unit,'(5E11.6E1,I11)') AWRI, trash, trash, trash, trash, nR
-    !compute k0
-    res_List%k0 = 2.196771E-3_dp*(AWRI/(AWRI+1._dp))
     Do l = 1,nL
+        !read AWRI, APL and number of resonances in first layer from next line
+        Read(res_unit,'(5E11.6E1,I11)') AWRI, AP, trash, trash, trash, nR
+        If (AP .NE. 0._dp) res_List%AP(l) = AP  !level specific scattering radius
         !Allocate a scratch array
         If (l .GT. 1) Deallocate(res_scratch)
         Allocate(res_scratch(1:6,1:nR))
@@ -754,135 +755,10 @@ Subroutine Read_Res_File(Res_file_name,res_List)
 !UNDONE
 !UNDONE
 !UNDONE
-    !Skip the next line
-    Read (coeff_unit,*)
-    !the next line begins with the number of energy levels in the file
-    Read (coeff_unit,'(I11)') n_p
-    If (LTT .EQ. 3) Then !need to add more energies from later in the file
-        !advance in the file to the end of the Legendre section
-        Do i = 1,n_p
-            !The first line in each energy contains the energy in eV in the second position and the number of Legendre coefficents in the 5th position
-            Read(coeff_unit,'(4E11.6E1,I11)') trash, trash, trash, trash, n_a_scratch
-            Do j = 1,n_a_scratch
-                If (mod(j,6).EQ.0 .OR. j.EQ.n_a_scratch) Then !this is the last entry on a line, read and advance
-                    Read(coeff_unit,'(E11.6E1)', ADVANCE = 'YES') trash
-                    new_line = .TRUE.
-                Else !read the entry without advancing
-                    Read(coeff_unit,'(E11.6E1)', ADVANCE = 'NO') trash
-                    new_line = .FALSE.
-                End If
-            End Do
-        End Do
-        !advance one or two lines based on where Legendre Coeff reading finished
-        If (.NOT. new_line) Read(coeff_unit,*)
-        Read(coeff_unit,*)
-        !first entry of next line is number of additional energy points
-        Read (coeff_unit,'(I11)') n_p_add
-    Else
-        n_p_add = 0
-    End If
-    If (Present(just_n)) Then
-        If (just_n) Then  !this is the number of energies we need
-            Close(coeff_unit)
-            n_p = n_p + n_p_add
-            Return
-        End If
-    End If
-    !Allocate the data array to the number of provided energy levels
-    Allocate(E_list(1:n_p+n_p_add))
-    Allocate(da_list(1:n_p+n_p_add))
-    If (LTT .EQ. 1) Then  !da is lists of legendre coeffs
-        da_list%is_legendre = .TRUE.
-        da_list%is_tab = .FALSE.
-        Do i = 1,n_p
-            !The first line in each energy contains the energy in eV in the second position and the number of Legendre coefficents in the 5th position
-            Read(coeff_unit,'(4E11.6E1,I11)') trash, E_list(i), trash, trash, da_list(i)%n_a
-            Allocate(da_list(i)%a(0:da_list(i)%n_a))
-            da_list(i)%a(0) = 0.5_dp
-            Do j = 1,da_list(i)%n_a
-                If (mod(j,6).EQ.0 .OR. j.EQ.da_list(i)%n_a) Then !this is the last entry on a line, read and advance
-                    Read(coeff_unit,'(E11.6E1)', ADVANCE = 'YES') da_list(i)%a(j)
-                Else !read the entry without advancing
-                    Read(coeff_unit,'(E11.6E1)', ADVANCE = 'NO') da_list(i)%a(j)
-                End If
-                !multiply the coeff by (2k+1)/2
-                da_list(i)%a(j) = 0.5_dp * da_list(i)%a(j) * Real(2*j + 1,dp)
-            End Do
-        End Do
-    Else If (LTT .EQ. 2) Then  !da is tabulated
-        da_list%is_legendre = .FALSE.
-        da_list%is_tab = .TRUE.
-        Do i = 1,n_p
-            !The first line in each energy contains the energy in eV in the second position
-            Read(coeff_unit,'(2E11.6E1)') trash, E_list(i)
-            !the next line contains the number of tabulation points int he first position
-            Read(coeff_unit,'(I11)') da_list(i)%n_a
-            Allocate(da_list(i)%a(0:da_list(i)%n_a))
-            da_list(i)%a = 0._dp
-            Allocate(da_list(i)%ua(1:da_list(i)%n_a,1:2))
-            da_list(i)%ua = 0._dp
-            Do j = 1,da_list(i)%n_a
-                If (mod(j,3).EQ.0 .OR. j.EQ.da_list(i)%n_a) Then !this is the last entry on a line, read and advance
-                    Read(coeff_unit,'(2E11.6E1)', ADVANCE = 'YES') da_list(i)%ua(j,1), da_list(i)%ua(j,2)
-                Else !read the entry without advancing
-                    Read(coeff_unit,'(2E11.6E1)', ADVANCE = 'NO') da_list(i)%ua(j,1), da_list(i)%ua(j,2)
-                End If
-            End Do
-        End Do
-    Else If (LTT .EQ. 3) Then  !da is tabulated for high energies but legendre for low energies
-        !Read in low energy Legendre points
-        Do i = 1,n_p
-            da_list(i)%is_legendre = .TRUE.
-            da_list(i)%is_tab = .FALSE.
-            !The first line in each energy contains the energy in eV in the second position and the number of Legendre coefficents in the 5th position
-            Read(coeff_unit,'(4E11.6E1,I11)') trash, E_list(i), trash, trash, da_list(i)%n_a
-            Allocate(da_list(i)%a(0:da_list(i)%n_a))
-            da_list(i)%a(0) = 0.5_dp
-            Do j = 1,da_list(i)%n_a
-                If (mod(j,6).EQ.0 .OR. j.EQ.da_list(i)%n_a) Then !this is the last entry on a line, read and advance
-                    Read(coeff_unit,'(E11.6E1)', ADVANCE = 'YES') da_list(i)%a(j)
-                    new_line = .TRUE.
-                Else !read the entry without advancing
-                    Read(coeff_unit,'(E11.6E1)', ADVANCE = 'NO') da_list(i)%a(j)
-                    new_line = .FALSE.
-                End If
-                !multiply the coeff by (2k+1)/2
-                da_list(i)%a(j) = 0.5_dp * da_list(i)%a(j) * Real(2*j + 1,dp)
-            End Do
-        End Do
-        !advance one or two lines based on where Legendre Coeff reading finished
-        If (.NOT. new_line) Read(coeff_unit,*)
-        Read(coeff_unit,*)
-        !first entry of next line is number of additional energy points
-        Read (coeff_unit,'(I11)') n_p_add
-        !Read in high energy tabulated cosine points
-        Do i = n_p+1,n_p+n_p_add
-            da_list(i)%is_legendre = .FALSE.
-            da_list(i)%is_tab = .TRUE.
-            !The first line in each energy contains the energy in eV in the second position
-            Read(coeff_unit,'(2E11.6E1)') trash, E_list(i)
-            !the next line contains the number of tabulation points in the first position
-            Read(coeff_unit,'(I11)') da_list(i)%n_a
-            Allocate(da_list(i)%a(0:da_list(i)%n_a))
-            da_list(i)%a = 0._dp
-            Allocate(da_list(i)%ua(1:da_list(i)%n_a,1:2))
-            da_list(i)%ua = 0._dp
-            Do j = 1,da_list(i)%n_a
-                If (mod(j,3).EQ.0 .OR. j.EQ.da_list(i)%n_a) Then !this is the last entry on a line, read and advance
-                    Read(coeff_unit,'(2E11.6E1)', ADVANCE = 'YES') da_list(i)%ua(j,1), da_list(i)%ua(j,2)
-                Else !read the entry without advancing
-                    Read(coeff_unit,'(2E11.6E1)', ADVANCE = 'NO') da_list(i)%ua(j,1), da_list(i)%ua(j,2)
-                End If
-            End Do
-        End Do
-        !update total n_p
-        n_p = n_p + n_p_add
-    End If
-
+    !compute k0
+    res_List%k0 = 2.196771E-3_dp*(AWRI/(AWRI+1._dp))
     Close(res_unit)
-    !Convert E from eV to keV
-    E_list = E_list / 1000._dp
-Ens Subroutine Read_Res_File
+End Subroutine Read_Res_File
 
 Function Trim_CS_for_E(n_p,E_list,CS_list,n_r,Int_list,E_min,E_max) Result(bingo)
     Use Kinds, Only: dp
@@ -1169,8 +1045,8 @@ Subroutine sig_R_iso(r,E,sT,Ss)
     sT = 0._dp
     sS = 0._dp
     k = r%k0 * Sqrt(E)
-    rho = k * r%AP
     Do l = 1,r%n_L  !sum over levels (l)
+        rho = k * r%AP(l)
         two_phi = rho
         If (l .GT. 1) Then
             Select Case (l)
