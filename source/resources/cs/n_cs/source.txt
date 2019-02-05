@@ -1,0 +1,9 @@
+ENDF 'tapes' retrieved 05 Feb 2019 from:
+
+https://www.nndc.bnl.gov/exfor/endf02.jsp
+
+Targets:    N-14, N-15, O-16, O-17, O-18, Ar-40
+Projectile: n
+MT:         2,5,11,16,17,22-25,28-30,32-37,41-45,51-91,102-109,111-117,151
+MF:         2-6
+Library:    ENDF/B-VIII.0 (USA, 2018)
