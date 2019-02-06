@@ -117,21 +117,45 @@ Module n_Cross_Sections
 
     Real(dp), Parameter :: k_B = k_Boltzmann / 1000._dp**2  ![J/K]*[1 km^2 / 1000^2 m^2] Boltzmann constant with convenient units locally
     Real(dp), Parameter :: rTol = 1.E-5_dp  !relative tolerance for convergence of broadening integrals, cross section data has about 5 good digits...
-    !Precomuted parameters for Romberg Quadrature routines
-    Real(dp), Parameter :: Romb1(1:10) = (/ 4._dp, &
-                                          & 4._dp**2, &
-                                          & 4._dp**3, &
-                                          & 4._dp**4, &
-                                          & 4._dp**5, &
-                                          & 4._dp**6, &
-                                          & 4._dp**7, &
-                                          & 4._dp**8, &
-                                          & 4._dp**9, &
-                                          & 4._dp**10 /)
-    Real(dp), Parameter :: Romb2(1:10) = 1._dp / (Romb1 - 1._dp)
     
-    Integer, Parameter :: MT_disapperance(1:16) = (/ (101+i , i=1,16) /)
-    Integer, Parameter :: MT_inelastic(1:40) = (/ (50+i , i=1,40) /)
+    Integer, Parameter :: MT_disappearance(1:15) = (/ 102, &  !n,g
+                                                    & 103, &  !n,p
+                                                    & 104, &  !n,d
+                                                    & 105, &  !n,t
+                                                    & 106, &  !n,He3
+                                                    & 107, &  !n,a
+                                                    & 108, &  !n,2a
+                                                    & 109, &  !n,3a
+                                                    & 111, &  !n,2p
+                                                    & 112, &  !n,p+a
+                                                    & 113, &  !n,t+2a
+                                                    & 114, &  !n,d+2a
+                                                    & 115, &  !n,p+d
+                                                    & 116, &  !n,p+t
+                                                    & 117  /) !n,d+a
+    Integer, Parameter :: MT_inelastic(1:40) = (/ (50+i , i=1,40) /)  !n,n' of the i-th level
+    Integer, Parameter :: MT_excluded(1:22) = (/  5, &  !interactions not included in any other MT
+                                               & 11, &  !n,2n+d
+                                               & 16, &  !n,2n
+                                               & 17, &  !n,3n
+                                               & 22, &  !n,n+a
+                                               & 23, &  !n,n+3a
+                                               & 24, &  !n,2n+a
+                                               & 25, &  !n,3n+a
+                                               & 28, &  !n,n+p
+                                               & 29, &  !n,n+2a
+                                               & 30, &  !n,2n+2a
+                                               & 32, &  !n,n+d
+                                               & 33, &  !n,n+t
+                                               & 34, &  !n,n+He3
+                                               & 35, &  !n,n+d+2a
+                                               & 36, &  !n,n+t+2a
+                                               & 37, &  !n,4n
+                                               & 41, &  !n,2n+p
+                                               & 42, &  !n,3n+p
+                                               & 44, &  !n,n+2p
+                                               & 45, &  !n,n+p+a
+                                               & 91  /) !n,n' not included in MTs 51-90
 
 Contains
 
@@ -153,7 +177,7 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
     Character(:), Allocatable :: file_name_start,cs_file_name
     Integer, Allocatable :: n_isotopes(:)
     Character(4), Allocatable :: isotope_names(:)
-    Real(dp), Allocatable :: el_fractions(:),atm_fractions(:)
+    Real(dp), Allocatable :: el_fractions(:),iso_fractions(:)
     Character(2) :: j_char
     Integer :: n_energies
     Integer :: n_p,n_r,n_start
@@ -167,7 +191,6 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
     Type(da_List_type), Allocatable :: Ang_Dist_scratch(:)
     Integer :: setup_unit,stat
     Integer :: n_absorption_modes,n_inelastic_lev
-    Character(4), Allocatable :: abs_mode_names(:)
     Logical, Allocatable :: diatomic(:)
     Integer :: ltt
     Logical :: has_resonance
@@ -176,8 +199,6 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
     NameList /csSetupList1/ n_elements
     NameList /csSetupList2/ el_fractions,n_isotopes
     NameList /csSetupList3/ isotope_names,diatomic
-    NameList /isoSetupList1/ iso_fraction,n_absorption_modes,n_inelastic_lev,has_resonance
-    NameList /isoSetupList2/ abs_mode_names
 
     !read namelists from cross sections setup file
     Allocate(Character(max_path_len) :: file_name_start)
@@ -188,15 +209,24 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
     Allocate(el_fractions(1:n_elements))
     Allocate(n_isotopes(1:n_elements))
     Read(setup_unit,NML = csSetupList2)
+    el_fractions = el_fractions / Sum(el_fractions) !make sure el_fractions is normalized to 1
     CS%n_iso = Sum(n_isotopes)
     Allocate(isotope_names(1:CS%n_iso))
-    Allocate(atm_fractions(1:CS%n_iso))
+    Allocate(iso_fractions(1:CS%n_iso))
     Allocate(diatomic(1:CS%n_iso))
     Read(setup_unit,NML = csSetupList3)
+    j = 1
+    Do i = 1,n_elements
+        !make sure iso_fractions are normalized to 1 within each isotope
+        iso_fractions(j:Sum(n_isotopes(1:i))) =  iso_fractions(j:Sum(n_isotopes(1:i))) / Sum(iso_fractions(j:Sum(n_isotopes(1:i))))
+        !combine element and isotpe fractions for total atmospheric fraction of each isotope
+        iso_fractions(j:Sum(n_isotopes(1:i))) = iso_fractions(j:Sum(n_isotopes(1:i))) * el_fractions(i)
+        j = Sum(n_isotopes(1:i)) + 1
+    End Do
     Close(setup_unit)
-    !Prep the CS structure for data
+    !Initialize the CS structure
     Allocate(CS%iso_fractions(1:CS%n_iso))
-    CS%iso_fractions = 0._dp
+    CS%iso_fractions = iso_fractions
     Allocate(CS%An(1:CS%n_iso))
     CS%An = -1._dp
     Allocate(CS%lev_cs(1:CS%n_iso))
@@ -207,8 +237,12 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     !!  CREATE A UNIFIED ENERGY LIST FOR THE CROSS SECTION DATA
     !count the number of energies (including duplicates) for MF 3 and 4 (interaction cross sections and angular distributions)
+    !also count number of disappearance modes (MF=3 and MTs appearing in MT_disappearance)
+    !also count number of inelastic levels (MF=3 and MTs 51-90)
     Allocate(Character(max_path_len) :: cs_file_name)
     n_energies = 0
+    n_absorption_modes = 0
+    n_inelastic_lev = 0
     Do i = 1,CS%n_iso
         !create file name string and open the ENDF tape for this isotope
         cs_file_name = file_name_start//Trim(isotope_names(i))//'.txt'
@@ -226,9 +260,20 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
                 End Do NEXT_MF
             End If
             If (MF.EQ.3 .OR. MF.EQ.4) Then
+                If (Any(MT_excluded .EQ. MT)) Then !this interaction type is excluded, advance past it
+                    !advance to end of section
+                    NEXT_MT: Do
+                        Read(cs_unit,'(A73,I1,I3,I5)') trash_c,MF,MT,line_num
+                        If (line_num = 99999) Exit NEXT_MT  !this record indicates end of section
+                    End Do NEXT_MT
+                    !cycle to start next section
+                    Cycle DO_SECTIONS
+                End If
                 !get number of energies in this MF 3 or 4 section
                 Select Case (MF)
                     Case (3)
+                        If (Any(MT_dissappearance .EQ. MT) n_abs_modes = n_abs_modes + 1
+                        If (Any(MT_inelastic .EQ. MT) n_inel_lev = n_inel_lev + 1
                         Read(cs_unit,'(A55,I11)') trash_c, n_p
                     Case (4)
                         !need to read the first line again to get LTT
@@ -266,6 +311,11 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
         End Do DO_SECTIONS
         Close(cs_unit)
     End Do
+    !Allocate scratch arrays for ordering absorption modes
+    Allocate(abs_modes(1:n_abs_modes))
+    abs_modes = -1
+    Allocate(abs_thresh(1:n_abs_modes))
+    abs_thresh = Huge(abs_thresh)
     !Allocate scratch arrays for energy
     Allocate(E_uni_scratch(1:n_energies))
     E_uni_scratch = -1._dp
@@ -288,6 +338,15 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
                 End Do NEXT_MF
             End If
             If (MF.EQ.3 .OR. MF.EQ.4) Then
+                If (Any(MT_excluded .EQ. MT)) Then !this interaction type is excluded, advance past it
+                    !advance to end of section
+                    NEXT_MT: Do
+                        Read(cs_unit,'(A73,I1,I3,I5)') trash_c,MF,MT,line_num
+                        If (line_num = 99999) Exit NEXT_MT  !this record indicates end of section
+                    End Do NEXT_MT
+                    !cycle to start next section
+                    Cycle DO_SECTIONS
+                End If
                 !get number of energies in this MF 3 or 4 section
                 Select Case (MF)
                     Case (3)
@@ -301,6 +360,22 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
                                 Read(cs_unit,'(3E11.6E1)') E_uni_scratch(n_start+j), trash_r, E_uni_scratch(n_start+j+1)
                             Else
                                 Read(cs_unit,'(1E11.6E1)') E_uni_scratch(n_start+j)
+                            End If
+                            If (j .EQ. 1) Then !check if this is an absorption mode
+                                If (Any(MT_disappearance .EQ. MT)) Then  !this is an absorption mode
+                                    !add it to the list of absorption modes, inserting in order of acending threshold energy
+                                    Do k = 1,n_abs_modes
+                                        If (E_uni_scratch(n_start+j) .LT. abs_thresh(k)) Then !this k is where this mode goes in the list
+                                            If (k .LT. n_abs_modes) Then  !make room by shifting the rest of the list down
+                                                abs_thresh(k+1:n_abs_modes) = abs_thresh(k:n_abs_modes-1)
+                                                abs_modes(k+1:n_abs_modes) = abs_modes(k:n_abs_modes-1)
+                                            End If
+                                            !insert
+                                            abs_thresh(k) = E_uni_scratch(n_start+j)
+                                            abs_modes(k) = MT
+                                        End If
+                                    End Do
+                                End If
                             End If
                         End Do
                     Case (4)
@@ -413,40 +488,25 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
         cs_file_name = file_name_start//Trim(isotope_names(i))//'.txt'
         Open(NEWUNIT = cs_unit , FILE = cs_file_name , STATUS = 'OLD' , ACTION = 'READ' , IOSTAT = stat)
         If (stat .NE. 0) Call Output_Message('ERROR:  Cross_Sections: Setup_Cross_Sections:  File open error, '//cs_file_name//', IOSTAT=',stat,kill=.TRUE.)
-        !count and order (by ascending threshold energy) the absorption interactions present in the ENDF tape
-        !UNDONE
-        !UNDONE
-        !UNDONE
-        !UNDONE
-        !UNDONE
-        !UNDONE
-        !UNDONE
-        !UNDONE
-        !UNDONE
-        
-
-!read in absorption, elastic, and inelastic files
-        cs_file_name = file_name_start//'_iso_setup.txt'
-        Open(NEWUNIT = setup_unit , FILE = cs_file_name , STATUS = 'OLD' , ACTION = 'READ' , IOSTAT = stat)
-        If (stat .NE. 0) Call Output_Message('ERROR:  Cross_Sections: Setup_Cross_Sections:  File open error, '//cs_file_name//', IOSTAT=',stat,kill=.TRUE.)
-        Read(setup_unit,NML = isoSetupList1)
-        Allocate(abs_mode_names(1:n_absorption_modes))
-        Read(setup_unit,NML = isoSetupList2)
-        Close(setup_unit)
-        CS%iso_fractions(i) = iso_fraction
-        CS%abs_cs(i)%n_modes = n_absorption_modes
-        Allocate(CS%abs_cs(i)%thresh(1:n_absorption_modes))
-        CS%abs_cs(i)%thresh = -1
-        Allocate(CS%abs_cs(i)%sig(1:n_absorption_modes))
-        Do j = 1,n_absorption_modes
-            cs_file_name = file_name_start//'_abs_'//Trim(abs_mode_names(j))//'.txt'
-            Call Read_CS_file(cs_file_name,Q_scratch,An_scratch,E_scratch,CS_scratch,Interp_scratch,n_p,n_r)
+        !read in absorption, resonance, elastic, and inelastic interaction cross sections and angular distributions
+        Do j = 1,n_abs_modes
+            !Find this interaction in the ENDF tape (MF=3, MT=abs_modes(j))
+            Rewind(cs_unit)  !return to the start of the file
+            Do
+                Read(cs_unit,'(A73,I1,I3,I5)') trash_c,MF,MT,line_num
+                If (MF.EQ.3 .AND. MT.EQ.abs_modes(j)) Then
+                    Backspace(cs_unit)  !go back one line
+                    Exit
+                End If
+            End Do
+            !the next read statement on cs_unit will read the first line of MF=3, MT=abs_modes(j)
+            !UNDONE
+            Call Read_CS_sect(cs_unit,Q_scratch,An_scratch,E_scratch,CS_scratch,Interp_scratch,n_p,n_r)
             If (Trim_CS_for_E(n_p,E_scratch,CS_scratch,n_r,Interp_scratch,E_min,E_max)) Then
                 Call Map_and_Store_CS(CS%n_E_uni,CS%E_uni,n_p,E_scratch,CS_scratch,n_r,Interp_Scratch,CS%abs_cs(i)%sig(j),CS%abs_cs(i)%thresh(j))
             End If
             Deallocate(E_scratch,CS_scratch,Interp_scratch)
         End Do
-        Deallocate(abs_mode_names)
         If (elastic_only) Then
             CS%lev_cs(i)%n_lev = 0
             Allocate(CS%lev_cs(i)%Q(0:0))
@@ -454,38 +514,62 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
             Allocate(CS%lev_cs(i)%sig(0:0))
             If (aniso_dist) Allocate(CS%lev_cs(i)%da(0:0))
         Else
-            CS%lev_cs(i)%n_lev = n_inelastic_lev
-            Allocate(CS%lev_cs(i)%Q(0:n_inelastic_lev))
-            Allocate(CS%lev_cs(i)%thresh(0:n_inelastic_lev))
-            Allocate(CS%lev_cs(i)%sig(0:n_inelastic_lev))
-            If (aniso_dist) Allocate(CS%lev_cs(i)%da(0:n_inelastic_lev))
+            CS%lev_cs(i)%n_lev = n_inel_lev
+            Allocate(CS%lev_cs(i)%Q(0:n_inel_lev))
+            Allocate(CS%lev_cs(i)%thresh(0:n_inel_lev))
+            Allocate(CS%lev_cs(i)%sig(0:n_inel_lev))
+            If (aniso_dist) Allocate(CS%lev_cs(i)%da(0:n_inel_lev))
         End If
-        If (has_resonance) Then
-            CS%has_res_cs(i) = has_resonance
-            cs_file_name = file_name_start//'_abs_n_g_res.txt'
-            Call Read_CS_file(cs_file_name,Q_scratch,An_scratch,E_scratch,CS_scratch,Interp_scratch,n_p,n_r)
-            CS%res_cs(i)%n_E = n_p - 2
-            Allocate(CS%res_cs(i)%E(1:n_p-2))
-            CS%res_cs(i)%E = E_scratch(2:n_p-1)
-            CS%res_cs(i)%E_range(1) = E_scratch(2)
-            CS%res_cs(i)%E_range(2) = E_scratch(n_p-1)
-            Allocate(CS%res_cs(i)%sig(1:n_p-2,1:2))
-            CS%res_cs(i)%sig(:,1) = CS_scratch(2:n_p-1)
-            Deallocate(E_scratch,CS_scratch,Interp_scratch)
-            cs_file_name = file_name_start//'_elastic_res.txt'
-            Call Read_CS_file(cs_file_name,Q_scratch,An_scratch,E_scratch,CS_scratch,Interp_scratch,n_p,n_r)
-            CS%res_cs(i)%sig(:,2) = CS_scratch(2:n_p-1)
-            Deallocate(E_scratch,CS_scratch,Interp_scratch)
+        Rewind(cs_unit)  !return to the start of the file
+        Read(cs_unit,*)
+        Read(cs_unit,'(A22,I11)') trash_c,LRP
+        If (LRP .EQ. 1) Then  !resonance parameters are included in the ENDF tape
+            CS%has_res_cs(i) = .TRUE.
+            !Find this interaction in the ENDF tape (MF=2, MT=151)
+            Rewind(cs_unit)  !return to the start of the file
+            Do
+                Read(cs_unit,'(A73,I1,I3,I5)') trash_c,MF,MT,line_num
+                If (MF.EQ.2 .AND. MT.EQ.151) Then
+                    Backspace(cs_unit)  !go back one line
+                    Exit
+                End If
+            End Do
+            !the next read statement on cs_unit will read the first line of MF=2, MT=151
+            !UNDONE
+            Call Read_res_sect(cs_unit,)
+            !UNDONE
+        Else  !no resonance parameters
+            CS%has_res_cs(i) = .FALSE.
         End If
-        cs_file_name = file_name_start//'_elastic.txt'
-        Call Read_CS_file(cs_file_name,Q_scratch,CS%An(i),E_scratch,CS_scratch,Interp_scratch,n_p,n_r)
+        !Find this interaction in the ENDF tape (MF=3, MT=2)
+        Rewind(cs_unit)  !return to the start of the file
+        Do
+            Read(cs_unit,'(A73,I1,I3,I5)') trash_c,MF,MT,line_num
+            If (MF.EQ.3 .AND. MT.EQ.2) Then
+                Backspace(cs_unit)  !go back one line
+                Exit
+            End If
+        End Do
+        !the next read statement on cs_unit will read the first line of MF=3, MT=2
+        !UNDONE
+        Call Read_CS_sect(cs_unit,Q_scratch,CS%An(i),E_scratch,CS_scratch,Interp_scratch,n_p,n_r)
         If (Trim_CS_for_E(n_p,E_scratch,CS_scratch,n_r,Interp_scratch,E_min,E_max)) Then
-            Call Map_and_Store_CS(CS%n_E_uni,CS%E_uni,n_p,E_scratch,CS_scratch,n_r,Interp_Scratch,CS%lev_cs(i)%sig(0))
+            Call Map_and_Store_CS(CS%n_E_uni,CS%E_uni,n_p,E_scratch,CS_scratch,n_r,Interp_Scratch,CS%abs_cs(i)%sig(j),CS%abs_cs(i)%thresh(j))
         End If
         Deallocate(E_scratch,CS_scratch,Interp_scratch)
         If (aniso_dist) Then  !need elastic ang dist file
-            cs_file_name = file_name_start//'_elastic_ang.txt'
-            Call Read_Ang_Dist_file(cs_file_name,E_scratch,Ang_dist_scratch,n_p,ltt)
+            !Find this interaction in the ENDF tape (MF=4, MT=2)
+            Rewind(cs_unit)  !return to the start of the file
+            Do
+                Read(cs_unit,'(A73,I1,I3,I5)') trash_c,MF,MT,line_num
+                If (MF.EQ.4 .AND. MT.EQ.2) Then
+                    Backspace(cs_unit)  !go back one line
+                    Exit
+                End If
+            End Do
+            !the next read statement on cs_unit will read the first line of MF=4, MT=2
+            !UNDONE
+            Call Read_Ang_Dist_sect(cs_unit,E_scratch,Ang_dist_scratch,n_p,ltt)
             If (Trim_AD_for_E(n_p,E_scratch,Ang_dist_scratch,E_min,E_max)) Then
                 Call Map_and_Store_AD(CS%n_E_uni,CS%E_uni,n_p,E_scratch,Ang_dist_scratch,CS%lev_cs(i)%da(0))
             End If
@@ -509,18 +593,37 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
             CS%lev_cs(i)%Q(0) = 0._dp
             CS%lev_cs(i)%thresh = -1
             CS%lev_cs(i)%thresh(0) = 0
-            Do j = 1,n_inelastic_lev
-                Write(j_char,'(I2.2)') j
-                cs_file_name = file_name_start//'_inel'//j_char//'.txt'
-                Call Read_CS_file(cs_file_name,Q_scratch,An_scratch,E_scratch,CS_scratch,Interp_scratch,n_p,n_r)
+            Do j = 1,n_inel_lev
+                !Find this interaction in the ENDF tape (MF=3, MT=50+j)
+                Rewind(cs_unit)  !return to the start of the file
+                Do
+                    Read(cs_unit,'(A73,I1,I3,I5)') trash_c,MF,MT,line_num
+                    If (MF.EQ.3 .AND. MT.EQ.50+j) Then
+                        Backspace(cs_unit)  !go back one line
+                        Exit
+                    End If
+                End Do
+                !the next read statement on cs_unit will read the first line of MF=3, MT=50+j
+                !UNDONE
+                Call Read_CS_sect(cs_unit,Q_scratch,An_scratch,E_scratch,CS_scratch,Interp_scratch,n_p,n_r)
                 If (Trim_CS_for_E(n_p,E_scratch,CS_scratch,n_r,Interp_scratch,E_min,E_max)) Then
                     CS%lev_cs(i)%Q(j) = Q_scratch
                     Call Map_and_Store_CS(CS%n_E_uni,CS%E_uni,n_p,E_scratch,CS_scratch,n_r,Interp_Scratch,CS%lev_cs(i)%sig(j),CS%lev_cs(i)%thresh(j))
                 End If
                 Deallocate(E_scratch,CS_scratch,Interp_scratch)
                 If (aniso_dist) Then  !need inelastic level ang dist files
-                    cs_file_name = file_name_start//'_inel'//j_char//'_ang.txt'
-                    Call Read_Ang_Dist_file(cs_file_name,E_scratch,Ang_dist_scratch,n_p,ltt)
+                    !Find this interaction in the ENDF tape (MF=4, MT=50+j)
+                    Rewind(cs_unit)  !return to the start of the file
+                    Do
+                        Read(cs_unit,'(A73,I1,I3,I5)') trash_c,MF,MT,line_num
+                        If (MF.EQ.4 .AND. MT.EQ.50+j) Then
+                            Backspace(cs_unit)  !go back one line
+                            Exit
+                        End If
+                    End Do
+                    !the next read statement on cs_unit will read the first line of MF=4, MT=50+j
+                    !UNDONE
+                    Call Read_Ang_Dist_sect(cs_unit,E_scratch,Ang_dist_scratch,n_p,ltt)
                     If (Trim_AD_for_E(n_p,E_scratch,Ang_dist_scratch,E_min,E_max)) Then
                         Call Map_and_Store_AD(CS%n_E_uni,CS%E_uni,n_p,E_scratch,Ang_dist_scratch,CS%lev_cs(i)%da(j),CS%lev_cs(i)%thresh(j))
                     End If
@@ -543,13 +646,6 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
         End If
     End Do
     CS%Mn = neutron_mass * Sum(CS%An) / CS%n_iso
-    !make sure isotopic fractions are normalized
-    el_fractions = el_fractions / Sum(el_fractions)
-    j = 1
-    Do i = 1,n_elements
-        CS%iso_fractions(j:Sum(n_isotopes(1:i))) = el_fractions(i) * CS%iso_fractions(j:Sum(n_isotopes(1:i))) / Sum( CS%iso_fractions(j:Sum(n_isotopes(1:i))) )
-        j = Sum(n_isotopes(1:i)) + 1
-    End Do
 End Function Setup_Cross_Sections
 
 Subroutine Read_CS_file(CS_file_name,Q,An,E_list,CS_list,Int_list,n_p,n_r,just_n)
