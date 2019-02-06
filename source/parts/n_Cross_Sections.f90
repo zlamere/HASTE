@@ -129,6 +129,9 @@ Module n_Cross_Sections
                                           & 4._dp**9, &
                                           & 4._dp**10 /)
     Real(dp), Parameter :: Romb2(1:10) = 1._dp / (Romb1 - 1._dp)
+    
+    Integer, Parameter :: MT_disapperance(1:16) = (/ (101+i , i=1,16) /)
+    Integer, Parameter :: MT_inelastic(1:40) = (/ (50+i , i=1,40) /)
 
 Contains
 
@@ -201,104 +204,196 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
     Allocate(CS%has_res_cs(1:CS%n_iso))
     CS%has_res_cs = .FALSE.
     Allocate(CS%res_cs(1:CS%n_iso))
-    !count the number of energies (including duplicates) in ALL files to be read (not including resonance files)
-    !N2H Evaluate whether energies listed in resonance files should be indexed in the unified grid, currently they are not
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    !!  CREATE A UNIFIED ENERGY LIST FOR THE CROSS SECTION DATA
+    !count the number of energies (including duplicates) for MF 3 and 4 (interaction cross sections and angular distributions)
     Allocate(Character(max_path_len) :: cs_file_name)
     n_energies = 0
     Do i = 1,CS%n_iso
-        !create file name string
-        file_name_start = resources_directory//'cs'//slash//'n_cs'//slash//Trim(isotope_names(i))//slash//Trim(isotope_names(i))
-        !count energies in absorption, elastic, and inelastic files
-        cs_file_name = file_name_start//'_iso_setup.txt'
-        Open(NEWUNIT = setup_unit , FILE = cs_file_name , STATUS = 'OLD' , ACTION = 'READ' , IOSTAT = stat)
+        !create file name string and open the ENDF tape for this isotope
+        cs_file_name = file_name_start//Trim(isotope_names(i))//'.txt'
+        Open(NEWUNIT = cs_unit , FILE = cs_file_name , STATUS = 'OLD' , ACTION = 'READ' , IOSTAT = stat)
         If (stat .NE. 0) Call Output_Message('ERROR:  Cross_Sections: Setup_Cross_Sections:  File open error, '//cs_file_name//', IOSTAT=',stat,kill=.TRUE.)
-        Read(setup_unit,NML = isoSetupList1)
-        Allocate(abs_mode_names(1:n_absorption_modes))
-        Read(setup_unit,NML = isoSetupList2)
-        Close(setup_unit)
-        Do j = 1,n_absorption_modes
-            cs_file_name = file_name_start//'_abs_'//Trim(abs_mode_names(j))//'.txt'
-            Call Read_CS_file(cs_file_name,Q_scratch,An_scratch,E_scratch,CS_scratch,Interp_scratch,n_p,n_r,just_n = .TRUE.)
-            n_energies = n_energies + n_p
-        End Do
-        Deallocate(abs_mode_names)
-        cs_file_name = file_name_start//'_elastic.txt'
-        Call Read_CS_file(cs_file_name,Q_scratch,An_scratch,E_scratch,CS_scratch,Interp_scratch,n_p,n_r,just_n = .TRUE.)
-        n_energies = n_energies + n_p
-        If (aniso_dist) Then  !need elastic ang dist file
-            cs_file_name = file_name_start//'_elastic_ang.txt'
-            Call Read_Ang_Dist_file(cs_file_name,E_scratch,Ang_Dist_scratch,n_p,ltt,just_n = .TRUE.)
-            n_energies = n_energies + n_p
-        End If
-        If (.NOT. elastic_only) Then  !need inelastic level cross section files
-            Do j = 1,n_inelastic_lev
-                Write(j_char,'(I2.2)') j
-                cs_file_name = file_name_start//'_inel'//j_char//'.txt'
-                Call Read_CS_file(cs_file_name,Q_scratch,An_scratch,E_scratch,CS_scratch,Interp_scratch,n_p,n_r,just_n = .TRUE.)
+        !count energies in absorption, elastic, and inelastic files (MF 3 and 4)
+        DO_SECTIONS: Do
+            !check next section type
+            Read(cs_unit,'(A73,I1,I3,I5)') trash_c,MF,MT,line_num
+            If (MF .EQ. 0) Then  !this indicates a change in MF type, need to look for next section or end of file
+                NEXT_MF: Do
+                    Read(cs_unit,'(A73,I1,I3,I5)',IOSTAT=stat) trash_c,MF,MT,line_num
+                    If (stat .LT. 0) Exit DO_SECTIONS !end of file
+                    If (MF .GT. 0) Exit NEXT_MF
+                End Do NEXT_MF
+            End If
+            If (MF.EQ.3 .OR. MF.EQ.4) Then
+                !get number of energies in this MF 3 or 4 section
+                Select Case (MF)
+                    Case (3)
+                        Read(cs_unit,'(A55,I11)') trash_c, n_p
+                    Case (4)
+                        !need to read the first line again to get LTT
+                        Backspace(cs_unit)
+                        Read(cs_unit,'(A33,I11)') trash_c, LTT
+                        Read(cs_unit,*)
+                        Read(cs_unit,'(I11)') n_p
+                        If (LTT .EQ. 3) Then !there is a second range of energies later in the section
+                            !advance in the file to the end of the Legendre section
+                            Do j = 1,n_p
+                                !The first line in each energy contains the energy in eV in the second position and the number of Legendre coefficents in the 5th position
+                                Read(cs_unit,'(A44,I11)') trash_c, n_a
+                                n_a_lines = (n_a / 6)  !integer divide
+                                If (Mod(n_a,6) .GT. 0) n_a_lines = n_a_lines + 1
+                                !advance to the next energy
+                                Do k = 1,n_a_lines
+                                    Read(cs_unit,*)
+                                End Do
+                            End Do
+                            Read(cs_unit,*)
+                            !first entry of next line is number of additional energy points
+                            Read (cs_unit,'(I11)') n_p_2
+                        Else
+                            n_p_2 = 0
+                        End If
+                        np = np + n_p_2
+                End Select
                 n_energies = n_energies + n_p
-                If (aniso_dist) Then  !need inelastic level ang dist files
-                    cs_file_name = file_name_start//'_inel'//j_char//'_ang.txt'
-                    Call Read_Ang_Dist_file(cs_file_name,E_scratch,Ang_Dist_scratch,n_p,ltt,just_n = .TRUE.)
-                    n_energies = n_energies + n_p
-                End If
-            End Do
-        End If
+            End If
+            !advance to end of section
+            NEXT_MT: Do
+                Read(cs_unit,'(A73,I1,I3,I5)') trash_c,MF,MT,line_num
+                If (line_num = 99999) Exit NEXT_MT  !this record indicates end of section
+            End Do NEXT_MT
+        End Do DO_SECTIONS
+        Close(cs_unit)
     End Do
     !Allocate scratch arrays for energy
     Allocate(E_uni_scratch(1:n_energies))
     E_uni_scratch = -1._dp
     !Read in ALL (including duplicates) the energies to be used
-    n_start = 1
+    n_start = 0
     Do i = 1,CS%n_iso
-        !create file name string
-        file_name_start = resources_directory//'cs'//slash//'n_cs'//slash//Trim(isotope_names(i))//slash//Trim(isotope_names(i))
-        !read energies in absorption, elastic, and inelastic files
-        cs_file_name = file_name_start//'_iso_setup.txt'
-        Open(NEWUNIT = setup_unit , FILE = cs_file_name , STATUS = 'OLD' , ACTION = 'READ' , IOSTAT = stat)
+        !create file name string and open the ENDF tape for this isotope
+        cs_file_name = file_name_start//Trim(isotope_names(i))//'.txt'
+        Open(NEWUNIT = cs_unit , FILE = cs_file_name , STATUS = 'OLD' , ACTION = 'READ' , IOSTAT = stat)
         If (stat .NE. 0) Call Output_Message('ERROR:  Cross_Sections: Setup_Cross_Sections:  File open error, '//cs_file_name//', IOSTAT=',stat,kill=.TRUE.)
-        Read(setup_unit,NML = isoSetupList1)
-        Allocate(abs_mode_names(1:n_absorption_modes))
-        Read(setup_unit,NML = isoSetupList2)
-        Close(setup_unit)
-        Do j = 1,n_absorption_modes
-            cs_file_name = file_name_start//'_abs_'//Trim(abs_mode_names(j))//'.txt'
-            Call Read_CS_file(cs_file_name,Q_scratch,An_scratch,E_scratch,CS_scratch,Interp_scratch,n_p,n_r)
-            E_uni_scratch(n_start:n_start+n_p-1) = E_scratch(:)
-            n_start = n_start + n_p
-            Deallocate(E_scratch,CS_scratch,Interp_scratch)
-        End Do
-        Deallocate(abs_mode_names)
-        cs_file_name = file_name_start//'_elastic.txt'
-        Call Read_CS_file(cs_file_name,Q_scratch,An_scratch,E_scratch,CS_scratch,Interp_scratch,n_p,n_r)
-        E_uni_scratch(n_start:n_start+n_p-1) = E_scratch(:)
-        n_start = n_start + n_p
-        Deallocate(E_scratch,CS_scratch,Interp_scratch)
-        If (aniso_dist) Then  !need elastic ang dist file
-            cs_file_name = file_name_start//'_elastic_ang.txt'
-            Call Read_Ang_Dist_file(cs_file_name,E_scratch,Ang_Dist_scratch,n_p,ltt)
-            E_uni_scratch(n_start:n_start+n_p-1) = E_scratch(:)
-            n_start = n_start + n_p
-            Deallocate(E_scratch,Ang_Dist_scratch)
-        End If
-        If (.NOT. elastic_only) Then  !need inelastic level cross section files
-            Do j = 1,n_inelastic_lev
-                Write(j_char,'(I2.2)') j
-                cs_file_name = file_name_start//'_inel'//j_char//'.txt'
-                Call Read_CS_file(cs_file_name,Q_scratch,An_scratch,E_scratch,CS_scratch,Interp_scratch,n_p,n_r)
-                E_uni_scratch(n_start:n_start+n_p-1) = E_scratch(:)
+        !read energies in absorption, elastic, and inelastic files (MF 3 and 4)
+        DO_SECTIONS: Do
+            !check next section type
+            Read(cs_unit,'(A73,I1,I3,I5)') trash_c,MF,MT,line_num
+            If (MF .EQ. 0) Then  !this indicates a change in MF type, need to look for next section or end of file
+                NEXT_MF: Do
+                    Read(cs_unit,'(A73,I1,I3,I5)',IOSTAT=stat) trash_c,MF,MT,line_num
+                    If (stat .LT. 0) Exit DO_SECTIONS !end of file
+                    If (MF .GT. 0) Exit NEXT_MF
+                End Do NEXT_MF
+            End If
+            If (MF.EQ.3 .OR. MF.EQ.4) Then
+                !get number of energies in this MF 3 or 4 section
+                Select Case (MF)
+                    Case (3)
+                        Read(cs_unit,'(A55,I11)') trash_c, n_p
+                        Read(cs_unit,*)
+                        Do j = 1,n_p,3
+                            !Each line in the file has 3 pairs of (eV,barns)
+                            If (n_p-j .GT. 1) Then
+                                Read(cs_unit,'(5E11.6E1)') E_uni_scratch(n_start+j), trash_r, E_uni_scratch(n_start+j+1), trash_r, E_uni_scratch(n_start+j+2)
+                            Else If (n_p-j .EQ. 1) Then
+                                Read(cs_unit,'(3E11.6E1)') E_uni_scratch(n_start+j), trash_r, E_uni_scratch(n_start+j+1)
+                            Else
+                                Read(cs_unit,'(1E11.6E1)') E_uni_scratch(n_start+j)
+                            End If
+                        End Do
+                    Case (4)
+                        !need to read the first line again to get LTT
+                        Backspace(cs_unit)
+                        Read(cs_unit,'(A33,I11)') trash_c, LTT
+                        Read(cs_unit,*)
+                        Read(cs_unit,'(I11)') n_p
+                        If (LTT .EQ. 3) Then !there is a second range of energies later in the section
+                            !advance in the file to the end of the Legendre section
+                            Do j = 1,n_p
+                                !The first line in each energy contains the energy in eV in the second position and the number of Legendre coefficents in the 5th position
+                                Read(cs_unit,'(A44,I11)') trash_c, n_a
+                                n_a_lines = (n_a / 6)  !integer divide
+                                If (Mod(n_a,6) .GT. 0) n_a_lines = n_a_lines + 1
+                                !advance to the next energy
+                                Do k = 1,n_a_lines
+                                    Read(cs_unit,*)
+                                End Do
+                            End Do
+                            Read(cs_unit,*)
+                            !first entry of next line is number of additional energy points
+                            Read (cs_unit,'(I11)') n_p_2
+                        Else
+                            n_p_2 = 0
+                        End If
+                        If (LTT .EQ. 1) Then  !da is lists of legendre coeffs
+                            Do j = 1,n_p
+                                !The first line in each energy contains the energy in eV in the second position and the number of Legendre coefficents in the 5th position
+                                Read(cs_unit,'(A11,E11.6E1,A22,I11)') trash_c, E_uni_scratch(n_start+j), trash_c, n_a
+                                n_a_lines = (n_a / 6)  !integer divide
+                                If (Mod(n_a,6) .GT. 0) n_a_lines = n_a_lines + 1
+                                !advance to the next energy
+                                Do k = 1,n_a_lines
+                                    Read(cs_unit,*)
+                                End Do
+                            End Do
+                        Else If (LTT .EQ. 2) Then  !da is tabulated
+                            Do j = 1,n_p
+                                !The first line in each energy contains the energy in eV in the second position
+                                Read(cs_unit,'(A11,E11.6E1)') trash_c, E_uni_scratch(n_start+j)
+                                !the next line contains the number of tabulation points in the first position
+                                Read(cs_unit,'(I11)') n_a
+                                n_a_lines = (n_a / 3)  !integer divide
+                                If (Mod(n_a,3) .GT. 0) n_a_lines = n_a_lines + 1
+                                !advance to the next energy
+                                Do k = 1,n_a_lines
+                                    Read(cs_unit,*)
+                                End Do
+                            End Do
+                        Else If (LTT .EQ. 3) Then  !da is tabulated for high energies but legendre for low energies
+                            !Read in low energy Legendre points
+                            Do j = 1,n_p
+                                !The first line in each energy contains the energy in eV in the second position and the number of Legendre coefficents in the 5th position
+                                Read(cs_unit,'(A11,E11.6E1,A22,I11)') trash_c, E_uni_scratch(n_start+j), trash_c, n_a
+                                n_a_lines = (n_a / 6)  !integer divide
+                                If (Mod(n_a,6) .GT. 0) n_a_lines = n_a_lines + 1
+                                !advance to the next energy
+                                Do k = 1,n_a_lines
+                                    Read(cs_unit,*)
+                                End Do
+                            End Do
+                            Read(cs_unit,*)
+                            Read(cs_unit,*)
+                            !Read in high energy tabulated cosine points
+                            Do j = n_p+1,n_p+n_p_2
+                                !The first line in each energy contains the energy in eV in the second position
+                                Read(cs_unit,'(A11,E11.6E1)') trash_c, E_uni_scratch(n_start+j)
+                                !the next line contains the number of tabulation points in the first position
+                                Read(cs_unit,'(I11)') n_a
+                                n_a_lines = (n_a / 3)  !integer divide
+                                If (Mod(n_a,3) .GT. 0) n_a_lines = n_a_lines + 1
+                                !advance to the next energy
+                                Do k = 1,n_a_lines
+                                    Read(cs_unit,*)
+                                End Do
+                            End Do
+                            !update total n_p
+                            np = np + n_p_2
+                        End If
+                End Select
                 n_start = n_start + n_p
-                Deallocate(E_scratch,CS_scratch,Interp_scratch)
-                If (aniso_dist) Then  !need inelastic level ang dist files
-                    cs_file_name = file_name_start//'_inel'//j_char//'_ang.txt'
-                    Call Read_Ang_Dist_file(cs_file_name,E_scratch,Ang_Dist_scratch,n_p,ltt)
-                    E_uni_scratch(n_start:n_start+n_p-1) = E_scratch(:)
-                    n_start = n_start + n_p
-                    Deallocate(E_scratch,Ang_Dist_scratch)
-                End If
-            End Do
-        End If
+            End If
+            !advance to end of section
+            NEXT_MT: Do
+                Read(cs_unit,'(A73,I1,I3,I5)') trash_c,MF,MT,line_num
+                If (line_num = 99999) Exit NEXT_MT  !this record indicates end of section
+            End Do NEXT_MT
+        End Do DO_SECTIONS
+        Close(cs_unit)    
     End Do
-    !E_scratch is now a HUGE list of all the energies in all the files we are going to use, sort and eliminate duplicates
+    E_uni_scratch = E_uni_scratch / 1000._dp  !convert to keV
+    !E_uni_scratch is now a HUGE list of all the energies in all the files we are going to use, sort and eliminate duplicates
     Call Union_Sort(E_uni_scratch,n_energies,E_min,E_max)
     If (n_energies .GT. Huge(CS%n_E_uni)) Call Output_Message('ERROR:  Cross_Sections: Setup_Cross_Sections:  Length of unified energy grid exceeds available index',kill=.TRUE.)
     !Allocate and fill the unified energy list
@@ -308,13 +403,29 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
     Deallocate(E_uni_scratch)
     Allocate(CS%lnE_uni(1:n_energies))
     CS%lnE_uni = Log(CS%E_uni)
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    !!  READ IN INTERACTION CROSS SECTIONS AND ANGULAR DISTRIBUTIONS
     !Now read each file (yes, again) into its appropriate place in the cross section structure, constructing the integer maps and keys as we go
     CS%n_a_max = 0
     CS%n_a_tab_max = 0
     Do i = 1,CS%n_iso
-        !create file name string
-        file_name_start = resources_directory//'cs'//slash//'n_cs'//slash//Trim(isotope_names(i))//slash//Trim(isotope_names(i))
-        !read in absorption, elastic, and inelastic files
+        !create file name string and open the ENDF tape for this isotope
+        cs_file_name = file_name_start//Trim(isotope_names(i))//'.txt'
+        Open(NEWUNIT = cs_unit , FILE = cs_file_name , STATUS = 'OLD' , ACTION = 'READ' , IOSTAT = stat)
+        If (stat .NE. 0) Call Output_Message('ERROR:  Cross_Sections: Setup_Cross_Sections:  File open error, '//cs_file_name//', IOSTAT=',stat,kill=.TRUE.)
+        !count and order (by ascending threshold energy) the absorption interactions present in the ENDF tape
+        !UNDONE
+        !UNDONE
+        !UNDONE
+        !UNDONE
+        !UNDONE
+        !UNDONE
+        !UNDONE
+        !UNDONE
+        !UNDONE
+        
+
+!read in absorption, elastic, and inelastic files
         cs_file_name = file_name_start//'_iso_setup.txt'
         Open(NEWUNIT = setup_unit , FILE = cs_file_name , STATUS = 'OLD' , ACTION = 'READ' , IOSTAT = stat)
         If (stat .NE. 0) Call Output_Message('ERROR:  Cross_Sections: Setup_Cross_Sections:  File open error, '//cs_file_name//', IOSTAT=',stat,kill=.TRUE.)
