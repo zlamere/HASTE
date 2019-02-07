@@ -1577,7 +1577,6 @@ Subroutine sig_T_A_broad(CS,E,T,sigT,sigA)
     sigA = sig_T_A(absor)
 End Subroutine sig_T_A_broad
 
-!TODO The following romberg quadratures need to be revised into a more memory-effectie implementation, same structure as found in Quadratures module
 Function Broad_Romberg_T_A(CS,iE,vR1,vR2,gamma,v) Result(sig_T_A)
     Use Kinds, Only: dp
     Use Neutron_Utilities, Only: Neutron_Energy
@@ -1587,45 +1586,64 @@ Function Broad_Romberg_T_A(CS,iE,vR1,vR2,gamma,v) Result(sig_T_A)
     Integer, Intent(In) :: iE
     Real(dp), Intent(In) :: vR1,vR2
     Real(dp), Intent(In) :: gamma,v
-    Real(dp) :: h
     Real(dp) :: sig_vR1(1:2),sig_vR2(1:2),sig_vR(1:2)
     Real(dp) :: s1(1:2),s2(1:2)
     Real(dp) :: vR
-    Integer :: n,i,j
-    Real(dp) :: R(1:2,0:10,0:10)
     Integer, Parameter :: total = 1
     Integer, Parameter :: absor = 2
-    
+    Integer, Parameter :: Tmax = 15  !maximum number of extrapolations in the table
+    Real(dp) :: T(1:2,0:Tmax)  !Extrapolation table previous row
+    Real(dp) :: Tk0(1:2),Tk(1:2)  !Extrapolation table current row values
+    Integer :: i,j,k  !counters: i for table row, j for quadrature ordinates, k for table column
+    Integer :: n      !number of intervals
+    Real(dp) :: h0,h  !spacing between quadrature ordinates
+    Real(dp) :: fk    !multiplier for extrapolation steps
+
+    !Initial trapezoid estimate
     Call CS%sig_T_A(Neutron_Energy(vR1),sig_vR1(total),sig_vR1(absor),iE_put=iE)
     Call CS%sig_T_A(Neutron_Energy(vR2),sig_vR2(total),sig_vR2(absor),iE_put=iE)
-    h = vR2 - vR1
     s1 = 0.5_dp * (Broad_Integrand( vR1,sig_vR1,gamma,v) + Broad_Integrand( vR2,sig_vR2,gamma,v))
     s2 = 0.5_dp * (Broad_Integrand(-vR1,sig_vR1,gamma,v) + Broad_Integrand(-vR2,sig_vR2,gamma,v))
-    R(:,0,0) = h * (s1 - s2)
+    h0 = vR2 - vR1
+    T(:,0) = h0 * (s1 - s2)
     n = 1
-    Do i = 1,10
-        !compute trapezoid estimate for next row of table
+    Do i = 1,Tmax !up to Tmax rows in the table
+        !Trapezoid estimate for the 0-th column of the i-th row of table
         n = n * 2
-        h = (vR2 - vR1) / Real(n,dp)
+        h = h0 / Real(n,dp)
         Do j = 1,n-1,2  !only odd values of j, these are the NEW points at which to evaluate the integrand
             vR = vR1 + Real(j,dp)*h
             Call CS%sig_T_A(Neutron_Energy(vR),sig_vR(total),sig_vR(absor),iE_put=iE)
             s1 = s1 + Broad_Integrand( vR,sig_vR,gamma,v)
             s2 = s2 + Broad_Integrand(-vR,sig_vR,gamma,v)
         End Do
-        R(:,0,i) = h * (s1 - s2)
-        !fill out Romberg table row
-        Do j = 1,i
-            R(:,j,i) = Romb2(j) * (Romb1(j) * R(:,j-1,i) - R(:,j-1,i-1))
+        Tk0 = h * (s1 - s2)
+        !Fill i-th row, columns k = 1:i, with extrapolated estimates
+        fk = 1._dp
+        Do k = 1,i  !up to i columns this row
+            fk = fk * 4._dp
+            Tk = (fk * Tk0 - T(k-1)) / (fk - 1._dp)
+            If (k .LT. i) Then
+                T(k-1) = Tk0  !store Tk0 for next i
+                Tk0 = Tk  !store Tk for next k
+            End If !otherwise, skip storage steps if working final column
         End Do
         !check for convergence
-        If ( All( Abs(R(:,i-1,i-1) - R(:,i,i)) .LE. rTol * Abs(R(:,i,i)) ) ) Then
-            sig_T_A = R(:,i,i)  !R(i,i) is the position of the highest precision converged value
+        If ( All( Abs(T(:,i-1) - Tk) .LE. rTol * Abs(Tk) ) ) Then
+            sig_T_A = Tk  !Tk is the highest precision converged value
             Return  !Normal exit
+        Else  !prep for the next time though the loop
+            !store Tk0 and Tk for next i
+            T(i-1) = Tk0
+            T(i) = Tk
         End If
     End Do
-    !if we get this far, we failed to converge
-
+    !If we get this far, we did not converge
+    Write(*,*)
+    Write(*,'(A,I0,A)')        'ERROR:  n_Cross_sections: Broad_Romberg_T_A:  Failed to converge in ',Tmax,' extrapolations.'
+    Write(*,'(A,2ES23.15)')    '        Final estimated value: ',Tk
+    Write(*,'(A,2ES23.15)')    '        Prior estimated value: ',Tk0
+    ERROR STOP
 End Function Broad_Romberg_T_A
 
 Function sig_T_broad(CS,E,T) Result(sigT)

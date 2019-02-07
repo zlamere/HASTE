@@ -17,45 +17,45 @@ MF Description
 6 - coupled angle-energy distributions of ejected particles
 
 MT Description (incident particle is always a single neutron)
-2 - elastic
-5 - other (not accounted for in other MTs)
-11 - 2n+d
-16 - 2n
-17 - 3n
-22 - n+a
-23 - n+3a
-24 - 2n+a
-25 - 3n+a
-28 - n+p
-29 - n+2a
-30 - 2n+2a
-32 - n+d
-33 - n+t
-34 - n+He3
-35 - n+d+2a
-36 - n+t+2a
-37 - 4n
-41 - 2n+p
-42 - 3n+p
-44 - n+2p
-45 - n+p+a
-51-90 - n' (inelastic of the 'MT-minus-50'-th level)
-91 - n' (not accounted for in MT 51-90)
-102 - g
-103 - p
-104 - d
-105 - t
-106 - He3
-107 - a
-108 - 2a
-109 - 3a
-111 - 2p
-112 - p+a
-113 - t+2a
-114 - d+2a
-115 - p+d
-116 - p+t
-117 - d+a
+2 - n,n (elastic)
+5 - n,other (not accounted for in other MTs)
+11 - n,2n+d
+16 - n,2n
+17 - n,3n
+22 - n,n+a
+23 - n,n+3a
+24 - n,2n+a
+25 - n,3n+a
+28 - n,n+p
+29 - n,n+2a
+30 - n,2n+2a
+32 - n,n+d
+33 - n,n+t
+34 - n,n+He3
+35 - n,n+d+2a
+36 - n,n+t+2a
+37 - n,4n
+41 - n,2n+p
+42 - n,3n+p
+44 - n,n+2p
+45 - n,n+p+a
+51-90 - n,n' (inelastic of the 'MT-minus-50'-th level)
+91 - n,n' (not accounted for in MT 51-90)
+102 - n,g
+103 - n,p
+104 - n,d
+105 - n,t
+106 - n,He3
+107 - n,a
+108 - n,2a
+109 - n,3a
+111 - n,2p
+112 - n,p+a
+113 - n,t+2a
+114 - n,d+2a
+115 - n,p+d
+116 - n,p+t
+117 - n,d+a
 151 - resonances
 
 Notes:
