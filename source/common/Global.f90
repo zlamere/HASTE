@@ -18,14 +18,6 @@ Module Global
     Use Kinds, Only: dp
     Implicit None
     Public
-
-! Physical Constants
-    Real(dp), Parameter :: m0c2 = 510.998928_dp  ![keV] Rest mass energy of an electron
-    Real(dp), Parameter :: speed_of_light = 299792.458_dp ![km/s]
-    Real(dp), Parameter :: keV_per_Joule = 6.241509126E15_dp  ![keV/J]
-    Real(dp), Parameter :: g0 = 9.80665E-3_dp  ![km/s^2] standard acceleration due to gravity
-    Real(dp), Parameter :: k_Boltzmann = 1.38064852E-23_dp  ![J/K] Boltzmann constant
-    Real(dp), Parameter :: nA = 6.022140857E23_dp  ![1/mol] Avagadro's number
     
 ! Mathematical Constants
     Real(dp), Parameter :: pi = 3.141592653589793238462643383279502884_dp  !36 digits carried in case needed for quadruple precision
@@ -39,9 +31,20 @@ Module Global
     Real(dp), Parameter :: Y_Hat(1:3) = (/ 0._dp , 1._dp , 0._dp /)
     Real(dp), Parameter :: Z_Hat(1:3) = (/ 0._dp , 0._dp , 1._dp /)
     Complex(dp), Parameter :: imag_i = ( 0._dp , 1._dp )
+
+! Physical Constants
+    Real(dp), Parameter :: m0c2 = 510.998928_dp  ![keV] Rest mass energy of an electron
+    Real(dp), Parameter :: speed_of_light = 299792.458_dp ![km/s]
+    Real(dp), Parameter :: keV_per_Joule = 6.241509126E15_dp  ![keV/J]
+    Real(dp), Parameter :: g0 = 9.80665E-3_dp  ![km/s^2] standard acceleration due to gravity
+    Real(dp), Parameter :: k_Boltzmann = 1.38064852E-23_dp  ![J/K] Boltzmann constant
+    Real(dp), Parameter :: nA = 6.022140857E23_dp  ![1/mol] Avagadro's number
+    Real(dp), Parameter :: h_Planck = 6.62607015E-34_dp  ![J*s] Planck constant
+    Real(dp), Parameter :: h_bar_Planck = h_Planck / TwoPi  ![J*s] reduced Planck constant
     
 ! NEUTRON constants
     Real(dp), Parameter :: neutron_mass = 1.674927471E-27_dp  ![kg]
+    Real(dp), Parameter :: neutron_mass_E = neutron_mass * speed_of_light**2 * 1000._dp**2 ![J]  Mass-energy of a neutron
     Real(dp), Parameter :: neutron_speed_conversion = Sqrt( (2._dp / keV_per_Joule) / (neutron_mass) ) / 1000._dp  ![km/s per Sqrt(keV)]  When multiplied by Sqrt(Energy in keV), gives speed of neutron in km/s
     Real(dp), Parameter :: neutron_PE_conversion = g0 * neutron_mass * keV_per_Joule  ![kg keV m/s^2 per J]  When multiplied by change in height, gives change in PE in keV
     Real(dp), Parameter :: mfp_per_barn_per_km_at_seaLevel = 5.07_dp
