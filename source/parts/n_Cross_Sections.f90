@@ -21,9 +21,9 @@ Module n_Cross_Sections
     Private
     Public :: CS_Type
     Public :: sig_Composite
+    Public :: sig_Resonance
     Public :: Setup_Cross_Sections
     Public :: Write_Cross_Sections
-    Public :: Read_CS_file
 
     Type :: sig_Type
         Integer :: n_sig
@@ -1375,7 +1375,7 @@ Function sig_A(CS,E,iE_get,iE_put)
     If (Present(iE_get)) iE_get = E_index
 End Function sig_A
 
-Subroutine sig_Resonance(r,E,sT,Ss)
+Subroutine sig_Resonance(r,E,sT,sS)
     Use Kinds, Only(dp)
     Use Global, Only: TwoPi
     Implicit None
@@ -1669,52 +1669,71 @@ Function sig_T_broad(CS,E,T) Result(sigT)
     sigT = (sigT + Broad_Romberg_T(CS,iE_max,Neutron_Speed(CS%E_uni(iE_max)),vR_max,gamma,v)) * gamma / (SqrtPi * v**2)
 End Function sig_T_broad
 
-Function Broad_Romberg_T(CS,iE,vR1,vR2,gamma,v) Result(sigT)
+Function Broad_Romberg_T(CS,iE,vR1,vR2,gamma,v) Result(sT)
     Use Kinds, Only: dp
     Use Neutron_Utilities, Only: Neutron_Energy
     Implicit None
-    Real(dp) :: sigT
+    Real(dp) :: sT
     Type(CS_type), Intent(In) :: CS
     Integer, Intent(In) :: iE
     Real(dp), Intent(In) :: vR1,vR2
     Real(dp), Intent(In) :: gamma,v
-    Real(dp) :: h
     Real(dp) :: sig_vR1,sig_vR2,sig_vR
     Real(dp) :: s1,s2
     Real(dp) :: vR
-    Integer :: n,i,j
-    Real(dp) :: R(0:10,0:10)
+    Integer, Parameter :: Tmax = 15  !maximum number of extrapolations in the table
+    Real(dp) :: T(0:Tmax)  !Extrapolation table previous row
+    Real(dp) :: Tk0,Tk  !Extrapolation table current row values
+    Integer :: i,j,k  !counters: i for table row, j for quadrature ordinates, k for table column
+    Integer :: n      !number of intervals
+    Real(dp) :: h0,h  !spacing between quadrature ordinates
+    Real(dp) :: fk    !multiplier for extrapolation steps
 
+    !Initial trapezoid estimate
     sig_vR1 = CS%sig_T(Neutron_Energy(vR1),iE_put=iE)
     sig_vR2 = CS%sig_T(Neutron_Energy(vR2),iE_put=iE)
-    h = vR2 - vR1
     s1 = 0.5_dp * (Broad_Integrand( vR1,sig_vR1,gamma,v) + Broad_Integrand( vR2,sig_vR2,gamma,v))
     s2 = 0.5_dp * (Broad_Integrand(-vR1,sig_vR1,gamma,v) + Broad_Integrand(-vR2,sig_vR2,gamma,v))
-    R(0,0) = h * (s1 - s2)
+    h0 = vR2 - vR1
+    T(0) = h0 * (s1 - s2)
     n = 1
-    Do i = 1,10
-        !compute trapezoid estimate for next row of table
-        n = n*2
-        h = (vR2 - vR1) / Real(n,dp)
+    Do i = 1,Tmax !up to Tmax rows in the table
+        !Trapezoid estimate for the 0-th column of the i-th row of table
+        n = n * 2
+        h = h0 / Real(n,dp)
         Do j = 1,n-1,2  !only odd values of j, these are the NEW points at which to evaluate the integrand
             vR = vR1 + Real(j,dp)*h
             sig_vR = CS%sig_T(Neutron_Energy(vR),iE_put=iE)
             s1 = s1 + Broad_Integrand( vR,sig_vR,gamma,v)
             s2 = s2 + Broad_Integrand(-vR,sig_vR,gamma,v)
         End Do
-        R(0,i) = h * (s1 - s2)
-        !fill out Romberg table row
-        Do j = 1,i
-            R(j,i) = Romb2(j) * (Romb1(j) * R(j-1,i) - R(j-1,i-1))
+        Tk0 = h * (s1 - s2)
+        !Fill i-th row, columns k = 1:i, with extrapolated estimates
+        fk = 1._dp
+        Do k = 1,i  !up to i columns this row
+            fk = fk * 4._dp
+            Tk = (fk * Tk0 - T(k-1)) / (fk - 1._dp)
+            If (k .LT. i) Then
+                T(k-1) = Tk0  !store Tk0 for next i
+                Tk0 = Tk  !store Tk for next k
+            End If !otherwise, skip storage steps if working final column
         End Do
         !check for convergence
-        If ( Abs(R(i-1,i-1) - R(i,i)) .LE. rTol * Abs(R(i,i)) ) Then
-             sigT = R(i,i)
-            Return
+        If ( Abs(T(i-1) - Tk) .LE. rTol * Abs(Tk) ) Then
+            sT = Tk  !Tk is the highest precision converged value
+            Return  !Normal exit
+        Else  !prep for the next time though the loop
+            !store Tk0 and Tk for next i
+            T(i-1) = Tk0
+            T(i) = Tk
         End If
     End Do
-    !if we get this far, we failed to converge
-
+    !If we get this far, we did not converge
+    Write(*,*)
+    Write(*,'(A,I0,A)')        'ERROR:  n_Cross_sections: Broad_Romberg_T:  Failed to converge in ',Tmax,' extrapolations.'
+    Write(*,'(A,ES23.15)')    '        Final estimated value: ',Tk
+    Write(*,'(A,ES23.15)')    '        Prior estimated value: ',Tk0
+    ERROR STOP
 End Function Broad_Romberg_T
 
 Function sig_S_iso_broad(CS,iso,E,T) Result(sigS)
@@ -1753,50 +1772,71 @@ Function sig_S_iso_broad(CS,iso,E,T) Result(sigS)
     sigS = (sigS + Broad_Romberg_S_iso(CS,iso,iE_max,Neutron_Speed(CS%E_uni(iE_max)),vR_max,gamma,v)) * gamma / (SqrtPi * v**2)
 End Function sig_S_iso_broad
 
-Function Broad_Romberg_S_iso(CS,iso,iE,vR1,vR2,gamma,v) Result(sigS)
+Function Broad_Romberg_S_iso(CS,iso,iE,vR1,vR2,gamma,v) Result(sS)
     Use Kinds, Only: dp
     Use Neutron_Utilities, Only: Neutron_Energy
     Implicit None
-    Real(dp) :: sigS
+    Real(dp) :: sS
     Type(CS_type), Intent(In) :: CS
-    Integer, Intent(In) :: iso
     Integer, Intent(In) :: iE
     Real(dp), Intent(In) :: vR1,vR2
     Real(dp), Intent(In) :: gamma,v
-    Real(dp) :: h
     Real(dp) :: sig_vR1,sig_vR2,sig_vR
     Real(dp) :: s1,s2
     Real(dp) :: vR
-    Integer :: n,i,j
-    Real(dp) :: R(0:10,0:10)
-    
+    Integer, Parameter :: Tmax = 15  !maximum number of extrapolations in the table
+    Real(dp) :: T(0:Tmax)  !Extrapolation table previous row
+    Real(dp) :: Tk0,Tk  !Extrapolation table current row values
+    Integer :: i,j,k  !counters: i for table row, j for quadrature ordinates, k for table column
+    Integer :: n      !number of intervals
+    Real(dp) :: h0,h  !spacing between quadrature ordinates
+    Real(dp) :: fk    !multiplier for extrapolation steps
+
+    !Initial trapezoid estimate
     sig_vR1 = CS%sig_S_iso(iso,Neutron_Energy(vR1),iE_put=iE)
     sig_vR2 = CS%sig_S_iso(iso,Neutron_Energy(vR2),iE_put=iE)
-    h = vR2 - vR1
     s1 = 0.5_dp * (Broad_Integrand( vR1,sig_vR1,gamma,v) + Broad_Integrand( vR2,sig_vR2,gamma,v))
     s2 = 0.5_dp * (Broad_Integrand(-vR1,sig_vR1,gamma,v) + Broad_Integrand(-vR2,sig_vR2,gamma,v))
-    R(0,0) = h * (s1 - s2)
+    h0 = vR2 - vR1
+    T(0) = h0 * (s1 - s2)
     n = 1
-    Do i = 1,10
-        n = n*2
-        h = (vR2 - vR1) / Real(n,dp)
+    Do i = 1,Tmax !up to Tmax rows in the table
+        !Trapezoid estimate for the 0-th column of the i-th row of table
+        n = n * 2
+        h = h0 / Real(n,dp)
         Do j = 1,n-1,2  !only odd values of j, these are the NEW points at which to evaluate the integrand
             vR = vR1 + Real(j,dp)*h
             sig_vR = CS%sig_S_iso(iso,Neutron_Energy(vR),iE_put=iE)
             s1 = s1 + Broad_Integrand( vR,sig_vR,gamma,v)
             s2 = s2 + Broad_Integrand(-vR,sig_vR,gamma,v)
         End Do
-        R(0,i) = h * (s1 - s2)
-        Do j = 1,i
-            R(j,i) = Romb2(j) * (Romb1(j) * R(j-1,i) - R(j-1,i-1))
+        Tk0 = h * (s1 - s2)
+        !Fill i-th row, columns k = 1:i, with extrapolated estimates
+        fk = 1._dp
+        Do k = 1,i  !up to i columns this row
+            fk = fk * 4._dp
+            Tk = (fk * Tk0 - T(k-1)) / (fk - 1._dp)
+            If (k .LT. i) Then
+                T(k-1) = Tk0  !store Tk0 for next i
+                Tk0 = Tk  !store Tk for next k
+            End If !otherwise, skip storage steps if working final column
         End Do
-        If ( Abs(R(i-1,i-1) - R(i,i)) .LE. rTol * Abs(R(i,i)) ) Then  !check convergence with specified tolerances
-             sigS = R(i,i)
-            Return
+        !check for convergence
+        If ( Abs(T(i-1) - Tk) .LE. rTol * Abs(Tk) ) Then
+            sS = Tk  !Tk is the highest precision converged value
+            Return  !Normal exit
+        Else  !prep for the next time though the loop
+            !store Tk0 and Tk for next i
+            T(i-1) = Tk0
+            T(i) = Tk
         End If
     End Do
-    !if we get this far, we failed to converge
-
+    !If we get this far, we did not converge
+    Write(*,*)
+    Write(*,'(A,I0,A)')        'ERROR:  n_Cross_sections: Broad_Romberg_T:  Failed to converge in ',Tmax,' extrapolations.'
+    Write(*,'(A,ES23.15)')    '        Final estimated value: ',Tk
+    Write(*,'(A,ES23.15)')    '        Prior estimated value: ',Tk0
+    ERROR STOP
 End Function Broad_Romberg_S_iso
 
 Elemental Function Broad_Integrand(vR,sig,gamma,v)
