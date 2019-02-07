@@ -227,7 +227,8 @@ Subroutine Sample_Scatter(ScatMod,n,atm,RNG)
     Use Global, Only: Z_hat,X_hat
     Use Atmospheres, Only: Atmosphere_Type
     Use Random_Numbers, Only: RNG_Type
-    Use n_Cross_Sections, Only: sig_composite
+    Use n_Cross_Sections, Only: sig_Composite
+    Use n_Cross_Sections, Only: sig_Resonance
     Use Utilities, Only: Bisection_Search
     Use Utilities, Only: Vector_Length
     Use Utilities, Only: Unit_Vector
@@ -252,6 +253,7 @@ Subroutine Sample_Scatter(ScatMod,n,atm,RNG)
     Real(dp) :: E_apparent
     Real(dp) :: T
     Real(dp) :: v0(1:3),v0cm(1:3)
+    Real(dp) :: resT,resS
     
     !Get atmosphere total/absorption and isotope scatter cross sections at the point of scatter
     If (ScatMod%Rotating_Earth .OR. ScatMod%Wind) Then
@@ -341,6 +343,10 @@ Subroutine Sample_Scatter(ScatMod,n,atm,RNG)
                 If (E_index .LE. ScatMod%CS%lev_cs(iso)%thresh(i)) Exit  !insufficent energy for this or any higher inelastic level
                 level_cs(i) = sig_Composite(E_cm,ScatMod%CS%n_E_uni,ScatMod%CS%E_uni,ScatMod%CS%lnE_uni,E_index,1,1,ScatMod%CS%lev_cs(iso)%thresh(i),ScatMod%CS%lev_cs(iso)%sig(i))
             End Do
+            If (ScatMod%CS%has_resonance(iso) Then  !resonance contribution needs to be added to level 0 (elastic)
+                Call sig_Resonance(ScatMod%CS%res_cs(iso),E_cm,resT,resS)
+                level_cs(0) = level_cs(0) + resS
+            End If
             r = RNG%Get_Random() * Sum(level_cs)
             Do i = 0,ScatMod%CS%lev_cs(iso)%n_Lev
                 If (r .LT. Sum(level_cs(0:i))) Then
@@ -409,7 +415,8 @@ Subroutine Set_Scatter_iso(ScatMod,n,atm,RNG,scat,iso,n_lev,E_cm,i_E_cm)
     Use Global, Only: X_hat,Z_hat
     Use Atmospheres, Only: Atmosphere_Type
     Use Random_Numbers, Only: RNG_Type
-    Use n_Cross_Sections, Only: sig_composite
+    Use n_Cross_Sections, Only: sig_Composite
+    Use n_Cross_Sections, Only: sig_Resonance
     Use Utilities, Only: Bisection_Search
     Use Utilities, Only: Vector_Length
     Use Utilities, Only: Unit_Vector
@@ -432,6 +439,7 @@ Subroutine Set_Scatter_iso(ScatMod,n,atm,RNG,scat,iso,n_lev,E_cm,i_E_cm)
     Integer :: target_el
     Real(dp) :: An_prime,Mn
     Real(dp) :: v0(1:3),v0cm(1:3)
+    Real(dp) :: resT,resS
     
     !Set target isotope
     scat%target_index = iso
@@ -489,6 +497,10 @@ Subroutine Set_Scatter_iso(ScatMod,n,atm,RNG,scat,iso,n_lev,E_cm,i_E_cm)
             n_lev = i
             scat%lev_cs(i) = sig_Composite(E_cm,ScatMod%CS%n_E_uni,ScatMod%CS%E_uni,ScatMod%CS%lnE_uni,i_E_cm,1,1,ScatMod%CS%lev_cs(iso)%thresh(i),ScatMod%CS%lev_cs(iso)%sig(i))
         End Do
+        If (ScatMod%CS%has_resonance(iso) Then  !resonance contribution needs to be added to level 0 (elastic)
+            Call sig_Resonance(ScatMod%CS%res_cs(iso),E_cm,resT,resS)
+            scat%lev_cs(0) = scat%lev_cs(0) + resS
+        End If
         If (n_lev .GT. 0) Then
             scat%lev_cs = scat%lev_cs / Sum(scat%lev_cs)
         Else
