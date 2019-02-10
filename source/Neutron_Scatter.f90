@@ -343,7 +343,7 @@ Subroutine Sample_Scatter(ScatMod,n,atm,RNG)
                 If (E_index .LE. ScatMod%CS%lev_cs(iso)%thresh(i)) Exit  !insufficent energy for this or any higher inelastic level
                 level_cs(i) = sig_Composite(E_cm,ScatMod%CS%n_E_uni,ScatMod%CS%E_uni,ScatMod%CS%lnE_uni,E_index,1,1,ScatMod%CS%lev_cs(iso)%thresh(i),ScatMod%CS%lev_cs(iso)%sig(i))
             End Do
-            If (ScatMod%CS%has_resonance(iso) Then  !resonance contribution needs to be added to level 0 (elastic)
+            If (ScatMod%CS%has_res_cs(iso)) Then  !resonance contribution needs to be added to level 0 (elastic)
                 Call sig_Resonance(ScatMod%CS%res_cs(iso),E_cm,resT,resS)
                 level_cs(0) = level_cs(0) + resS
             End If
@@ -497,7 +497,7 @@ Subroutine Set_Scatter_iso(ScatMod,n,atm,RNG,scat,iso,n_lev,E_cm,i_E_cm)
             n_lev = i
             scat%lev_cs(i) = sig_Composite(E_cm,ScatMod%CS%n_E_uni,ScatMod%CS%E_uni,ScatMod%CS%lnE_uni,i_E_cm,1,1,ScatMod%CS%lev_cs(iso)%thresh(i),ScatMod%CS%lev_cs(iso)%sig(i))
         End Do
-        If (ScatMod%CS%has_resonance(iso) Then  !resonance contribution needs to be added to level 0 (elastic)
+        If (ScatMod%CS%has_res_cs(iso)) Then  !resonance contribution needs to be added to level 0 (elastic)
             Call sig_Resonance(ScatMod%CS%res_cs(iso),E_cm,resT,resS)
             scat%lev_cs(0) = scat%lev_cs(0) + resS
         End If
@@ -598,7 +598,6 @@ End Function Apparent_Energy
 
 Function Scattered_Direction(mu,omega,A_hat,B_hat,C_hat) Result(Omega_hat)
     Use Kinds, Only: dp
-    Use Global, Only: X_Hat, Z_Hat
     Use Utilities, Only: Unit_Vector
     Use Utilities, Only: Cross_Product
     Implicit None

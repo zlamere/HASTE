@@ -107,8 +107,8 @@ Subroutine Initialize_RNG(RNG,seed,thread,size)  !Initializes a RNG and returns 
         Use MKL_VSL, Only: vslnewstream,VSL_BRNG_MT2203,VSL_BRNG_SFMT19937
         Use MKL_VSL, Only: VSL_ERROR_OK,VSL_STATUS_OK
         Use MKL_VSL, Only: vdrnguniform,VSL_RNG_METHOD_UNIFORM_STD
+        Use Kinds, Only: dp
 #   endif
-    Use Kinds, Only: dp
     Use FileIO_Utilities, Only: Output_Message
     Implicit None
     Class(RNG_Type),Intent(Out) :: RNG

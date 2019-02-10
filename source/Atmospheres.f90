@@ -414,7 +414,6 @@ End Function Atm_Density
 
 Subroutine Define_EPL_Layers(atm,resources_dir)
     Use Kinds, Only: dp
-    Use FileIO_Utilities, Only: slash
     Use FileIO_Utilities, Only: Output_Message
     Use Global, Only: R_earth
     Implicit None
