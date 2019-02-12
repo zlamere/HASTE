@@ -191,12 +191,13 @@ Module n_Cross_Sections
 
 Contains
 
-Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,aniso_dist,E_min,E_max) Result(CS)
+Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,aniso_dist,E_min,E_max,verbose) Result(CS)
     Use Kinds, Only: dp
     Use Sorting, Only: Union_Sort
     Use FileIO_Utilities, Only: max_path_len
     Use FileIO_Utilities, Only: slash
     Use FileIO_Utilities, Only: Output_Message
+    Use FileIO_Utilities, Only: half_dash_line
     Use Global, Only: neutron_mass
     Implicit None
     Type(CS_Type) :: CS
@@ -205,6 +206,9 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
     Logical, Intent(In) :: elastic_only
     Logical, Intent(In) :: aniso_dist
     Real(dp), Intent(In) :: E_min,E_max
+    Logical, Intent(In), Optional :: verbose  !.TRUE. causes comprehensive output of cross section data to be generated during the setup process.
+                                              !       Includes summary of ENDF data files read in and detailed output of interpreted cross section data.
+                                              !       WARNING:  This VERBOSE output is placed in the resources folder.
     Integer :: n_elements
     Character(:), Allocatable :: file_name_start,ENDF_file_name
     Integer, Allocatable :: n_isotopes(:)
@@ -221,20 +225,27 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
     Real(dp), Allocatable :: sig_scratch(:)
     Integer, Allocatable :: Interp_scratch(:,:)
     Type(da_List_type), Allocatable :: Ang_Dist_scratch(:)
-    Integer :: setup_unit,ENDF_unit,stat
-    Integer :: n_abs_modes,n_inel_lev
-    Integer, Allocatable :: abs_modes(:)
-    Real(dp), Allocatable :: abs_thresh(:)
+    Integer :: setup_unit,ENDF_unit,v_unit,stat
+    Integer, Allocatable :: n_abs_modes(:),n_inel_lev(:)
+    Integer, Allocatable :: abs_modes(:,:)
+    Real(dp), Allocatable :: abs_thresh(:,:)
     Logical, Allocatable :: diatomic(:)
     Integer :: LTT,LRP
     Integer :: MT,MF,line_num
     Character(80) :: trash_c
     Real(dp) :: trash_r
+    Logical :: v
+    Character(15) :: v_string
 
     NameList /csSetupList1/ n_elements
     NameList /csSetupList2/ el_fractions,n_isotopes
     NameList /csSetupList3/ isotope_names,iso_fractions,diatomic
 
+    If (Present(verbose)) Then
+        v = verbose
+    Else
+        v = .FALSE. !default is NOT verbose
+    End If
     !read namelists from cross sections setup file
     Allocate(Character(max_path_len) :: file_name_start)
     file_name_start = resources_directory//'cs'//slash//'n_cs'//slash
@@ -269,24 +280,41 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
     Allocate(CS%has_res_cs(1:CS%n_iso))
     CS%has_res_cs = .FALSE.
     Allocate(CS%res_cs(1:CS%n_iso))
+    If (v) Then  !create a  file for verbose output
+        Open(NEWUNIT = v_unit , FILE = file_name_start//'n_cs_HATS_summary.txt' , STATUS = 'REPLACE' , ACTION = 'WRITE' , IOSTAT = stat)
+        If (stat .NE. 0) Call Output_Message('ERROR:  Cross_Sections: Setup_Cross_Sections:  File open error, '//file_name_start//cs_setup_file//', IOSTAT=',stat,kill=.TRUE.)
+    End If
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     !!  CREATE A UNIFIED ENERGY LIST FOR THE CROSS SECTION DATA
     !count the number of energies (including duplicates) for MF 3 and 4 (interaction cross sections and angular distributions)
-    !also count number of disappearance modes (MF=3 and MTs appearing in MT_disappearance)
+    !also count number of disappearance (absorption) modes (MF=3 and MTs appearing in MT_disappearance)
     !also count number of inelastic levels (MF=3 and MTs 51-90)
+    If (v) Then
+        Write(v_unit,'(A)') half_dash_line
+        Write(v_unit,'(A)') 'ENDF TAPE FILE INVENTORY'
+        Write(v_unit,'(A)') half_dash_line
+        Write(v_unit,*)
+    End If
     Allocate(Character(max_path_len) :: ENDF_file_name)
     n_energies = 0
+    Allocate(n_abs_modes(1:CS%n_iso))
     n_abs_modes = 0
+    Allocate(n_inel_lev(1:CS%n_iso))
     n_inel_lev = 0
     Do i = 1,CS%n_iso
-        !create file name string and open the ENDF tape for this isotope
+        !create file name string and open the ENDF tape file for this isotope
         ENDF_file_name = file_name_start//Trim(isotope_names(i))//'.txt'
         Open(NEWUNIT = ENDF_unit , FILE = ENDF_file_name , STATUS = 'OLD' , ACTION = 'READ' , IOSTAT = stat)
         If (stat .NE. 0) Call Output_Message('ERROR:  Cross_Sections: Setup_Cross_Sections:  File open error, '//ENDF_file_name//', IOSTAT=',stat,kill=.TRUE.)
-        !count energies in absorption, elastic, and inelastic files (MF 3 and 4)
+        !count energies in absorption, elastic, and inelastic files (MFs 3 and 4)
+        If (v) v_string = Trim(isotope_names(i))//' ENDF file:'
         DO_SECTIONS_1: Do
             !check next section type
             Read(ENDF_unit,'(A73,I1,I3,I5)') trash_c,MF,MT,line_num
+            If (v) Then
+                Write(v_unit,'(A15,A4,I1,A4,I3,A1)',ADVANCE='NO') v_string,' MF=',MF,' MT=',MT,' '
+                v_string = ''
+            End If
             If (MF .EQ. 0) Then  !this indicates a change in MF type, need to look for next section or end of file
                 NEXT_MF_1: Do
                     Read(ENDF_unit,'(A73,I1,I3,I5)',IOSTAT=stat) trash_c,MF,MT,line_num
@@ -296,18 +324,30 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
             End If
             If (MF.EQ.3 .OR. MF.EQ.4) Then
                 If (Any(MT_excluded .EQ. MT)) Then !this interaction type is excluded, advance past it
+                    If (v) Write(v_unit,'(A)',ADVANCE='YES') ' - excluded'
                     !advance to end of section
                     Call Find_MFMT_end(ENDF_unit)
                     !cycle to start next section
                     Cycle DO_SECTIONS_1
+                Else
+                    If (v) Write(v_unit,'(A)',ADVANCE='NO') ' - counted'
                 End If
                 !get number of energies in this MF 3 or 4 section
                 Select Case (MF)
                     Case (3)
-                        If (Any(MT_disappearance .EQ. MT)) n_abs_modes = n_abs_modes + 1
-                        If (Any(MT_inelastic .EQ. MT)) n_inel_lev = n_inel_lev + 1
+                        If (Any(MT_disappearance .EQ. MT)) Then
+                            n_abs_modes(i) = n_abs_modes(i) + 1
+                            If (v) Write(v_unit,'(A)',ADVANCE='NO') ', absorption'
+                        End If
+                        If (Any(MT_inelastic .EQ. MT)) Then
+                            n_inel_lev(i) = n_inel_lev(i) + 1
+                            If (v) Write(v_unit,'(A)',ADVANCE='NO') ', inelastic'
+                        End If
                         Read(ENDF_unit,'(A55,I11)') trash_c, n_p
+                        If (v) Write(v_unit,'(A,I0,A)',ADVANCE='YES') ', ',n_p,' E-points'
                     Case (4)
+                        If (Any(MT_disappearance.EQ.MT) .AND. v) Write(v_unit,'(A)',ADVANCE='NO') ', absorption'
+                        If (Any(MT_inelastic.EQ.MT) .AND. v) Write(v_unit,'(A)',ADVANCE='NO') ', inelastic'
                         !need to read the first line again to get LTT
                         Backspace(ENDF_unit)
                         Read(ENDF_unit,'(A33,I11)') trash_c, LTT
@@ -328,22 +368,33 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
                             Read(ENDF_unit,*)
                             !first entry of next line is number of additional energy points
                             Read (ENDF_unit,'(I11)') n_p_2
+                            If (v) Write(v_unit,'(A,I0,A,I0,A)',ADVANCE='YES') ', ',n_p,'+',n_p_2,' E-points'
                         Else
                             n_p_2 = 0
+                            If (v) Write(v_unit,'(A,I0,A)',ADVANCE='YES') ', ',n_p,' E-points'
                         End If
                         n_p = n_p + n_p_2
                 End Select
                 n_energies = n_energies + n_p
+            Else
+                If (v) Write(v_unit,'(A)',ADVANCE='YES') ' - uncounted'
             End If
             !advance to end of section
             Call Find_MFMT_end(ENDF_unit)
         End Do DO_SECTIONS_1
         Close(ENDF_unit)
     End Do
+    If (v) Then
+        Write(v_unit,*)
+        Do i = 1,CS%n_iso
+            Write(v_unit,'(A,I0,A,I0,A)') Trim(isotope_names(i))//' ENDF tape contains ',n_abs_modes(i),' absorption modes and ',n_inel_lev(i),' inelastic levels'
+        End Do
+        Write(v_unit,'(I0,A)') n_energies,' total energies to map on unified list'
+    End If
     !Allocate scratch arrays for ordering absorption modes
-    Allocate(abs_modes(1:n_abs_modes))
+    Allocate(abs_modes(1:MaxVal(n_abs_modes),1:CS%n_iso))
     abs_modes = -1
-    Allocate(abs_thresh(1:n_abs_modes))
+    Allocate(abs_thresh(1:MaxVal(n_abs_modes),1:CS%n_iso))
     abs_thresh = Huge(abs_thresh)
     !Allocate scratch arrays for energy
     Allocate(E_uni_scratch(1:n_energies))
@@ -390,15 +441,15 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
                             If (j .EQ. 1) Then !check if this is an absorption mode
                                 If (Any(MT_disappearance .EQ. MT)) Then  !this is an absorption mode
                                     !add it to the list of absorption modes, inserting in order of acending threshold energy
-                                    Do k = 1,n_abs_modes
-                                        If (E_uni_scratch(n_start+j) .LT. abs_thresh(k)) Then !this k is where this mode goes in the list
-                                            If (k .LT. n_abs_modes) Then  !make room by shifting the rest of the list down
-                                                abs_thresh(k+1:n_abs_modes) = abs_thresh(k:n_abs_modes-1)
-                                                abs_modes(k+1:n_abs_modes) = abs_modes(k:n_abs_modes-1)
+                                    Do k = 1,n_abs_modes(i)
+                                        If (E_uni_scratch(n_start+j) .LT. abs_thresh(k,i)) Then !this k is where this mode goes in the list
+                                            If (k .LT. n_abs_modes(i)) Then  !make room by shifting the rest of the list down
+                                                abs_thresh(k+1:n_abs_modes(i),i) = abs_thresh(k:n_abs_modes(i)-1,i)
+                                                abs_modes(k+1:n_abs_modes(i),i) = abs_modes(k:n_abs_modes(i)-1,i)
                                             End If
                                             !insert
-                                            abs_thresh(k) = E_uni_scratch(n_start+j)
-                                            abs_modes(k) = MT
+                                            abs_thresh(k,i) = E_uni_scratch(n_start+j)
+                                            abs_modes(k,i) = MT
                                         End If
                                     End Do
                                 End If
@@ -491,6 +542,7 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
         Close(ENDF_unit)    
     End Do
     E_uni_scratch = E_uni_scratch / 1000._dp  !convert to keV
+    n_p = n_energies !stash n_energies before it gets overwritten
     !E_uni_scratch is now a HUGE list of all the energies in all the files we are going to use, sort and eliminate duplicates
     Call Union_Sort(E_uni_scratch,n_energies,E_min,E_max)
     If (n_energies .GT. Huge(CS%n_E_uni)) Call Output_Message('ERROR:  Cross_Sections: Setup_Cross_Sections:  Length of unified energy grid exceeds available index',kill=.TRUE.)
@@ -501,9 +553,29 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
     Deallocate(E_uni_scratch)
     Allocate(CS%lnE_uni(1:n_energies))
     CS%lnE_uni = Log(CS%E_uni)
+    If (v) Then
+        Write(v_unit,*)
+        Write(v_unit,'(A)') half_dash_line
+        Write(v_unit,'(A)') 'UNIFIED ENERGY LIST'
+        Write(v_unit,'(A)') half_dash_line
+        Write(v_unit,*)
+        Write(v_unit,'(I0,A,F0.2,A)') CS%n_E_uni,' unique points in unified grid, (',100._dp*Real(CS%n_E_uni,dp)/Real(n_p,dp),'%)'
+        Write(v_unit,'(A7,2A26)') ' Index ','   E [keV]                ','   ln(E)                  '
+        Write(v_unit,'(A7,2A26)') '-------','  ------------------------','  ------------------------'
+        Do i = 1,n_energies
+            Write(v_unit,'(I7,2ES26.16E3)') i,CS%E_uni(i),CS%lnE_uni(i)
+        End Do
+    End If
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     !!  READ IN INTERACTION CROSS SECTIONS AND ANGULAR DISTRIBUTIONS
     !Now read each file (yes, again) into its appropriate place in the cross section structure, constructing the integer maps and keys as we go
+    If (v) Then
+        Write(v_unit,*)
+        Write(v_unit,'(A)') half_dash_line
+        Write(v_unit,'(A)') 'CROSS SECTION DATA STORED AND INDEXED'
+        Write(v_unit,'(A)') half_dash_line
+        Write(v_unit,*)
+    End If
     CS%n_a_max = 0
     CS%n_a_tab_max = 0
     Do i = 1,CS%n_iso
@@ -512,10 +584,10 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
         Open(NEWUNIT = ENDF_unit , FILE = ENDF_file_name , STATUS = 'OLD' , ACTION = 'READ' , IOSTAT = stat)
         If (stat .NE. 0) Call Output_Message('ERROR:  Cross_Sections: Setup_Cross_Sections:  File open error, '//ENDF_file_name//', IOSTAT=',stat,kill=.TRUE.)
         !read in absorption, resonance, elastic, and inelastic interaction cross sections and angular distributions
-        Do j = 1,n_abs_modes
-            !Find this interaction in the ENDF tape (MF=3, MT=abs_modes(j))
-            Call Find_MFMT(ENDF_unit,3,abs_modes(j))
-            !the next read statement on ENDF_unit will read the first line of MF=3, MT=abs_modes(j)
+        Do j = 1,n_abs_modes(i)
+            !Find this interaction in the ENDF tape (MF=3, MT=abs_modes(j,i))
+            Call Find_MFMT(ENDF_unit,3,abs_modes(j,i))
+            !the next read statement on ENDF_unit will read the first line of MF=3, MT=abs_modes(j,i)
             Call Read_sig_sect(ENDF_unit,Q_scratch,An_scratch,E_scratch,sig_scratch,Interp_scratch,n_p,n_r)
             If (Trim_CS_for_E(n_p,E_scratch,sig_scratch,n_r,Interp_scratch,E_min,E_max)) Then
                 Call Map_and_Store_CS(CS%n_E_uni,CS%E_uni,n_p,E_scratch,sig_scratch,n_r,Interp_Scratch,CS%abs_cs(i)%sig(j),CS%abs_cs(i)%thresh(j))
@@ -529,11 +601,11 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
             Allocate(CS%lev_cs(i)%sig(0:0))
             If (aniso_dist) Allocate(CS%lev_cs(i)%da(0:0))
         Else
-            CS%lev_cs(i)%n_lev = n_inel_lev
-            Allocate(CS%lev_cs(i)%Q(0:n_inel_lev))
-            Allocate(CS%lev_cs(i)%thresh(0:n_inel_lev))
-            Allocate(CS%lev_cs(i)%sig(0:n_inel_lev))
-            If (aniso_dist) Allocate(CS%lev_cs(i)%da(0:n_inel_lev))
+            CS%lev_cs(i)%n_lev = n_inel_lev(i)
+            Allocate(CS%lev_cs(i)%Q(0:n_inel_lev(i)))
+            Allocate(CS%lev_cs(i)%thresh(0:n_inel_lev(i)))
+            Allocate(CS%lev_cs(i)%sig(0:n_inel_lev(i)))
+            If (aniso_dist) Allocate(CS%lev_cs(i)%da(0:n_inel_lev(i)))
         End If
         Rewind(ENDF_unit)  !return to the start of the file
         Read(ENDF_unit,*)
@@ -583,7 +655,7 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
             CS%lev_cs(i)%Q(0) = 0._dp
             CS%lev_cs(i)%thresh = -1
             CS%lev_cs(i)%thresh(0) = 0
-            Do j = 1,n_inel_lev
+            Do j = 1,n_inel_lev(i)
                 !Find this interaction in the ENDF tape (MF=3, MT=50+j)
                 Call Find_MFMT(ENDF_unit,3,50+j)
                 !the next read statement on ENDF_unit will read the first line of MF=3, MT=50+j
@@ -620,6 +692,7 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
         End If
     End Do
     CS%Mn = neutron_mass * Sum(CS%An) / CS%n_iso
+    If (v) Close(v_unit)
 End Function Setup_Cross_Sections
 
 Subroutine Find_MFMT_end(ENDF_unit)
