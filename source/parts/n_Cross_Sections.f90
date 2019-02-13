@@ -501,7 +501,6 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
             End If
             first_time = .FALSE.
         Else  !SECOND TIME
-            E_uni_scratch = E_uni_scratch / 1000._dp  !convert to keV
             n_p = n_energies !stash n_energies before it gets overwritten
             !E_uni_scratch is now a HUGE list of all the energies in all the files we are going to use, sort and eliminate duplicates
             Call Union_Sort(E_uni_scratch,n_energies,E_min,E_max)
@@ -554,15 +553,19 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
             If (Trim_CS_for_E(n_p,E_scratch,sig_scratch,n_r,Interp_scratch,E_min,E_max)) Then
                 Call Map_and_Store_CS(CS%n_E_uni,CS%E_uni,n_p,E_scratch,sig_scratch,n_r,Interp_Scratch,CS%abs_cs(i)%sig(j),CS%abs_cs(i)%thresh(j))
             End If
-            If (v) Then
-                !UNDONE
-                !UNDONE
-                !UNDONE
-                !UNDONE
-                !UNDONE
-            End If
             Deallocate(E_scratch,sig_scratch,Interp_scratch)
+            If (v) Then  !write the stored values for this absorption mode
+                Write(v_unit,'(A,I0,A,I0,A)') Trim(isotope_names(i))//' MF=',3,', MT=',abs_modes(j,i),' (absorption)'
+                Call Write_stored_sig(v_unit,CS%abs_cs(i)%sig(j),CS%n_E_uni,CS%E_uni)
+            End If
         End Do
+        If (v) Then  !Write summary of absorption modes for this isotope
+            !UNDONE
+            !UNDONE
+            !UNDONE
+            !UNDONE
+            !UNDONE
+        End If
         If (elastic_only) Then
             CS%lev_cs(i)%n_lev = 0
             Allocate(CS%lev_cs(i)%Q(0:0))
@@ -585,16 +588,16 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
             Call Find_MFMT(ENDF_unit,2,151)
             !the next read statement on ENDF_unit will read the first line of MF=2, MT=151
             Call Read_res_sect(ENDF_unit,CS%res_cs(i))
-            If (v) Then
+            If (v) Then  !write the stored values for this resonance representation
                 !UNDONE
                 !UNDONE
                 !UNDONE
                 !UNDONE
                 !UNDONE
             End If
-        Else  !no resonance parameters
+        Else  !no resonance parameters, all interaction cross sections are tabulated in MF=3
             CS%has_res_cs(i) = .FALSE.
-            If (v) Then
+            If (v) Then  !write the stored values for this resonance representation
                 !UNDONE
                 !UNDONE
                 !UNDONE
@@ -609,35 +612,32 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
         If (Trim_CS_for_E(n_p,E_scratch,sig_scratch,n_r,Interp_scratch,E_min,E_max)) Then
             Call Map_and_Store_CS(CS%n_E_uni,CS%E_uni,n_p,E_scratch,sig_scratch,n_r,Interp_Scratch,CS%abs_cs(i)%sig(j),CS%abs_cs(i)%thresh(j))
         End If
-        If (v) Then
-            !UNDONE
-            !UNDONE
-            !UNDONE
-            !UNDONE
-            !UNDONE
-        End If
         Deallocate(E_scratch,sig_scratch,Interp_scratch)
+        If (v) Then  !write the stored values for elastic scatter interaction cross section
+            Write(v_unit,'(A,I0,A,I0,A)') Trim(isotope_names(i))//' MF=',3,', MT=',2,' (elastic)'
+            Call Write_stored_sig(v_unit,CS%lev_cs(i)%sig(0),CS%n_E_uni,CS%E_uni)
+        End If
         If (aniso_dist) Then  !need elastic ang dist file
             !Find this interaction in the ENDF tape (MF=4, MT=2)
             Call Find_MFMT(ENDF_unit,4,2)
             !the next read statement on ENDF_unit will read the first line of MF=4, MT=2
-            Call Read_da_sect(ENDF_unit,E_scratch,Ang_dist_scratch,n_p,ltt)
+            Call Read_da_sect(ENDF_unit,E_scratch,Ang_dist_scratch,n_p,LTT)
             If (Trim_AD_for_E(n_p,E_scratch,Ang_dist_scratch,E_min,E_max)) Then
                 Call Map_and_Store_AD(CS%n_E_uni,CS%E_uni,n_p,E_scratch,Ang_dist_scratch,CS%lev_cs(i)%da(0))
             End If
-            If (v) Then
+            Deallocate(E_scratch,Ang_dist_scratch)
+            If (v) Then  !write the stored values for elastic scatter angular distribution
                 !UNDONE
                 !UNDONE
                 !UNDONE
                 !UNDONE
                 !UNDONE
             End If
-            Deallocate(E_scratch,Ang_dist_scratch)
-            If (ltt .EQ. 1) Then
+            If (LTT .EQ. 1) Then
                 If (MaxVal(CS%lev_cs(i)%da(0)%da(:)%n_a) .GT. CS%n_a_max) CS%n_a_max = MaxVal(CS%lev_cs(i)%da(0)%da(:)%n_a)
-            Else If (ltt .EQ. 2) Then
+            Else If (LTT .EQ. 2) Then
                 If (MaxVal(CS%lev_cs(i)%da(0)%da(:)%n_a) .GT. CS%n_a_tab_max) CS%n_a_tab_max = MaxVal(CS%lev_cs(i)%da(0)%da(:)%n_a)
-            Else If (ltt .EQ. 3) Then
+            Else If (LTT .EQ. 3) Then
                 Do k = 1,CS%lev_cs(i)%da(0)%n_da
                     If (CS%lev_cs(i)%da(0)%da(k)%is_legendre) Then
                         If (CS%lev_cs(i)%da(0)%da(k)%n_a .GT. CS%n_a_max) CS%n_a_max = CS%lev_cs(i)%da(0)%da(k)%n_a
@@ -645,13 +645,6 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
                         If (CS%lev_cs(i)%da(0)%da(k)%n_a .GT. CS%n_a_tab_max) CS%n_a_tab_max = CS%lev_cs(i)%da(0)%da(k)%n_a
                     End If
                 End Do
-            End If
-            If (v) Then
-                !UNDONE
-                !UNDONE
-                !UNDONE
-                !UNDONE
-                !UNDONE
             End If
         End If
         If (.NOT. elastic_only) Then  !need inelastic level cross section files
@@ -668,14 +661,11 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
                     CS%lev_cs(i)%Q(j) = Q_scratch
                     Call Map_and_Store_CS(CS%n_E_uni,CS%E_uni,n_p,E_scratch,sig_scratch,n_r,Interp_Scratch,CS%lev_cs(i)%sig(j),CS%lev_cs(i)%thresh(j))
                 End If
-                If (v) Then
-                    !UNDONE
-                    !UNDONE
-                    !UNDONE
-                    !UNDONE
-                    !UNDONE
-                End If
                 Deallocate(E_scratch,sig_scratch,Interp_scratch)
+                If (v) Then  !write the stored values for this inelastic scatter interaction cross section
+                    Write(v_unit,'(A,I0,A,I0,A)') Trim(isotope_names(i))//' MF=',3,', MT=',50+j,' (inelastic)'
+                    Call Write_stored_sig(v_unit,CS%lev_cs(i)%sig(j),CS%n_E_uni,CS%E_uni)
+                End If
                 If (aniso_dist) Then  !need inelastic level ang dist files
                     !Find this interaction in the ENDF tape (MF=4, MT=50+j)
                     Call Find_MFMT(ENDF_unit,4,50+j)
@@ -684,14 +674,14 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
                     If (Trim_AD_for_E(n_p,E_scratch,Ang_dist_scratch,E_min,E_max)) Then
                         Call Map_and_Store_AD(CS%n_E_uni,CS%E_uni,n_p,E_scratch,Ang_dist_scratch,CS%lev_cs(i)%da(j),CS%lev_cs(i)%thresh(j))
                     End If
-                    If (v) Then
+                    Deallocate(E_scratch,Ang_dist_scratch)
+                    If (v) Then  !write the stored values for this inelastic scatter angular distribution
                         !UNDONE
                         !UNDONE
                         !UNDONE
                         !UNDONE
                         !UNDONE
                     End If
-                    Deallocate(E_scratch,Ang_dist_scratch)
                     If (ltt .EQ. 1) Then
                         If (MaxVal(CS%lev_cs(i)%da(j)%da(:)%n_a) .GT. CS%n_a_max) CS%n_a_max = MaxVal(CS%lev_cs(i)%da(j)%da(:)%n_a)
                     Else If (ltt .EQ. 2) Then
@@ -705,15 +695,15 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
                             End If
                         End Do
                     End If
-                    If (v) Then
-                        !UNDONE
-                        !UNDONE
-                        !UNDONE
-                        !UNDONE
-                        !UNDONE
-                    End If
                 End If
             End Do
+        End If
+        If (v) Then  !Write summary of scattering modes for this isotope
+            !UNDONE
+            !UNDONE
+            !UNDONE
+            !UNDONE
+            !UNDONE
         End If
     End Do
     CS%Mn = neutron_mass * Sum(CS%An) / CS%n_iso
@@ -731,6 +721,28 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
         Close(v_unit)
     End If
 End Function Setup_Cross_Sections
+
+Subroutine Write_stored_sig(v_unit,sig,n_E_uni,E_uni)
+    Use Kinds, Only: dp
+    Implicit None
+    Integer, Intent(In) :: v_unit
+    Type(sig_Type), Intent(In)
+    Integer, Intent(In) :: n_E_uni
+    Real(dp), Intent(In) :: E_uni(1:n_E_uni)
+    Integer :: k
+
+    Write(v_unit,'(A8,A5)') '   Up to','  law'
+    Write(v_unit,'(A8,A5)') '  ------','  ---'
+    Do k = 1,sig%n_interp_r
+        Write(v_unit,'(I8,I4)') sig%interp(k,1),sig%interp(k,2)
+    End Do
+    Write(v_unit,'(3A26,2A9)') '   E-keyed [keV]          ','   sig (b)                ','   ln(sig)                ','    key  ','    map  '
+    Write(v_unit,'(3A26,2A9)') '  ------------------------','  ------------------------','  ------------------------','  -------','  -------'
+    Do k = 1,sig%n_sig
+        Write(v_unit,'(3ES26.16E3,2I9)') E_uni(sig%E_key(k)),sig%sig(k),sig%lnsig(k),sig%E_map(sig%E_key(k)),k
+    End Do
+    Write(v_unit,*)
+End Subroutine
 
 Subroutine Find_MFMT_end(ENDF_unit)
     Implicit None
@@ -959,7 +971,6 @@ Subroutine Read_da_sect(da_unit,E_list,da_list,n_p,LTT)
         !update total n_p
         n_p = n_p + n_p_2
     End If
-    !Convert E from eV to keV
     E_list = E_list / 1000._dp
 End Subroutine Read_da_sect
 
