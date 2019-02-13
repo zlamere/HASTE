@@ -16,7 +16,6 @@
 Module n_Cross_Sections
 
     Use Kinds, Only: dp
-    Use Global, Only: k_Boltzmann
     Implicit None
     Private
     Public :: CS_Type
@@ -108,7 +107,6 @@ Module n_Cross_Sections
         Procedure, Pass :: sig_S_iso_broad
     End Type
 
-    Real(dp), Parameter :: k_B = k_Boltzmann / 1000._dp**2  ![J/K]*[1 km^2 / 1000^2 m^2] Boltzmann constant with convenient units locally
     Real(dp), Parameter :: rTol = 1.E-5_dp  !relative tolerance for convergence of broadening integrals, cross section data has about 5 good digits...
     
     Integer, Parameter :: MT_disappearance(1:15) = (/ 102, &  !n,g
@@ -556,6 +554,13 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
             If (Trim_CS_for_E(n_p,E_scratch,sig_scratch,n_r,Interp_scratch,E_min,E_max)) Then
                 Call Map_and_Store_CS(CS%n_E_uni,CS%E_uni,n_p,E_scratch,sig_scratch,n_r,Interp_Scratch,CS%abs_cs(i)%sig(j),CS%abs_cs(i)%thresh(j))
             End If
+            If (v) Then
+                !UNDONE
+                !UNDONE
+                !UNDONE
+                !UNDONE
+                !UNDONE
+            End If
             Deallocate(E_scratch,sig_scratch,Interp_scratch)
         End Do
         If (elastic_only) Then
@@ -580,8 +585,22 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
             Call Find_MFMT(ENDF_unit,2,151)
             !the next read statement on ENDF_unit will read the first line of MF=2, MT=151
             Call Read_res_sect(ENDF_unit,CS%res_cs(i))
+            If (v) Then
+                !UNDONE
+                !UNDONE
+                !UNDONE
+                !UNDONE
+                !UNDONE
+            End If
         Else  !no resonance parameters
             CS%has_res_cs(i) = .FALSE.
+            If (v) Then
+                !UNDONE
+                !UNDONE
+                !UNDONE
+                !UNDONE
+                !UNDONE
+            End If
         End If
         !Find this interaction in the ENDF tape (MF=3, MT=2)
         Call Find_MFMT(ENDF_unit,3,2)
@@ -589,6 +608,13 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
         Call Read_sig_sect(ENDF_unit,Q_scratch,CS%An(i),E_scratch,sig_scratch,Interp_scratch,n_p,n_r)
         If (Trim_CS_for_E(n_p,E_scratch,sig_scratch,n_r,Interp_scratch,E_min,E_max)) Then
             Call Map_and_Store_CS(CS%n_E_uni,CS%E_uni,n_p,E_scratch,sig_scratch,n_r,Interp_Scratch,CS%abs_cs(i)%sig(j),CS%abs_cs(i)%thresh(j))
+        End If
+        If (v) Then
+            !UNDONE
+            !UNDONE
+            !UNDONE
+            !UNDONE
+            !UNDONE
         End If
         Deallocate(E_scratch,sig_scratch,Interp_scratch)
         If (aniso_dist) Then  !need elastic ang dist file
@@ -598,6 +624,13 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
             Call Read_da_sect(ENDF_unit,E_scratch,Ang_dist_scratch,n_p,ltt)
             If (Trim_AD_for_E(n_p,E_scratch,Ang_dist_scratch,E_min,E_max)) Then
                 Call Map_and_Store_AD(CS%n_E_uni,CS%E_uni,n_p,E_scratch,Ang_dist_scratch,CS%lev_cs(i)%da(0))
+            End If
+            If (v) Then
+                !UNDONE
+                !UNDONE
+                !UNDONE
+                !UNDONE
+                !UNDONE
             End If
             Deallocate(E_scratch,Ang_dist_scratch)
             If (ltt .EQ. 1) Then
@@ -612,6 +645,13 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
                         If (CS%lev_cs(i)%da(0)%da(k)%n_a .GT. CS%n_a_tab_max) CS%n_a_tab_max = CS%lev_cs(i)%da(0)%da(k)%n_a
                     End If
                 End Do
+            End If
+            If (v) Then
+                !UNDONE
+                !UNDONE
+                !UNDONE
+                !UNDONE
+                !UNDONE
             End If
         End If
         If (.NOT. elastic_only) Then  !need inelastic level cross section files
@@ -628,6 +668,13 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
                     CS%lev_cs(i)%Q(j) = Q_scratch
                     Call Map_and_Store_CS(CS%n_E_uni,CS%E_uni,n_p,E_scratch,sig_scratch,n_r,Interp_Scratch,CS%lev_cs(i)%sig(j),CS%lev_cs(i)%thresh(j))
                 End If
+                If (v) Then
+                    !UNDONE
+                    !UNDONE
+                    !UNDONE
+                    !UNDONE
+                    !UNDONE
+                End If
                 Deallocate(E_scratch,sig_scratch,Interp_scratch)
                 If (aniso_dist) Then  !need inelastic level ang dist files
                     !Find this interaction in the ENDF tape (MF=4, MT=50+j)
@@ -636,6 +683,13 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
                     Call Read_da_sect(ENDF_unit,E_scratch,Ang_dist_scratch,n_p,ltt)
                     If (Trim_AD_for_E(n_p,E_scratch,Ang_dist_scratch,E_min,E_max)) Then
                         Call Map_and_Store_AD(CS%n_E_uni,CS%E_uni,n_p,E_scratch,Ang_dist_scratch,CS%lev_cs(i)%da(j),CS%lev_cs(i)%thresh(j))
+                    End If
+                    If (v) Then
+                        !UNDONE
+                        !UNDONE
+                        !UNDONE
+                        !UNDONE
+                        !UNDONE
                     End If
                     Deallocate(E_scratch,Ang_dist_scratch)
                     If (ltt .EQ. 1) Then
@@ -651,12 +705,31 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
                             End If
                         End Do
                     End If
+                    If (v) Then
+                        !UNDONE
+                        !UNDONE
+                        !UNDONE
+                        !UNDONE
+                        !UNDONE
+                    End If
                 End If
             End Do
         End If
     End Do
     CS%Mn = neutron_mass * Sum(CS%An) / CS%n_iso
-    If (v) Close(v_unit)
+    If (v) Then
+        Write(v_unit,*)
+        Write(v_unit,'(A)') half_dash_line
+        Write(v_unit,'(A)') 'CROSS SECTION TRACES FOR VERIFICATION'
+        Write(v_unit,'(A)') half_dash_line
+        Write(v_unit,*)
+        !UNDONE
+        !UNDONE
+        !UNDONE
+        !UNDONE
+        !UNDONE
+        Close(v_unit)
+    End If
 End Function Setup_Cross_Sections
 
 Subroutine Find_MFMT_end(ENDF_unit)
@@ -1584,14 +1657,16 @@ End Function sig_Composite
 
 Subroutine Broad_sig_start(E,M,T,v,gamma,vRmin,vRmax)
     Use Kinds, Only: dp
+    Use Global, Only: k_Boltzmann
     Use Neutron_Utilities, Only: Neutron_Speed
     Implicit None
     Real(dp), Intent(In) :: E,M,T
     Real(dp), Intent(Out) :: v,gamma,vRmin,vRmax
     Real(dp) :: vT
+    Real(dp), Parameter :: twok_B = 2._dp * k_Boltzmann / 1000._dp**2  ![J/K]*[1 km^2 / 1000^2 m^2] Two multiplied by the Boltzmann constant with convenient units locally
 
     v = Neutron_Speed(E)
-    gamma = Sqrt(M / (2._dp * k_b * T))
+    gamma = Sqrt(M / (twok_b * T))
     vT = 4._dp / gamma  !same cutoff as SIGMA1 algorithm used by NJOY
     If (vT .LE. v) Then
         vRmin = v - vT
