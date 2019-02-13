@@ -217,7 +217,7 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
     Integer :: n_energies
     Integer :: n_p,n_p_2,n_r,n_start
     Integer :: n_a,n_a_lines
-    Integer :: i,j,k
+    Integer :: h,i,j,k
     Real(dp) :: Q_scratch
     Real(dp) :: An_scratch
     Real(dp), Allocatable :: E_uni_scratch(:)
@@ -234,7 +234,7 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
     Integer :: MT,MF,line_num
     Character(80) :: trash_c
     Real(dp) :: trash_r
-    Logical :: v
+    Logical :: v,first_time
     Character(15) :: v_string
 
     NameList /csSetupList1/ n_elements
@@ -289,283 +289,247 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
     !count the number of energies (including duplicates) for MF 3 and 4 (interaction cross sections and angular distributions)
     !also count number of disappearance (absorption) modes (MF=3 and MTs appearing in MT_disappearance)
     !also count number of inelastic levels (MF=3 and MTs 51-90)
-    If (v) Then
-        Write(v_unit,'(A)') half_dash_line
-        Write(v_unit,'(A)') 'ENDF TAPE FILE INVENTORY'
-        Write(v_unit,'(A)') half_dash_line
-        Write(v_unit,*)
-    End If
+    !read in ALL (including duplicates) the energies and generate a unified list
     Allocate(Character(max_path_len) :: ENDF_file_name)
-    n_energies = 0
-    Allocate(n_abs_modes(1:CS%n_iso))
-    n_abs_modes = 0
-    Allocate(n_inel_lev(1:CS%n_iso))
-    n_inel_lev = 0
-    Do i = 1,CS%n_iso
-        !create file name string and open the ENDF tape file for this isotope
-        ENDF_file_name = file_name_start//Trim(isotope_names(i))//'.txt'
-        Open(NEWUNIT = ENDF_unit , FILE = ENDF_file_name , STATUS = 'OLD' , ACTION = 'READ' , IOSTAT = stat)
-        If (stat .NE. 0) Call Output_Message('ERROR:  Cross_Sections: Setup_Cross_Sections:  File open error, '//ENDF_file_name//', IOSTAT=',stat,kill=.TRUE.)
-        !count energies in absorption, elastic, and inelastic files (MFs 3 and 4)
-        If (v) v_string = Trim(isotope_names(i))//' ENDF file:'
-        DO_SECTIONS_1: Do
-            !check next section type
-            Read(ENDF_unit,'(A73,I1,I3,I5)') trash_c,MF,MT,line_num
+    first_time = .TRUE.
+    Do h = 1,2
+    !FIRST TIME: Count interactions and total number of energies for unified list
+    !SECOND TIME: Read in ALL (including duplicates) the energies and generate unified list
+        If (first_time) Then  !FIRST TIME
             If (v) Then
-                Write(v_unit,'(A15,A4,I1,A4,I3,A1)',ADVANCE='NO') v_string,' MF=',MF,' MT=',MT,' '
-                v_string = ''
-            End If
-            If (MF .EQ. 0) Then  !this indicates a change in MF type, need to look for next section or end of file
-                NEXT_MF_1: Do
-                    Read(ENDF_unit,'(A73,I1,I3,I5)',IOSTAT=stat) trash_c,MF,MT,line_num
-                    If (stat .LT. 0) Exit DO_SECTIONS_1 !end of file
-                    If (MF .GT. 0) Exit NEXT_MF_1
-                End Do NEXT_MF_1
-            End If
-            If (MF.EQ.3 .OR. MF.EQ.4) Then
-                If (Any(MT_excluded .EQ. MT)) Then !this interaction type is excluded, advance past it
-                    If (v) Write(v_unit,'(A)',ADVANCE='YES') ' - excluded'
-                    !advance to end of section
-                    Call Find_MFMT_end(ENDF_unit)
-                    !cycle to start next section
-                    Cycle DO_SECTIONS_1
-                Else
-                    If (v) Write(v_unit,'(A)',ADVANCE='NO') ' - counted'
-                End If
-                !get number of energies in this MF 3 or 4 section
-                Select Case (MF)
-                    Case (3)
-                        If (Any(MT_disappearance .EQ. MT)) Then
-                            n_abs_modes(i) = n_abs_modes(i) + 1
-                            If (v) Write(v_unit,'(A)',ADVANCE='NO') ', absorption'
-                        End If
-                        If (Any(MT_inelastic .EQ. MT)) Then
-                            n_inel_lev(i) = n_inel_lev(i) + 1
-                            If (v) Write(v_unit,'(A)',ADVANCE='NO') ', inelastic'
-                        End If
-                        Read(ENDF_unit,'(A55,I11)') trash_c, n_p
-                        If (v) Write(v_unit,'(A,I0,A)',ADVANCE='YES') ', ',n_p,' E-points'
-                    Case (4)
-                        If (Any(MT_disappearance.EQ.MT) .AND. v) Write(v_unit,'(A)',ADVANCE='NO') ', absorption'
-                        If (Any(MT_inelastic.EQ.MT) .AND. v) Write(v_unit,'(A)',ADVANCE='NO') ', inelastic'
-                        !need to read the first line again to get LTT
-                        Backspace(ENDF_unit)
-                        Read(ENDF_unit,'(A33,I11)') trash_c, LTT
-                        Read(ENDF_unit,*)
-                        Read(ENDF_unit,'(I11)') n_p
-                        If (LTT .EQ. 3) Then !there is a second range of energies later in the section
-                            !advance in the file to the end of the Legendre section
-                            Do j = 1,n_p
-                                !The first line in each energy contains the energy in eV in the second position and the number of Legendre coefficents in the 5th position
-                                Read(ENDF_unit,'(A44,I11)') trash_c, n_a
-                                n_a_lines = (n_a / 6)  !integer divide
-                                If (Mod(n_a,6) .GT. 0) n_a_lines = n_a_lines + 1
-                                !advance to the next energy
-                                Do k = 1,n_a_lines
-                                    Read(ENDF_unit,*)
-                                End Do
-                            End Do
-                            Read(ENDF_unit,*)
-                            !first entry of next line is number of additional energy points
-                            Read (ENDF_unit,'(I11)') n_p_2
-                            If (v) Write(v_unit,'(A,I0,A,I0,A)',ADVANCE='YES') ', ',n_p,'+',n_p_2,' E-points'
-                        Else
-                            n_p_2 = 0
-                            If (v) Write(v_unit,'(A,I0,A)',ADVANCE='YES') ', ',n_p,' E-points'
-                        End If
-                        n_p = n_p + n_p_2
-                End Select
-                n_energies = n_energies + n_p
-            Else
-                If (v) Write(v_unit,'(A)',ADVANCE='YES') ' - uncounted'
-            End If
-            !advance to end of section
-            Call Find_MFMT_end(ENDF_unit)
-        End Do DO_SECTIONS_1
-        Close(ENDF_unit)
-    End Do
-    If (v) Then
-        Write(v_unit,*)
+                Write(v_unit,'(A)') half_dash_line
+                Write(v_unit,'(A)') 'ENDF TAPE FILE INVENTORY'
+                Write(v_unit,'(A)') half_dash_line
+                Write(v_unit,*)
+            End If            
+            n_energies = 0
+            Allocate(n_abs_modes(1:CS%n_iso))
+            n_abs_modes = 0
+            Allocate(n_inel_lev(1:CS%n_iso))
+            n_inel_lev = 0
+        Else  !SECOND TIME
+            n_start = 0
+            !Allocate scratch arrays for ordering absorption modes
+            Allocate(abs_modes(1:MaxVal(n_abs_modes),1:CS%n_iso))
+            abs_modes = -1
+            Allocate(abs_thresh(1:MaxVal(n_abs_modes),1:CS%n_iso))
+            abs_thresh = Huge(abs_thresh)
+            !Allocate scratch arrays for energy
+            Allocate(E_uni_scratch(1:n_energies))
+            E_uni_scratch = -1._dp
+        End If
         Do i = 1,CS%n_iso
-            Write(v_unit,'(A,I0,A,I0,A)') Trim(isotope_names(i))//' ENDF tape contains ',n_abs_modes(i),' absorption modes and ',n_inel_lev(i),' inelastic levels'
-        End Do
-        Write(v_unit,'(I0,A)') n_energies,' total energies to map on unified list'
-    End If
-    !Allocate scratch arrays for ordering absorption modes
-    Allocate(abs_modes(1:MaxVal(n_abs_modes),1:CS%n_iso))
-    abs_modes = -1
-    Allocate(abs_thresh(1:MaxVal(n_abs_modes),1:CS%n_iso))
-    abs_thresh = Huge(abs_thresh)
-    !Allocate scratch arrays for energy
-    Allocate(E_uni_scratch(1:n_energies))
-    E_uni_scratch = -1._dp
-    !Read in ALL (including duplicates) the energies to be used
-    n_start = 0
-    Do i = 1,CS%n_iso
-        !create file name string and open the ENDF tape for this isotope
-        ENDF_file_name = file_name_start//Trim(isotope_names(i))//'.txt'
-        Open(NEWUNIT = ENDF_unit , FILE = ENDF_file_name , STATUS = 'OLD' , ACTION = 'READ' , IOSTAT = stat)
-        If (stat .NE. 0) Call Output_Message('ERROR:  Cross_Sections: Setup_Cross_Sections:  File open error, '//ENDF_file_name//', IOSTAT=',stat,kill=.TRUE.)
-        !read energies in absorption, elastic, and inelastic files (MF 3 and 4)
-        DO_SECTIONS_2: Do
-            !check next section type
-            Read(ENDF_unit,'(A73,I1,I3,I5)') trash_c,MF,MT,line_num
-            If (MF .EQ. 0) Then  !this indicates a change in MF type, need to look for next section or end of file
-                NEXT_MF_2: Do
-                    Read(ENDF_unit,'(A73,I1,I3,I5)',IOSTAT=stat) trash_c,MF,MT,line_num
-                    If (stat .LT. 0) Exit DO_SECTIONS_2 !end of file
-                    If (MF .GT. 0) Exit NEXT_MF_2
-                End Do NEXT_MF_2
-            End If
-            If (MF.EQ.3 .OR. MF.EQ.4) Then
-                If (Any(MT_excluded .EQ. MT)) Then !this interaction type is excluded, advance past it
-                    !advance to end of section
-                    Call Find_MFMT_end(ENDF_unit)
-                    !cycle to start next section
-                    Cycle DO_SECTIONS_2
+            !create file name string and open the ENDF tape file for this isotope
+            ENDF_file_name = file_name_start//Trim(isotope_names(i))//'.txt'
+            Open(NEWUNIT = ENDF_unit , FILE = ENDF_file_name , STATUS = 'OLD' , ACTION = 'READ' , IOSTAT = stat)
+            If (stat .NE. 0) Call Output_Message('ERROR:  Cross_Sections: Setup_Cross_Sections:  File open error, '//ENDF_file_name//', IOSTAT=',stat,kill=.TRUE.)
+            !count energies in absorption, elastic, and inelastic files (MFs 3 and 4)
+            If (first_time .AND. v) v_string = Trim(isotope_names(i))//' ENDF file:'  !FIRST TIME
+            DO_SECTIONS: Do
+                !check next section type
+                Read(ENDF_unit,'(A73,I1,I3,I5)') trash_c,MF,MT,line_num
+                If (first_time .AND. v) Then  !FIRST TIME
+                    Write(v_unit,'(A15,A4,I1,A4,I3,A1)',ADVANCE='NO') v_string,' MF=',MF,' MT=',MT,' '
+                    v_string = ''
                 End If
-                !get number of energies in this MF 3 or 4 section
-                Select Case (MF)
-                    Case (3)
-                        Read(ENDF_unit,'(A55,I11)') trash_c, n_p
-                        Read(ENDF_unit,*)
-                        Do j = 1,n_p,3
-                            !Each line in the file has 3 pairs of (eV,barns)
-                            If (n_p-j .GT. 1) Then
-                                Read(ENDF_unit,'(5E11.6E1)') E_uni_scratch(n_start+j), trash_r, E_uni_scratch(n_start+j+1), trash_r, E_uni_scratch(n_start+j+2)
-                            Else If (n_p-j .EQ. 1) Then
-                                Read(ENDF_unit,'(3E11.6E1)') E_uni_scratch(n_start+j), trash_r, E_uni_scratch(n_start+j+1)
-                            Else
-                                Read(ENDF_unit,'(1E11.6E1)') E_uni_scratch(n_start+j)
-                            End If
-                            If (j .EQ. 1) Then !check if this is an absorption mode
-                                If (Any(MT_disappearance .EQ. MT)) Then  !this is an absorption mode
-                                    !add it to the list of absorption modes, inserting in order of acending threshold energy
-                                    Do k = 1,n_abs_modes(i)
-                                        If (E_uni_scratch(n_start+j) .LT. abs_thresh(k,i)) Then !this k is where this mode goes in the list
-                                            If (k .LT. n_abs_modes(i)) Then  !make room by shifting the rest of the list down
-                                                abs_thresh(k+1:n_abs_modes(i),i) = abs_thresh(k:n_abs_modes(i)-1,i)
-                                                abs_modes(k+1:n_abs_modes(i),i) = abs_modes(k:n_abs_modes(i)-1,i)
-                                            End If
-                                            !insert
-                                            abs_thresh(k,i) = E_uni_scratch(n_start+j)
-                                            abs_modes(k,i) = MT
-                                        End If
-                                    End Do
+                If (MF .EQ. 0) Then  !this indicates a change in MF type, need to look for next section or end of file
+                    NEXT_MF: Do
+                        Read(ENDF_unit,'(A73,I1,I3,I5)',IOSTAT=stat) trash_c,MF,MT,line_num
+                        If (stat .LT. 0) Exit DO_SECTIONS !end of file
+                        If (MF .GT. 0) Exit NEXT_MF
+                    End Do NEXT_MF
+                End If
+                If (MF.EQ.3 .OR. MF.EQ.4) Then
+                    If (Any(MT_excluded .EQ. MT)) Then !this interaction type is excluded, advance past it
+                        If (first_time .AND. v) Write(v_unit,'(A)',ADVANCE='YES') ' - excluded'  !FIRST TIME
+                        !advance to end of section
+                        Call Find_MFMT_end(ENDF_unit)
+                        !cycle to start next section
+                        Cycle DO_SECTIONS
+                    Else
+                        If (first_time .AND. v) Write(v_unit,'(A)',ADVANCE='NO') ' - counted'  !FIRST TIME
+                    End If
+                    !get number of energies in this MF 3 or 4 section
+                    Select Case (MF)
+                        Case (3)
+                            If (first_time) Then  !FIRST TIME
+                                If (Any(MT_disappearance .EQ. MT)) Then
+                                    n_abs_modes(i) = n_abs_modes(i) + 1
+                                    If (v) Write(v_unit,'(A)',ADVANCE='NO') ', absorption'
+                                End If
+                                If (Any(MT_inelastic .EQ. MT)) Then
+                                    n_inel_lev(i) = n_inel_lev(i) + 1
+                                    If (v) Write(v_unit,'(A)',ADVANCE='NO') ', inelastic'
                                 End If
                             End If
-                        End Do
-                    Case (4)
-                        !need to read the first line again to get LTT
-                        Backspace(ENDF_unit)
-                        Read(ENDF_unit,'(A33,I11)') trash_c, LTT
-                        Read(ENDF_unit,*)
-                        Read(ENDF_unit,'(I11)') n_p
-                        If (LTT .EQ. 3) Then !there is a second range of energies later in the section
-                            !advance in the file to the end of the Legendre section
-                            Do j = 1,n_p
-                                !The first line in each energy contains the energy in eV in the second position and the number of Legendre coefficents in the 5th position
-                                Read(ENDF_unit,'(A44,I11)') trash_c, n_a
-                                n_a_lines = (n_a / 6)  !integer divide
-                                If (Mod(n_a,6) .GT. 0) n_a_lines = n_a_lines + 1
-                                !advance to the next energy
-                                Do k = 1,n_a_lines
-                                    Read(ENDF_unit,*)
+                            Read(ENDF_unit,'(A55,I11)') trash_c, n_p
+                            If (first_time) Then  !FIRST TIME
+                                If (v) Write(v_unit,'(A,I0,A)',ADVANCE='YES') ', ',n_p,' E-points'
+                            Else  !SECOND TIME
+                                Read(ENDF_unit,*)
+                                Do j = 1,n_p,3
+                                    !Each line in the file has 3 pairs of (eV,barns)
+                                    If (n_p-j .GT. 1) Then
+                                        Read(ENDF_unit,'(5E11.6E1)') E_uni_scratch(n_start+j), trash_r, E_uni_scratch(n_start+j+1), trash_r, E_uni_scratch(n_start+j+2)
+                                    Else If (n_p-j .EQ. 1) Then
+                                        Read(ENDF_unit,'(3E11.6E1)') E_uni_scratch(n_start+j), trash_r, E_uni_scratch(n_start+j+1)
+                                    Else
+                                        Read(ENDF_unit,'(1E11.6E1)') E_uni_scratch(n_start+j)
+                                    End If
+                                    If (j .EQ. 1) Then !check if this is an absorption mode
+                                        If (Any(MT_disappearance .EQ. MT)) Then  !this is an absorption mode
+                                            !add it to the list of absorption modes, inserting in order of acending threshold energy
+                                            Do k = 1,n_abs_modes(i)
+                                                If (E_uni_scratch(n_start+j) .LT. abs_thresh(k,i)) Then !this k is where this mode goes in the list
+                                                    If (k .LT. n_abs_modes(i)) Then  !make room by shifting the rest of the list down
+                                                        abs_thresh(k+1:n_abs_modes(i),i) = abs_thresh(k:n_abs_modes(i)-1,i)
+                                                        abs_modes(k+1:n_abs_modes(i),i) = abs_modes(k:n_abs_modes(i)-1,i)
+                                                    End If
+                                                    !insert
+                                                    abs_thresh(k,i) = E_uni_scratch(n_start+j)
+                                                    abs_modes(k,i) = MT
+                                                End If
+                                            End Do
+                                        End If
+                                    End If
                                 End Do
-                            End Do
+                            End If
+                        Case (4)
+                            If (first_time) Then  !FIRST TIME
+                                If (Any(MT_disappearance.EQ.MT) .AND. v) Write(v_unit,'(A)',ADVANCE='NO') ', absorption'
+                                If (Any(MT_inelastic.EQ.MT) .AND. v) Write(v_unit,'(A)',ADVANCE='NO') ', inelastic'
+                            End If
+                            !need to read the first line again to get LTT
+                            Backspace(ENDF_unit)
+                            Read(ENDF_unit,'(A33,I11)') trash_c, LTT
                             Read(ENDF_unit,*)
-                            !first entry of next line is number of additional energy points
-                            Read (ENDF_unit,'(I11)') n_p_2
-                        Else
-                            n_p_2 = 0
-                        End If
-                        If (LTT .EQ. 1) Then  !da is lists of legendre coeffs
-                            Do j = 1,n_p
-                                !The first line in each energy contains the energy in eV in the second position and the number of Legendre coefficents in the 5th position
-                                Read(ENDF_unit,'(A11,E11.6E1,A22,I11)') trash_c, E_uni_scratch(n_start+j), trash_c, n_a
-                                n_a_lines = (n_a / 6)  !integer divide
-                                If (Mod(n_a,6) .GT. 0) n_a_lines = n_a_lines + 1
-                                !advance to the next energy
-                                Do k = 1,n_a_lines
+                            Read(ENDF_unit,'(I11)') n_p
+                            If (first_time) Then  !FIRST TIME
+                                If (LTT .EQ. 3) Then !there is a second range of energies later in the section
+                                    !advance in the file to the end of the Legendre section
+                                    Do j = 1,n_p
+                                        !The first line in each energy contains the energy in eV in the second position and the number of Legendre coefficents in the 5th position
+                                        Read(ENDF_unit,'(A44,I11)') trash_c, n_a
+                                        n_a_lines = (n_a / 6)  !integer divide
+                                        If (Mod(n_a,6) .GT. 0) n_a_lines = n_a_lines + 1
+                                        !advance to the next energy
+                                        Do k = 1,n_a_lines
+                                            Read(ENDF_unit,*)
+                                        End Do
+                                    End Do
                                     Read(ENDF_unit,*)
-                                End Do
-                            End Do
-                        Else If (LTT .EQ. 2) Then  !da is tabulated
-                            Do j = 1,n_p
-                                !The first line in each energy contains the energy in eV in the second position
-                                Read(ENDF_unit,'(A11,E11.6E1)') trash_c, E_uni_scratch(n_start+j)
-                                !the next line contains the number of tabulation points in the first position
-                                Read(ENDF_unit,'(I11)') n_a
-                                n_a_lines = (n_a / 3)  !integer divide
-                                If (Mod(n_a,3) .GT. 0) n_a_lines = n_a_lines + 1
-                                !advance to the next energy
-                                Do k = 1,n_a_lines
+                                    !first entry of next line is number of additional energy points
+                                    Read (ENDF_unit,'(I11)') n_p_2
+                                    If (v) Write(v_unit,'(A,I0,A,I0,A)',ADVANCE='YES') ', ',n_p,'+',n_p_2,' E-points'
+                                Else
+                                    n_p_2 = 0
+                                    If (v) Write(v_unit,'(A,I0,A)',ADVANCE='YES') ', ',n_p,' E-points'
+                                End If
+                                n_p = n_p + n_p_2
+                            Else  !SECOND TIME
+                                If (LTT .EQ. 1) Then  !da is lists of legendre coeffs
+                                    Do j = 1,n_p
+                                        !The first line in each energy contains the energy in eV in the second position and the number of Legendre coefficents in the 5th position
+                                        Read(ENDF_unit,'(A11,E11.6E1,A22,I11)') trash_c, E_uni_scratch(n_start+j), trash_c, n_a
+                                        n_a_lines = (n_a / 6)  !integer divide
+                                        If (Mod(n_a,6) .GT. 0) n_a_lines = n_a_lines + 1
+                                        !advance to the next energy
+                                        Do k = 1,n_a_lines
+                                            Read(ENDF_unit,*)
+                                        End Do
+                                    End Do
+                                Else If (LTT .EQ. 2) Then  !da is tabulated
+                                    Do j = 1,n_p
+                                        !The first line in each energy contains the energy in eV in the second position
+                                        Read(ENDF_unit,'(A11,E11.6E1)') trash_c, E_uni_scratch(n_start+j)
+                                        !the next line contains the number of tabulation points in the first position
+                                        Read(ENDF_unit,'(I11)') n_a
+                                        n_a_lines = (n_a / 3)  !integer divide
+                                        If (Mod(n_a,3) .GT. 0) n_a_lines = n_a_lines + 1
+                                        !advance to the next energy
+                                        Do k = 1,n_a_lines
+                                            Read(ENDF_unit,*)
+                                        End Do
+                                    End Do
+                                Else If (LTT .EQ. 3) Then  !da is tabulated for high energies but legendre for low energies
+                                    !Read in low energy Legendre points
+                                    Do j = 1,n_p
+                                        !The first line in each energy contains the energy in eV in the second position and the number of Legendre coefficents in the 5th position
+                                        Read(ENDF_unit,'(A11,E11.6E1,A22,I11)') trash_c, E_uni_scratch(n_start+j), trash_c, n_a
+                                        n_a_lines = (n_a / 6)  !integer divide
+                                        If (Mod(n_a,6) .GT. 0) n_a_lines = n_a_lines + 1
+                                        !advance to the next energy
+                                        Do k = 1,n_a_lines
+                                            Read(ENDF_unit,*)
+                                        End Do
+                                    End Do
                                     Read(ENDF_unit,*)
-                                End Do
-                            End Do
-                        Else If (LTT .EQ. 3) Then  !da is tabulated for high energies but legendre for low energies
-                            !Read in low energy Legendre points
-                            Do j = 1,n_p
-                                !The first line in each energy contains the energy in eV in the second position and the number of Legendre coefficents in the 5th position
-                                Read(ENDF_unit,'(A11,E11.6E1,A22,I11)') trash_c, E_uni_scratch(n_start+j), trash_c, n_a
-                                n_a_lines = (n_a / 6)  !integer divide
-                                If (Mod(n_a,6) .GT. 0) n_a_lines = n_a_lines + 1
-                                !advance to the next energy
-                                Do k = 1,n_a_lines
-                                    Read(ENDF_unit,*)
-                                End Do
-                            End Do
-                            Read(ENDF_unit,*)
-                            Read(ENDF_unit,*)
-                            !Read in high energy tabulated cosine points
-                            Do j = n_p+1,n_p+n_p_2
-                                !The first line in each energy contains the energy in eV in the second position
-                                Read(ENDF_unit,'(A11,E11.6E1)') trash_c, E_uni_scratch(n_start+j)
-                                !the next line contains the number of tabulation points in the first position
-                                Read(ENDF_unit,'(I11)') n_a
-                                n_a_lines = (n_a / 3)  !integer divide
-                                If (Mod(n_a,3) .GT. 0) n_a_lines = n_a_lines + 1
-                                !advance to the next energy
-                                Do k = 1,n_a_lines
-                                    Read(ENDF_unit,*)
-                                End Do
-                            End Do
-                            !update total n_p
-                            n_p = n_p + n_p_2
-                        End If
-                End Select
-                n_start = n_start + n_p
-            End If
-            !advance to end of section
-            Call Find_MFMT_end(ENDF_unit)
-        End Do DO_SECTIONS_2
-        Close(ENDF_unit)    
-    End Do
-    E_uni_scratch = E_uni_scratch / 1000._dp  !convert to keV
-    n_p = n_energies !stash n_energies before it gets overwritten
-    !E_uni_scratch is now a HUGE list of all the energies in all the files we are going to use, sort and eliminate duplicates
-    Call Union_Sort(E_uni_scratch,n_energies,E_min,E_max)
-    If (n_energies .GT. Huge(CS%n_E_uni)) Call Output_Message('ERROR:  Cross_Sections: Setup_Cross_Sections:  Length of unified energy grid exceeds available index',kill=.TRUE.)
-    !Allocate and fill the unified energy list
-    CS%n_E_uni = n_energies
-    Allocate(CS%E_uni(1:n_energies))
-    CS%E_uni = E_uni_scratch(1:n_energies)
-    Deallocate(E_uni_scratch)
-    Allocate(CS%lnE_uni(1:n_energies))
-    CS%lnE_uni = Log(CS%E_uni)
-    If (v) Then
-        Write(v_unit,*)
-        Write(v_unit,'(A)') half_dash_line
-        Write(v_unit,'(A)') 'UNIFIED ENERGY LIST'
-        Write(v_unit,'(A)') half_dash_line
-        Write(v_unit,*)
-        Write(v_unit,'(I0,A,F0.2,A)') CS%n_E_uni,' unique points in unified grid, (',100._dp*Real(CS%n_E_uni,dp)/Real(n_p,dp),'%)'
-        Write(v_unit,'(A7,2A26)') ' Index ','   E [keV]                ','   ln(E)                  '
-        Write(v_unit,'(A7,2A26)') '-------','  ------------------------','  ------------------------'
-        Do i = 1,n_energies
-            Write(v_unit,'(I7,2ES26.16E3)') i,CS%E_uni(i),CS%lnE_uni(i)
+                                    !first entry of next line is number of additional energy points
+                                    Read (ENDF_unit,'(I11)') n_p_2
+                                    !Read in high energy tabulated cosine points
+                                    Do j = n_p+1,n_p+n_p_2
+                                        !The first line in each energy contains the energy in eV in the second position
+                                        Read(ENDF_unit,'(A11,E11.6E1)') trash_c, E_uni_scratch(n_start+j)
+                                        !the next line contains the number of tabulation points in the first position
+                                        Read(ENDF_unit,'(I11)') n_a
+                                        n_a_lines = (n_a / 3)  !integer divide
+                                        If (Mod(n_a,3) .GT. 0) n_a_lines = n_a_lines + 1
+                                        !advance to the next energy
+                                        Do k = 1,n_a_lines
+                                            Read(ENDF_unit,*)
+                                        End Do
+                                    End Do
+                                    !update total n_p
+                                    n_p = n_p + n_p_2
+                                End If
+                            End If
+                    End Select
+                    If (first_time) n_energies = n_energies + n_p  !FIRST TIME
+                Else
+                    If (first_time .AND. v) Write(v_unit,'(A)',ADVANCE='YES') ' - uncounted'  !FIRST TIME
+                End If
+                !advance to end of section
+                Call Find_MFMT_end(ENDF_unit)
+            End Do DO_SECTIONS
+            Close(ENDF_unit)
         End Do
-    End If
+        If (first_time) Then  !FIRST TIME
+            If (v) Then
+                Write(v_unit,*)
+                Do i = 1,CS%n_iso
+                    Write(v_unit,'(A,I0,A,I0,A)') Trim(isotope_names(i))//' ENDF tape contains ',n_abs_modes(i),' absorption modes and ',n_inel_lev(i),' inelastic levels'
+                End Do
+                Write(v_unit,'(I0,A)') n_energies,' total energies to map on unified list'
+            End If
+            first_time = .FALSE.
+        Else  !SECOND TIME
+            E_uni_scratch = E_uni_scratch / 1000._dp  !convert to keV
+            n_p = n_energies !stash n_energies before it gets overwritten
+            !E_uni_scratch is now a HUGE list of all the energies in all the files we are going to use, sort and eliminate duplicates
+            Call Union_Sort(E_uni_scratch,n_energies,E_min,E_max)
+            If (n_energies .GT. Huge(CS%n_E_uni)) Call Output_Message('ERROR:  Cross_Sections: Setup_Cross_Sections:  Length of unified energy grid exceeds available index',kill=.TRUE.)
+            !Allocate and fill the unified energy list
+            CS%n_E_uni = n_energies
+            Allocate(CS%E_uni(1:n_energies))
+            CS%E_uni = E_uni_scratch(1:n_energies)
+            Deallocate(E_uni_scratch)
+            Allocate(CS%lnE_uni(1:n_energies))
+            CS%lnE_uni = Log(CS%E_uni)
+            If (v) Then
+                Write(v_unit,*)
+                Write(v_unit,'(A)') half_dash_line
+                Write(v_unit,'(A)') 'UNIFIED ENERGY LIST'
+                Write(v_unit,'(A)') half_dash_line
+                Write(v_unit,*)
+                Write(v_unit,'(I0,A,F0.2,A)') CS%n_E_uni,' unique points in unified grid, (',100._dp*Real(CS%n_E_uni,dp)/Real(n_p,dp),'%)'
+                Write(v_unit,'(A7,2A26)') ' Index ','   E [keV]                ','   ln(E)                  '
+                Write(v_unit,'(A7,2A26)') '-------','  ------------------------','  ------------------------'
+                Do i = 1,n_energies
+                    Write(v_unit,'(I7,2ES26.16E3)') i,CS%E_uni(i),CS%lnE_uni(i)
+                End Do
+            End If
+        End If
+    End Do
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     !!  READ IN INTERACTION CROSS SECTIONS AND ANGULAR DISTRIBUTIONS
     !Now read each file (yes, again) into its appropriate place in the cross section structure, constructing the integer maps and keys as we go
