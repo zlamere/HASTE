@@ -1,0 +1,296 @@
+----------------------------------------
+ENDF TAPE FILE INVENTORY
+----------------------------------------
+
+N14 ENDF file:  MF=1 MT=451  - uncounted
+                MF=2 MT=151  - uncounted
+                MF=3 MT=2  - counted, 1274 E-points
+                MF=3 MT=5  - excluded
+                MF=3 MT=16  - excluded
+                MF=3 MT=51  - counted, inelastic, 219 E-points
+                MF=3 MT=52  - counted, inelastic, 202 E-points
+                MF=3 MT=53  - counted, inelastic, 190 E-points
+                MF=3 MT=54  - counted, inelastic, 187 E-points
+                MF=3 MT=55  - counted, inelastic, 176 E-points
+                MF=3 MT=56  - counted, inelastic, 172 E-points
+                MF=3 MT=57  - counted, inelastic, 162 E-points
+                MF=3 MT=58  - counted, inelastic, 156 E-points
+                MF=3 MT=59  - counted, inelastic, 145 E-points
+                MF=3 MT=60  - counted, inelastic, 130 E-points
+                MF=3 MT=61  - counted, inelastic, 127 E-points
+                MF=3 MT=62  - counted, inelastic, 119 E-points
+                MF=3 MT=63  - counted, inelastic, 114 E-points
+                MF=3 MT=64  - counted, inelastic, 106 E-points
+                MF=3 MT=65  - counted, inelastic, 97 E-points
+                MF=3 MT=66  - counted, inelastic, 90 E-points
+                MF=3 MT=67  - counted, inelastic, 85 E-points
+                MF=3 MT=68  - counted, inelastic, 80 E-points
+                MF=3 MT=69  - counted, inelastic, 76 E-points
+                MF=3 MT=70  - counted, inelastic, 70 E-points
+                MF=3 MT=71  - counted, inelastic, 63 E-points
+                MF=3 MT=72  - counted, inelastic, 57 E-points
+                MF=3 MT=73  - counted, inelastic, 50 E-points
+                MF=3 MT=74  - counted, inelastic, 40 E-points
+                MF=3 MT=75  - counted, inelastic, 30 E-points
+                MF=3 MT=76  - counted, inelastic, 20 E-points
+                MF=3 MT=77  - counted, inelastic, 10 E-points
+                MF=3 MT=102  - counted, absorption, 78 E-points
+                MF=3 MT=103  - counted, absorption, 670 E-points
+                MF=3 MT=104  - counted, absorption, 73 E-points
+                MF=3 MT=105  - counted, absorption, 117 E-points
+                MF=3 MT=107  - counted, absorption, 841 E-points
+                MF=3 MT=108  - counted, absorption, 27 E-points
+                MF=4 MT=2  - counted, 614+27 E-points
+                MF=4 MT=51  - counted, inelastic, 41 E-points
+                MF=4 MT=52  - counted, inelastic, 32 E-points
+                MF=4 MT=53  - counted, inelastic, 35 E-points
+                MF=4 MT=54  - counted, inelastic, 35 E-points
+                MF=4 MT=55  - counted, inelastic, 33 E-points
+                MF=4 MT=56  - counted, inelastic, 33 E-points
+                MF=4 MT=57  - counted, inelastic, 16 E-points
+                MF=4 MT=58  - counted, inelastic, 12 E-points
+                MF=4 MT=59  - counted, inelastic, 6 E-points
+                MF=4 MT=60  - counted, inelastic, 6 E-points
+                MF=4 MT=61  - counted, inelastic, 7 E-points
+                MF=4 MT=62  - counted, inelastic, 4 E-points
+                MF=4 MT=63  - counted, inelastic, 0 E-points
+                MF=4 MT=65  - counted, inelastic, 0 E-points
+                MF=4 MT=67  - counted, inelastic, 0 E-points
+                MF=4 MT=69  - counted, inelastic, 0 E-points
+                MF=4 MT=71  - counted, inelastic, 0 E-points
+                MF=4 MT=73  - counted, inelastic, 0 E-points
+                MF=4 MT=75  - counted, inelastic, 0 E-points
+                MF=4 MT=77  - counted, inelastic, 0 E-points
+                MF=6 MT=16  - uncounted
+N15 ENDF file:  MF=1 MT=451  - uncounted
+                MF=2 MT=151  - uncounted
+                MF=3 MT=2  - counted, 555 E-points
+                MF=3 MT=16  - excluded
+                MF=3 MT=22  - excluded
+                MF=3 MT=28  - excluded
+                MF=3 MT=51  - counted, inelastic, 57 E-points
+                MF=3 MT=52  - counted, inelastic, 56 E-points
+                MF=3 MT=53  - counted, inelastic, 51 E-points
+                MF=3 MT=54  - counted, inelastic, 46 E-points
+                MF=3 MT=55  - counted, inelastic, 44 E-points
+                MF=3 MT=56  - counted, inelastic, 42 E-points
+                MF=3 MT=57  - counted, inelastic, 38 E-points
+                MF=3 MT=91  - excluded
+                MF=3 MT=102  - counted, absorption, 29 E-points
+                MF=3 MT=103  - counted, absorption, 35 E-points
+                MF=3 MT=104  - counted, absorption, 39 E-points
+                MF=3 MT=105  - counted, absorption, 31 E-points
+                MF=3 MT=107  - counted, absorption, 41 E-points
+                MF=4 MT=2  - counted, 115 E-points
+                MF=4 MT=16  - excluded
+                MF=4 MT=22  - excluded
+                MF=4 MT=28  - excluded
+                MF=4 MT=51  - counted, inelastic, 16 E-points
+                MF=4 MT=52  - counted, inelastic, 16 E-points
+                MF=4 MT=53  - counted, inelastic, 15 E-points
+                MF=4 MT=54  - counted, inelastic, 14 E-points
+                MF=4 MT=55  - counted, inelastic, 14 E-points
+                MF=4 MT=56  - counted, inelastic, 13 E-points
+                MF=4 MT=57  - counted, inelastic, 13 E-points
+                MF=4 MT=91  - excluded
+                MF=5 MT=16  - uncounted
+                MF=5 MT=22  - uncounted
+                MF=5 MT=28  - uncounted
+                MF=5 MT=91  - uncounted
+O16 ENDF file:  MF=1 MT=451  - uncounted
+                MF=2 MT=151  - uncounted
+                MF=3 MT=2  - counted, 2323 E-points
+                MF=3 MT=5  - excluded
+                MF=3 MT=16  - excluded
+                MF=3 MT=22  - excluded
+                MF=3 MT=23  - excluded
+                MF=3 MT=28  - excluded
+                MF=3 MT=32  - excluded
+                MF=3 MT=41  - excluded
+                MF=3 MT=44  - excluded
+                MF=3 MT=45  - excluded
+                MF=3 MT=51  - counted, inelastic, 282 E-points
+                MF=3 MT=52  - counted, inelastic, 279 E-points
+                MF=3 MT=53  - counted, inelastic, 260 E-points
+                MF=3 MT=54  - counted, inelastic, 254 E-points
+                MF=3 MT=55  - counted, inelastic, 212 E-points
+                MF=3 MT=56  - counted, inelastic, 178 E-points
+                MF=3 MT=57  - counted, inelastic, 175 E-points
+                MF=3 MT=91  - excluded
+                MF=3 MT=102  - counted, absorption, 436 E-points
+                MF=3 MT=103  - counted, absorption, 170 E-points
+                MF=3 MT=104  - counted, absorption, 182 E-points
+                MF=3 MT=105  - counted, absorption, 114 E-points
+                MF=3 MT=107  - counted, absorption, 1709 E-points
+                MF=3 MT=108  - counted, absorption, 106 E-points
+                MF=3 MT=112  - counted, absorption, 56 E-points
+                MF=4 MT=2  - counted, 1622+14 E-points
+                MF=4 MT=51  - counted, inelastic, 40 E-points
+                MF=4 MT=52  - counted, inelastic, 40 E-points
+                MF=4 MT=53  - counted, inelastic, 31 E-points
+                MF=4 MT=54  - counted, inelastic, 30 E-points
+                MF=4 MT=55  - counted, inelastic, 23 E-points
+                MF=4 MT=56  - counted, inelastic, 0 E-points
+                MF=6 MT=5  - uncounted
+                MF=6 MT=16  - uncounted
+                MF=6 MT=22  - uncounted
+                MF=6 MT=23  - uncounted
+                MF=6 MT=28  - uncounted
+                MF=6 MT=32  - uncounted
+                MF=6 MT=41  - uncounted
+                MF=6 MT=44  - uncounted
+                MF=6 MT=45  - uncounted
+                MF=6 MT=91  - uncounted
+                MF=6 MT=108  - uncounted
+                MF=6 MT=112  - uncounted
+O17 ENDF file:  MF=1 MT=451  - uncounted
+                MF=2 MT=151  - uncounted
+                MF=3 MT=2  - counted, 31 E-points
+                MF=3 MT=16  - excluded
+                MF=3 MT=22  - excluded
+                MF=3 MT=28  - excluded
+                MF=3 MT=51  - counted, inelastic, 64 E-points
+                MF=3 MT=52  - counted, inelastic, 51 E-points
+                MF=3 MT=53  - counted, inelastic, 46 E-points
+                MF=3 MT=54  - counted, inelastic, 42 E-points
+                MF=3 MT=55  - counted, inelastic, 38 E-points
+                MF=3 MT=56  - counted, inelastic, 36 E-points
+                MF=3 MT=57  - counted, inelastic, 34 E-points
+                MF=3 MT=58  - counted, inelastic, 31 E-points
+                MF=3 MT=59  - counted, inelastic, 31 E-points
+                MF=3 MT=60  - counted, inelastic, 29 E-points
+                MF=3 MT=61  - counted, inelastic, 29 E-points
+                MF=3 MT=62  - counted, inelastic, 24 E-points
+                MF=3 MT=91  - excluded
+                MF=3 MT=102  - counted, absorption, 424 E-points
+                MF=3 MT=103  - counted, absorption, 14 E-points
+                MF=3 MT=104  - counted, absorption, 10 E-points
+                MF=3 MT=107  - counted, absorption, 307 E-points
+                MF=4 MT=2  - counted, 20 E-points
+                MF=4 MT=16  - excluded
+                MF=4 MT=22  - excluded
+                MF=4 MT=28  - excluded
+                MF=4 MT=51  - counted, inelastic, 0 E-points
+                MF=4 MT=53  - counted, inelastic, 0 E-points
+                MF=4 MT=55  - counted, inelastic, 0 E-points
+                MF=4 MT=57  - counted, inelastic, 0 E-points
+                MF=4 MT=59  - counted, inelastic, 0 E-points
+                MF=4 MT=61  - counted, inelastic, 0 E-points
+                MF=4 MT=91  - excluded
+                MF=5 MT=16  - uncounted
+                MF=5 MT=22  - uncounted
+                MF=5 MT=28  - uncounted
+                MF=5 MT=91  - uncounted
+O18 ENDF file:  MF=1 MT=451  - uncounted
+                MF=2 MT=151  - uncounted
+                MF=3 MT=2  - counted, 126 E-points
+                MF=3 MT=16  - excluded
+                MF=3 MT=17  - excluded
+                MF=3 MT=22  - excluded
+                MF=3 MT=28  - excluded
+                MF=3 MT=33  - excluded
+                MF=3 MT=91  - excluded
+                MF=3 MT=102  - counted, absorption, 6 E-points
+                MF=3 MT=103  - counted, absorption, 17 E-points
+                MF=3 MT=104  - counted, absorption, 14 E-points
+                MF=3 MT=105  - counted, absorption, 14 E-points
+                MF=3 MT=107  - counted, absorption, 43 E-points
+                MF=4 MT=2  - counted, 20 E-points
+                MF=4 MT=16  - excluded
+                MF=4 MT=17  - excluded
+                MF=4 MT=22  - excluded
+                MF=4 MT=28  - excluded
+                MF=4 MT=33  - excluded
+                MF=4 MT=91  - excluded
+                MF=5 MT=16  - uncounted
+                MF=5 MT=17  - uncounted
+                MF=5 MT=22  - uncounted
+                MF=5 MT=28  - uncounted
+                MF=5 MT=33  - uncounted
+                MF=5 MT=91  - uncounted
+Ar40 ENDF file: MF=1 MT=451  - uncounted
+                MF=2 MT=151  - uncounted
+                MF=3 MT=2  - counted, 4252 E-points
+                MF=3 MT=16  - excluded
+                MF=3 MT=17  - excluded
+                MF=3 MT=22  - excluded
+                MF=3 MT=28  - excluded
+                MF=3 MT=51  - counted, inelastic, 59 E-points
+                MF=3 MT=52  - counted, inelastic, 50 E-points
+                MF=3 MT=53  - counted, inelastic, 46 E-points
+                MF=3 MT=54  - counted, inelastic, 42 E-points
+                MF=3 MT=55  - counted, inelastic, 39 E-points
+                MF=3 MT=56  - counted, inelastic, 36 E-points
+                MF=3 MT=57  - counted, inelastic, 36 E-points
+                MF=3 MT=58  - counted, inelastic, 35 E-points
+                MF=3 MT=59  - counted, inelastic, 35 E-points
+                MF=3 MT=60  - counted, inelastic, 33 E-points
+                MF=3 MT=61  - counted, inelastic, 33 E-points
+                MF=3 MT=62  - counted, inelastic, 33 E-points
+                MF=3 MT=63  - counted, inelastic, 33 E-points
+                MF=3 MT=64  - counted, inelastic, 33 E-points
+                MF=3 MT=65  - counted, inelastic, 33 E-points
+                MF=3 MT=66  - counted, inelastic, 33 E-points
+                MF=3 MT=67  - counted, inelastic, 32 E-points
+                MF=3 MT=68  - counted, inelastic, 32 E-points
+                MF=3 MT=91  - excluded
+                MF=3 MT=102  - counted, absorption, 60 E-points
+                MF=3 MT=103  - counted, absorption, 27 E-points
+                MF=3 MT=104  - counted, absorption, 20 E-points
+                MF=3 MT=105  - counted, absorption, 16 E-points
+                MF=3 MT=106  - counted, absorption, 9 E-points
+                MF=3 MT=107  - counted, absorption, 37 E-points
+                MF=4 MT=2  - counted, 38 E-points
+                MF=6 MT=16  - uncounted
+                MF=6 MT=17  - uncounted
+                MF=6 MT=22  - uncounted
+                MF=6 MT=28  - uncounted
+                MF=6 MT=51  - uncounted
+                MF=6 MT=52  - uncounted
+                MF=6 MT=53  - uncounted
+                MF=6 MT=54  - uncounted
+                MF=6 MT=55  - uncounted
+                MF=6 MT=56  - uncounted
+                MF=6 MT=57  - uncounted
+                MF=6 MT=58  - uncounted
+                MF=6 MT=59  - uncounted
+                MF=6 MT=60  - uncounted
+                MF=6 MT=61  - uncounted
+                MF=6 MT=62  - uncounted
+                MF=6 MT=63  - uncounted
+                MF=6 MT=64  - uncounted
+                MF=6 MT=65  - uncounted
+                MF=6 MT=66  - uncounted
+                MF=6 MT=67  - uncounted
+                MF=6 MT=68  - uncounted
+                MF=6 MT=91  - uncounted
+                MF=6 MT=102  - uncounted
+                MF=6 MT=103  - uncounted
+                MF=6 MT=104  - uncounted
+                MF=6 MT=105  - uncounted
+                MF=6 MT=106  - uncounted
+                MF=6 MT=107  - uncounted
+
+N14 ENDF tape contains 6 absorption modes and 27 inelastic levels
+N15 ENDF tape contains 5 absorption modes and 7 inelastic levels
+O16 ENDF tape contains 7 absorption modes and 7 inelastic levels
+O17 ENDF tape contains 4 absorption modes and 12 inelastic levels
+O18 ENDF tape contains 5 absorption modes and 0 inelastic levels
+Ar40 ENDF tape contains 6 absorption modes and 18 inelastic levels
+23403 total energies to map on unified list
+
+----------------------------------------
+UNIFIED ENERGY LIST
+----------------------------------------
+
+3 unique points in unified grid, (.01%)
+ Index    E [keV]                   ln(E)                  
+-------  ------------------------  ------------------------
+      1   1.0000000000000001E-005  -1.1512925464970229E+001
+      2   1.0000000000000000E+003   6.9077552789821368E+000
+      3   1.0000000000000000E+004   9.2103403719761836E+000
+
+----------------------------------------
+CROSS SECTION DATA STORED AND INDEXED
+----------------------------------------
+

@@ -279,8 +279,8 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
     CS%has_res_cs = .FALSE.
     Allocate(CS%res_cs(1:CS%n_iso))
     If (v) Then  !create a  file for verbose output
-        Open(NEWUNIT = v_unit , FILE = file_name_start//'n_cs_HATS_summary.txt' , STATUS = 'REPLACE' , ACTION = 'WRITE' , IOSTAT = stat)
-        If (stat .NE. 0) Call Output_Message('ERROR:  Cross_Sections: Setup_Cross_Sections:  File open error, '//file_name_start//cs_setup_file//', IOSTAT=',stat,kill=.TRUE.)
+        Open(NEWUNIT = v_unit , FILE = 'n_cs_HATS_summary.txt' , STATUS = 'REPLACE' , ACTION = 'WRITE' , IOSTAT = stat)
+        If (stat .NE. 0) Call Output_Message('ERROR:  Cross_Sections: Setup_Cross_Sections:  File open error, '//'n_cs_HATS_summary.txt'//', IOSTAT=',stat,kill=.TRUE.)
     End If
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     !!  CREATE A UNIFIED ENERGY LIST FOR THE CROSS SECTION DATA
@@ -325,17 +325,17 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
             If (first_time .AND. v) v_string = Trim(isotope_names(i))//' ENDF file:'  !FIRST TIME
             DO_SECTIONS: Do
                 !check next section type
-                Read(ENDF_unit,'(A73,I1,I3,I5)') trash_c,MF,MT,line_num
-                If (first_time .AND. v) Then  !FIRST TIME
-                    Write(v_unit,'(A15,A4,I1,A4,I3,A1)',ADVANCE='NO') v_string,' MF=',MF,' MT=',MT,' '
-                    v_string = ''
-                End If
+                Read(ENDF_unit,'(A71,I1,I3,I5)') trash_c,MF,MT,line_num
                 If (MF .EQ. 0) Then  !this indicates a change in MF type, need to look for next section or end of file
                     NEXT_MF: Do
-                        Read(ENDF_unit,'(A73,I1,I3,I5)',IOSTAT=stat) trash_c,MF,MT,line_num
+                        Read(ENDF_unit,'(A71,I1,I3,I5)',IOSTAT=stat) trash_c,MF,MT,line_num
                         If (stat .LT. 0) Exit DO_SECTIONS !end of file
                         If (MF .GT. 0) Exit NEXT_MF
                     End Do NEXT_MF
+                End If
+                If (first_time .AND. v) Then  !FIRST TIME
+                    Write(v_unit,'(A15,A4,I0,A4,I0,A1)',ADVANCE='NO') v_string,' MF=',MF,' MT=',MT,' '
+                    v_string = ''
                 End If
                 If (MF.EQ.3 .OR. MF.EQ.4) Then
                     If (Any(MT_excluded .EQ. MT)) Then !this interaction type is excluded, advance past it
@@ -401,7 +401,8 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
                             Backspace(ENDF_unit)
                             Read(ENDF_unit,'(A33,I11)') trash_c, LTT
                             Read(ENDF_unit,*)
-                            Read(ENDF_unit,'(I11)') n_p
+                            Read(ENDF_unit,'(A55,I11)') trash_c,n_p
+                            Read(ENDF_unit,*)
                             If (first_time) Then  !FIRST TIME
                                 If (LTT .EQ. 3) Then !there is a second range of energies later in the section
                                     !advance in the file to the end of the Legendre section
@@ -417,7 +418,7 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
                                     End Do
                                     Read(ENDF_unit,*)
                                     !first entry of next line is number of additional energy points
-                                    Read (ENDF_unit,'(I11)') n_p_2
+                                    Read(ENDF_unit,'(I11)') n_p_2
                                     If (v) Write(v_unit,'(A,I0,A,I0,A)',ADVANCE='YES') ', ',n_p,'+',n_p_2,' E-points'
                                 Else
                                     n_p_2 = 0
@@ -726,7 +727,7 @@ Subroutine Write_stored_sig(v_unit,sig,n_E_uni,E_uni)
     Use Kinds, Only: dp
     Implicit None
     Integer, Intent(In) :: v_unit
-    Type(sig_Type), Intent(In)
+    Type(sig_Type), Intent(In) :: sig
     Integer, Intent(In) :: n_E_uni
     Real(dp), Intent(In) :: E_uni(1:n_E_uni)
     Integer :: k
@@ -742,7 +743,7 @@ Subroutine Write_stored_sig(v_unit,sig,n_E_uni,E_uni)
         Write(v_unit,'(3ES26.16E3,2I9)') E_uni(sig%E_key(k)),sig%sig(k),sig%lnsig(k),sig%E_map(sig%E_key(k)),k
     End Do
     Write(v_unit,*)
-End Subroutine
+End Subroutine Write_stored_sig
 
 Subroutine Find_MFMT_end(ENDF_unit)
     Implicit None
@@ -751,7 +752,7 @@ Subroutine Find_MFMT_end(ENDF_unit)
     Integer :: line_num
 
     Do
-        Read(ENDF_unit,'(A77,I5)') trash_c,line_num
+        Read(ENDF_unit,'(A75,I5)') trash_c,line_num
         If (line_num .EQ. 99999) Return
     End Do
 End Subroutine Find_MFMT_end
@@ -769,7 +770,7 @@ Subroutine Find_MFMT(ENDF_unit,MFi,MTi)
     !Find this interaction (MFi,MTi) in the ENDF tape
     Rewind(ENDF_unit)  !return to the start of the file
     Do
-        Read(ENDF_unit,'(A73,I1,I3)',IOSTAT=stat) trash_c,MF,MT
+        Read(ENDF_unit,'(A71,I1,I3)',IOSTAT=stat) trash_c,MF,MT
         If (stat .LT. 0) Then
             Write(MFc,'(I3)') MFi
             Write(MTc,'(I3)') MTi

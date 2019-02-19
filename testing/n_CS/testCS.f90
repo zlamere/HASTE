@@ -10,10 +10,11 @@ Implicit None
 Type(CS_type) :: CS
 
 CS = Setup_Cross_Sections( & 
-                           & resources_directory = '', & 
-                           & cs_setup_file = '', & 
+                           & resources_directory = 'Resources/', & 
+                           & cs_setup_file = 'n_CS_setup_All.txt', & 
                            & elastic_only = .FALSE., & 
                            & aniso_dist = .TRUE., & 
-                           & E_min = 0._dp , E_max = 30000._dp)
+                           & E_min = 0._dp , E_max = 30000._dp, &
+                           & verbose = .TRUE.)
 
 End Program testCS
