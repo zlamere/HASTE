@@ -43,7 +43,8 @@ Module n_Cross_Sections
     End Type
 
     Type :: da_Type
-        Integer :: n_da
+        Integer :: n_da  !number of energies at which da is given (0 indicates isotropic distribution)
+        Logical :: is_iso
         Type(da_List_Type), Allocatable :: da(:) ![barns]  has dimension 1:n_da
         Integer, Allocatable :: E_map(:)  !has dimension 1:n_E_uni, indexes for each value in unified energy grid to indexes in da
         Integer, Allocatable :: E_key(:)  !has dimension 1:n_da, indexes for each value in da to an energy in unified energy list
@@ -404,7 +405,11 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
                             Read(ENDF_unit,'(A55,I11)') trash_c,n_p
                             Read(ENDF_unit,*)
                             If (first_time) Then  !FIRST TIME
-                                If (LTT .EQ. 3) Then !there is a second range of energies later in the section
+                                If (LTT .EQ. 0) Then !distribution is assumed isotropic over all energies
+                                    n_p = 0
+                                    n_p_2 = 0
+                                    If (v) Write(v_unit,'(A)',ADVANCE='YES') ', isotropic'
+                                Else If (LTT .EQ. 3) Then !there is a second range of energies later in the section
                                     !advance in the file to the end of the Legendre section
                                     Do j = 1,n_p
                                         !The first line in each energy contains the energy in eV in the second position and the number of Legendre coefficents in the 5th position
@@ -426,6 +431,7 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
                                 End If
                                 n_p = n_p + n_p_2
                             Else  !SECOND TIME
+                                ! If (LTT .EQ. 0) Then !da is isotropic, no energies to read
                                 If (LTT .EQ. 1) Then  !da is lists of legendre coeffs
                                     Do j = 1,n_p
                                         !The first line in each energy contains the energy in eV in the second position and the number of Legendre coefficents in the 5th position
@@ -546,6 +552,7 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
         Open(NEWUNIT = ENDF_unit , FILE = ENDF_file_name , STATUS = 'OLD' , ACTION = 'READ' , IOSTAT = stat)
         If (stat .NE. 0) Call Output_Message('ERROR:  Cross_Sections: Setup_Cross_Sections:  File open error, '//ENDF_file_name//', IOSTAT=',stat,kill=.TRUE.)
         !read in absorption, resonance, elastic, and inelastic interaction cross sections and angular distributions
+        !!  ABSORPTION INTERACTION CROSS SECTIONS
         Do j = 1,n_abs_modes(i)
             !Find this interaction in the ENDF tape (MF=3, MT=abs_modes(j,i))
             Call Find_MFMT(ENDF_unit,3,abs_modes(j,i))
@@ -567,6 +574,7 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
             !UNDONE
             !UNDONE
         End If
+        !!  SCATTERING INTERACTION CROSS SECTIONS
         If (elastic_only) Then
             CS%lev_cs(i)%n_lev = 0
             Allocate(CS%lev_cs(i)%Q(0:0))
@@ -580,8 +588,9 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
             Allocate(CS%lev_cs(i)%sig(0:n_inel_lev(i)))
             If (aniso_dist) Allocate(CS%lev_cs(i)%da(0:n_inel_lev(i)))
         End If
-        Rewind(ENDF_unit)  !return to the start of the file
-        Read(ENDF_unit,*)
+        !check if resonance cross sections are present
+        Find_MFMT(ENDF_unit,1,451)
+        !the next read statement on ENDF_unit will read the first line of MF=1, MT=451
         Read(ENDF_unit,'(A22,I11)') trash_c,LRP
         If (LRP .EQ. 1) Then  !resonance parameters are included in the ENDF tape
             CS%has_res_cs(i) = .TRUE.
@@ -606,6 +615,7 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
                 !UNDONE
             End If
         End If
+        !!  ELASTIC SCATTERING INTERACTION CROSS SECTION
         !Find this interaction in the ENDF tape (MF=3, MT=2)
         Call Find_MFMT(ENDF_unit,3,2)
         !the next read statement on ENDF_unit will read the first line of MF=3, MT=2
@@ -618,15 +628,22 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
             Write(v_unit,'(A,I0,A,I0,A)') Trim(isotope_names(i))//' MF=',3,', MT=',2,' (elastic)'
             Call Write_stored_sig(v_unit,CS%lev_cs(i)%sig(0),CS%n_E_uni,CS%E_uni)
         End If
+        !!  ELASTIC SCATTERING ANGULAR DISTRIBUTION
         If (aniso_dist) Then  !need elastic ang dist file
             !Find this interaction in the ENDF tape (MF=4, MT=2)
             Call Find_MFMT(ENDF_unit,4,2)
             !the next read statement on ENDF_unit will read the first line of MF=4, MT=2
             Call Read_da_sect(ENDF_unit,E_scratch,Ang_dist_scratch,n_p,LTT)
-            If (Trim_AD_for_E(n_p,E_scratch,Ang_dist_scratch,E_min,E_max)) Then
-                Call Map_and_Store_AD(CS%n_E_uni,CS%E_uni,n_p,E_scratch,Ang_dist_scratch,CS%lev_cs(i)%da(0))
+            If (LTT .EQ. 0) Then
+                CS%lev_cs(i)%da(0)%n_da = 0
+                CS%lev_cs(i)%da(0)%is_iso = .TRUE.
+            Else
+                CS%lev_cs(i)%da(0)%is_iso = .FALSE.
+                If (Trim_AD_for_E(n_p,E_scratch,Ang_dist_scratch,E_min,E_max)) Then
+                    Call Map_and_Store_AD(CS%n_E_uni,CS%E_uni,n_p,E_scratch,Ang_dist_scratch,CS%lev_cs(i)%da(0))
+                End If
+                Deallocate(E_scratch,Ang_dist_scratch)
             End If
-            Deallocate(E_scratch,Ang_dist_scratch)
             If (v) Then  !write the stored values for elastic scatter angular distribution
                 !UNDONE
                 !UNDONE
@@ -648,12 +665,14 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
                 End Do
             End If
         End If
+        !!  INELASTIC SCATTER
         If (.NOT. elastic_only) Then  !need inelastic level cross section files
             CS%lev_cs(i)%Q = -1._dp
             CS%lev_cs(i)%Q(0) = 0._dp
             CS%lev_cs(i)%thresh = -1
             CS%lev_cs(i)%thresh(0) = 0
             Do j = 1,n_inel_lev(i)
+                !!  INELASTIC SCATTER INTERACTION CROSS SECTION
                 !Find this interaction in the ENDF tape (MF=3, MT=50+j)
                 Call Find_MFMT(ENDF_unit,3,50+j)
                 !the next read statement on ENDF_unit will read the first line of MF=3, MT=50+j
@@ -667,15 +686,21 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
                     Write(v_unit,'(A,I0,A,I0,A)') Trim(isotope_names(i))//' MF=',3,', MT=',50+j,' (inelastic)'
                     Call Write_stored_sig(v_unit,CS%lev_cs(i)%sig(j),CS%n_E_uni,CS%E_uni)
                 End If
+                !!  INELASTIC SCATTER ANGULAR DISTRIBUTION
                 If (aniso_dist) Then  !need inelastic level ang dist files
                     !Find this interaction in the ENDF tape (MF=4, MT=50+j)
                     Call Find_MFMT(ENDF_unit,4,50+j)
                     !the next read statement on ENDF_unit will read the first line of MF=4, MT=50+j
-                    Call Read_da_sect(ENDF_unit,E_scratch,Ang_dist_scratch,n_p,ltt)
-                    If (Trim_AD_for_E(n_p,E_scratch,Ang_dist_scratch,E_min,E_max)) Then
-                        Call Map_and_Store_AD(CS%n_E_uni,CS%E_uni,n_p,E_scratch,Ang_dist_scratch,CS%lev_cs(i)%da(j),CS%lev_cs(i)%thresh(j))
+                    Call Read_da_sect(ENDF_unit,E_scratch,Ang_dist_scratch,n_p,LTT)
+                    If (LTT .EQ. 0) Then
+                        CS%lev_cs(i)%da(j)%n_da = 0
+                        CS%lev_cs(i)%da(j)%is_iso = .TRUE.
+                    Else
+                        If (Trim_AD_for_E(n_p,E_scratch,Ang_dist_scratch,E_min,E_max)) Then
+                            Call Map_and_Store_AD(CS%n_E_uni,CS%E_uni,n_p,E_scratch,Ang_dist_scratch,CS%lev_cs(i)%da(j),CS%lev_cs(i)%thresh(j))
+                        End If
+                        Deallocate(E_scratch,Ang_dist_scratch)
                     End If
-                    Deallocate(E_scratch,Ang_dist_scratch)
                     If (v) Then  !write the stored values for this inelastic scatter angular distribution
                         !UNDONE
                         !UNDONE
@@ -683,11 +708,11 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
                         !UNDONE
                         !UNDONE
                     End If
-                    If (ltt .EQ. 1) Then
+                    If (LTT .EQ. 1) Then
                         If (MaxVal(CS%lev_cs(i)%da(j)%da(:)%n_a) .GT. CS%n_a_max) CS%n_a_max = MaxVal(CS%lev_cs(i)%da(j)%da(:)%n_a)
-                    Else If (ltt .EQ. 2) Then
+                    Else If (LTT .EQ. 2) Then
                         If (MaxVal(CS%lev_cs(i)%da(j)%da(:)%n_a) .GT. CS%n_a_tab_max) CS%n_a_tab_max = MaxVal(CS%lev_cs(i)%da(j)%da(:)%n_a)
-                    Else If (ltt .EQ. 3) Then
+                    Else If (LTT .EQ. 3) Then
                         Do k = 1,CS%lev_cs(i)%da(j)%n_da
                             If (CS%lev_cs(i)%da(j)%da(k)%is_legendre) Then
                                 If (CS%lev_cs(i)%da(j)%da(k)%n_a .GT. CS%n_a_max) CS%n_a_max = CS%lev_cs(i)%da(j)%da(k)%n_a
@@ -852,14 +877,15 @@ Subroutine Read_da_sect(da_unit,E_list,da_list,n_p,LTT)
     Logical :: new_line
 
     !check the LTT value on the first line to ensure Legendre Coeffs format
-    Read(da_unit,'(3E11.6E1,I11)') trash, trash, trash, LTT
-    Read(da_unit,'(3E11.6E1,I11)') trash, trash, trash, LCT
+    Read(da_unit,'(A33,I11)') trash_c, LTT
+    Read(da_unit,'(A33,I11)') trash_c, LCT
     !values must be in CM frame, check and throw error if they are not
     If (LCT .NE. 2) Call Output_Message('ERROR:  Cross_Sections: Read_da_sect:  Incorrectly formatted file, LCT=',LCT,kill=.TRUE.)
+    If (LTT .EQ. 0) Return  !LTT=0 indicates isotropic distribution, special handling in calling routine
+    !the 6th entry on the next line energy levels in the file (for LTT=1 or 2, if LTT=3 it is the number of energies for the legendre section)
+    Read (da_unit,'(A55,I11)') trash_c,n_p
     !Skip the next line
     Read (da_unit,*)
-    !the next line begins with the number of energy levels in the file
-    Read (da_unit,'(I11)') n_p
     If (LTT .EQ. 3) Then !there is a second range of energies later in the section
         !advance in the file to the end of the Legendre section
         Do i = 1,n_p
@@ -872,11 +898,10 @@ Subroutine Read_da_sect(da_unit,E_list,da_list,n_p,LTT)
                 Read(da_unit,*)
             End Do
         End Do
-        Read(da_unit,*)
-        !first entry of next line is number of additional energy points
-        Read (da_unit,'(I11)') n_p_2
+        !the 6th entry on the next line energy levels in the tabular section of the file
+        Read (da_unit,'(A55,I11)') trash_c, n_p_2
         !need to rewind the file to the start of the legendre section
-        Do i = 1,n_a_lines + 3
+        Do i = 1,n_a_lines + 1
             Backspace(da_unit)
         End Do
     Else
