@@ -39,7 +39,7 @@ Module n_Cross_Sections
         Logical :: is_Legendre
         Logical :: is_tab
         Real(dp), Allocatable :: a(:)  !has dim 0:n_a, list of legendre coefficients or pdf values
-        Real(dp), Allocatable :: ua(:,:)  !has dim 1:n_a,1:2, for tabulated cosine pdf, list of cosines
+        Real(dp), Allocatable :: ua(:,:)  !has dim 1:n_a,1:2, for tabulated cosine PDFs, dim 1 is cosine value, dim 2 is proability density at that cosine
     End Type
 
     Type :: da_Type
@@ -968,6 +968,7 @@ Subroutine Read_da_sect(da_unit,E_list,da_list,n_p,LTT)
                     Read(da_unit,'(2E11.6E1)', ADVANCE = 'NO') da_list(i)%ua(j,1), da_list(i)%ua(j,2)
                 End If
             End Do
+            da_list(i)%ua(:,2) = Log(da_list(i)%ua(:,2))  !Store logarithm of probability density values (reduces cost of interpolations)
         End Do
         !update total n_p
         n_p = n_p + n_p_2
