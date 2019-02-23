@@ -483,7 +483,11 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
                                 End If
                             End If
                     End Select
-                    If (first_time) n_energies = n_energies + n_p  !FIRST TIME
+                    If (first_time) Then  !FIRST TIME
+                        n_energies = n_energies + n_p
+                    Else  !SECOND TIME
+                        n_start = n_start + n_p
+                    End If
                 Else
                     If (first_time .AND. v) Write(v_unit,'(A)',ADVANCE='YES') ' - uncounted'  !FIRST TIME
                 End If
@@ -503,6 +507,7 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
             first_time = .FALSE.
         Else  !SECOND TIME
             n_p = n_energies !stash n_energies before it gets overwritten
+            E_uni_scratch = E_uni_scratch / 1000._dp  !convert to kev
             !E_uni_scratch is now a HUGE list of all the energies in all the files we are going to use, sort and eliminate duplicates
             Call Union_Sort(E_uni_scratch,n_energies,E_min,E_max)
             If (n_energies .GT. Huge(CS%n_E_uni)) Call Output_Message('ERROR:  Cross_Sections: Setup_Cross_Sections:  Length of unified energy grid exceeds available index',kill=.TRUE.)
@@ -546,6 +551,10 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
         Open(NEWUNIT = ENDF_unit , FILE = ENDF_file_name , STATUS = 'OLD' , ACTION = 'READ' , IOSTAT = stat)
         If (stat .NE. 0) Call Output_Message('ERROR:  Cross_Sections: Setup_Cross_Sections:  File open error, '//ENDF_file_name//', IOSTAT=',stat,kill=.TRUE.)
         !read in absorption, resonance, elastic, and inelastic interaction cross sections and angular distributions
+        CS%abs_cs(i)%n_modes = n_abs_modes(i)
+        Allocate(CS%abs_cs(i)%thresh(1:n_abs_modes(i)))
+        CS%abs_cs(i)%thresh = -1
+        Allocate(CS%abs_cs(i)%sig(1:n_abs_modes(i)))
         Do j = 1,n_abs_modes(i)
             !Find this interaction in the ENDF tape (MF=3, MT=abs_modes(j,i))
             Call Find_MFMT(ENDF_unit,3,abs_modes(j,i))
@@ -1298,7 +1307,6 @@ Subroutine Map_and_Store_CS(n_E_uni,E_uni,n_p,E_list,CS_list,n_r,Int_list,cs,i_t
     !Create key
     Allocate(cs%E_key(1:n_p))
     cs%E_key = -1
-    j = 1
     Do i = 1,n_p
         Do j = 1,n_E_uni
             If (E_uni(j) .EQ. E_list(i)) Then
@@ -1353,7 +1361,6 @@ Subroutine Map_and_Store_AD(n_E_uni,E_uni,n_p,E_list,AD_list,ad,i_thresh)
     !Create key
     Allocate(ad%E_key(1:n_p))
     ad%E_key = -1
-    j = 1
     Do i = 1,n_p
         Do j = 1,n_E_uni
             If (E_uni(j) .EQ. E_list(i)) Then
