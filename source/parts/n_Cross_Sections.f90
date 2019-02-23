@@ -387,6 +387,7 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
                                                     !insert
                                                     abs_thresh(k,i) = E_uni_scratch(n_start+j)
                                                     abs_modes(k,i) = MT
+                                                    Exit
                                                 End If
                                             End Do
                                         End If
@@ -503,15 +504,18 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
             Close(ENDF_unit)
         End Do
         If (first_time) Then  !FIRST TIME
+            first_time = .FALSE.
+        Else  !SECOND TIME
             If (v) Then
                 Write(v_unit,*)
                 Do i = 1,CS%n_iso
                     Write(v_unit,'(A,I0,A,I0,A)') Trim(isotope_names(i))//' ENDF tape contains ',n_abs_modes(i),' absorption modes and ',n_inel_lev(i),' inelastic levels'
+                    Do j = 1,n_abs_modes(i)
+                        Write(v_unit,'(A,I5,ES26.16E3)') '  ',abs_modes(j,i),abs_thresh(j,i)
+                    End Do
                 End Do
                 Write(v_unit,'(I0,A)') n_energies,' total energies to map on unified list'
             End If
-            first_time = .FALSE.
-        Else  !SECOND TIME
             n_p = n_energies !stash n_energies before it gets overwritten
             E_uni_scratch = E_uni_scratch / 1000._dp  !convert to kev
             !E_uni_scratch is now a HUGE list of all the energies in all the files we are going to use, sort and eliminate duplicates
@@ -598,7 +602,7 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
             If (aniso_dist) Allocate(CS%lev_cs(i)%da(0:n_inel_lev(i)))
         End If
         !check if resonance cross sections are present
-        Find_MFMT(ENDF_unit,1,451)
+        Call Find_MFMT(ENDF_unit,1,451)
         !the next read statement on ENDF_unit will read the first line of MF=1, MT=451
         Read(ENDF_unit,'(A22,I11)') trash_c,LRP
         If (LRP .EQ. 1) Then  !resonance parameters are included in the ENDF tape
@@ -630,7 +634,7 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
         !the next read statement on ENDF_unit will read the first line of MF=3, MT=2
         Call Read_sig_sect(ENDF_unit,Q_scratch,CS%An(i),E_scratch,sig_scratch,Interp_scratch,n_p,n_r)
         If (Trim_CS_for_E(n_p,E_scratch,sig_scratch,n_r,Interp_scratch,E_min,E_max)) Then
-            Call Map_and_Store_CS(CS%n_E_uni,CS%E_uni,n_p,E_scratch,sig_scratch,n_r,Interp_Scratch,CS%abs_cs(i)%sig(j),CS%abs_cs(i)%thresh(j))
+            Call Map_and_Store_CS(CS%n_E_uni,CS%E_uni,n_p,E_scratch,sig_scratch,n_r,Interp_Scratch,CS%lev_cs(i)%sig(0),CS%lev_cs(i)%thresh(0))
         End If
         Deallocate(E_scratch,sig_scratch,Interp_scratch)
         If (v) Then  !write the stored values for elastic scatter interaction cross section
@@ -774,7 +778,11 @@ Subroutine Write_stored_sig(v_unit,sig,n_E_uni,E_uni)
     Write(v_unit,'(3A26,2A9)') '   E-keyed [keV]          ','   sig (b)                ','   ln(sig)                ','    key  ','    map  '
     Write(v_unit,'(3A26,2A9)') '  ------------------------','  ------------------------','  ------------------------','  -------','  -------'
     Do k = 1,sig%n_sig
-        Write(v_unit,'(3ES26.16E3,2I9)') E_uni(sig%E_key(k)),sig%sig(k),sig%lnsig(k),sig%E_map(sig%E_key(k)),k
+        If (Any(sig%interp(:,2).EQ.4) .OR. Any(sig%interp(:,2).EQ.5)) Then !lnsigs are present
+            Write(v_unit,'(3ES26.16E3,2I9)') E_uni(sig%E_key(k)),sig%sig(k),sig%lnsig(k),sig%E_map(sig%E_key(k)),k
+        Else  !lnsig not stored
+            Write(v_unit,'(2ES26.16E3,A26,2I9)') E_uni(sig%E_key(k)),sig%sig(k),'  n/a  ',sig%E_map(sig%E_key(k)),k
+        End If
     End Do
     Write(v_unit,*)
 End Subroutine Write_stored_sig
@@ -880,7 +888,7 @@ Subroutine Read_da_sect(da_unit,E_list,da_list,n_p,LTT)
     Integer :: i,j
     Real(dp) :: trash
     Character(80) :: trash_c
-    Integer :: n_a,n_a_lines
+    Integer :: n_a,n_a_lines,n_skipped_lines
     Integer :: LCT
     Integer :: n_p_2
     Logical :: new_line
@@ -897,20 +905,24 @@ Subroutine Read_da_sect(da_unit,E_list,da_list,n_p,LTT)
     Read (da_unit,*)
     If (LTT .EQ. 3) Then !there is a second range of energies later in the section
         !advance in the file to the end of the Legendre section
+        n_skipped_lines = 0
         Do i = 1,n_p
             !The first line in each energy contains the energy in eV in the second position and the number of Legendre coefficents in the 5th position
             Read(da_unit,'(A44,I11)') trash_c, n_a
+            n_skipped_lines = n_skipped_lines + 1
             n_a_lines = (n_a / 6)  !integer divide
             If (Mod(n_a,6) .GT. 0) n_a_lines = n_a_lines + 1
             !advance to the next energy
             Do j = 1,n_a_lines
                 Read(da_unit,*)
+                n_skipped_lines = n_skipped_lines + 1
             End Do
         End Do
         !the 6th entry on the next line energy levels in the tabular section of the file
         Read (da_unit,'(A55,I11)') trash_c, n_p_2
+        n_skipped_lines = n_skipped_lines + 1
         !need to rewind the file to the start of the legendre section
-        Do i = 1,n_a_lines + 1
+        Do i = 1,n_skipped_lines
             Backspace(da_unit)
         End Do
     Else
@@ -1030,14 +1042,12 @@ Subroutine Read_res_sect(res_unit,res_List)
     Integer :: nS,nJsec
     Integer :: nRj
 
-    !check the LRF value on the fourth line to ensure Reich-Moore format
-    !check the NRO and NAPS value on the fourth line to ensure energy independent scattering radius and use of SPI instead of channel radius
-    Read(res_unit,*)
+    !check the LRF value on the third line to ensure Reich-Moore format
+    !check the NRO and NAPS value on the third line to ensure energy independent scattering radius and use of SPI instead of channel radius
     Read(res_unit,*)
     Read(res_unit,*)
     Read(res_unit,'(3E11.6E1,3I11)') res_list%E_range(1), res_list%E_range(2), trash, LRF, NRO, NAPS
-    res_list%E_range(1) = res_list%E_range(1) / 1000._dp  !convert to keV
-    res_list%E_range(2) = res_list%E_range(2) / 1000._dp  !convert to keV
+    res_list%E_range = res_list%E_range / 1000._dp  !convert to keV
     If (LRF .NE. 3) Call Output_Message('ERROR:  Cross_Sections: Read_res_sect:  Incorrectly formatted file, LRF=',LRF,kill=.TRUE.)
     If (NRO .NE. 0) Call Output_Message('ERROR:  Cross_Sections: Read_res_sect:  Incorrectly formatted file, NRO=',NRO,kill=.TRUE.)
     If (NAPS .NE. 1) Call Output_Message('ERROR:  Cross_Sections: Read_res_sect:  Incorrectly formatted file, NAPS=',NAPS,kill=.TRUE.)
@@ -1323,7 +1333,7 @@ Subroutine Map_and_Store_CS(n_E_uni,E_uni,n_p,E_list,CS_list,n_r,Int_list,cs,i_t
     j = 2
     Do i = t,n_E_uni
         If (E_uni(i) .GT. E_list(j)) j = j + 1
-        If (j .GT. n_p) Then
+        If (j .GE. n_p) Then
             cs%E_map(i:n_E_uni) = j
             Exit
         End If
@@ -1377,7 +1387,7 @@ Subroutine Map_and_Store_AD(n_E_uni,E_uni,n_p,E_list,AD_list,ad,i_thresh)
     j = 2
     Do i = t,n_E_uni
         If (E_uni(i) .GT. E_list(j)) j = j + 1
-        If (j .GT. n_p) Then
+        If (j .GE. n_p) Then
             ad%E_map(i:n_E_uni) = j
             Exit
         End If
