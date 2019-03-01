@@ -66,7 +66,10 @@ Module n_Cross_Sections
 
     Type ::  res_sig_spin_Type
         Integer :: n_r  !number of resonant energies in this spin
-        Real(dp), Allocatable :: ErGnGr(:,:)  !has dimension 1:3 and 1:n_r, dim 1 is 1=Er[keV], dim 2 is neutron width, dim 3 is radiation width
+        !For Riech-Moore formalism:
+        Real(dp), Allocatable :: ErGnGr(:,:)  !has dimension 1:3 and 1:n_r, dim 1 is 1=Er[keV], 2=neutron width, 3=radiation width
+        !For MLBW formalism:
+        Real(dp), Allocatable :: ErGtGnGr(:,:)  !has dimension 1:4 and 1:n_r, dim 1 is 1=Er[keV], 2=total width, 3=neutron width, 4=radiation width
     End Type
 
     Type ::  res_sig_level_Type
@@ -77,6 +80,9 @@ Module n_Cross_Sections
     End Type
 
     Type :: res_sig_Type
+        Logical :: is_RM  !indicates use of Riech-Moore formalism for resonance representation
+        Logical :: is_MLBW  !indicates use of MLBW formaism for resonance representation
+        !Other formalisms (SLBW, Adler-Adler, Limited-R) are not supported at this time
         Real(dp) :: E_range(1:2)  ![keV]  low and high energy bounds over which resonant contribution is computed
         Real(dp) :: k0  !=2.196771E-3_dp*(An/(An+1._dp)), gives k (neutron wave #) when miltiplied by Sqrt(E[eV])
         Integer :: n_L  !number of levels in which resonances are grouped
