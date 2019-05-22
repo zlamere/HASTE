@@ -202,8 +202,7 @@ Function rng_mt19937_i(RNG) Result(y)
     Integer(il) :: y
     Class(MT19937_Type), Intent(InOut) :: RNG
     Integer :: i
-    Integer(il), Parameter :: ta = -1727483681_il !constant vector a
-    Integer(il), Parameter :: mag01(0:1) = (/ 0_il , ta /) !constant vector a
+    Integer(il), Parameter :: mag01(0:1) = (/ 0_il , -1727483681_il /) !constant vector a
     Integer(il), Parameter :: lm = 2147483647_il !least significant r bits
     Integer(il), Parameter :: um = ISHFT(1073741824,1) !-2147483647_il-1_il !most significant w-r bits
     Integer(il), Parameter :: tb = -1658038656_il !tempering parameters
@@ -522,9 +521,9 @@ Function rng_mt2203_i(RNG) Result(y)
     Integer(il), Parameter :: lmask = 31_il !least significant r bits
     Integer(il), Parameter :: umask = -32_il !most significant w-r bits
 
-    mag01 = (/ 0_il , RNG%aj /)
     If (RNG%mti .GT. n2203) Then  !generate N words at one time
         If (RNG%seeded) Then  !needs new words
+            mag01 = (/ 0_il , RNG%aj /)
             Do  i = 1,n2203-m2203
                 y = IOR(IAND(RNG%mt(i),umask), IAND(RNG%mt(i+1),lmask))
                 RNG%mt(i) = IEOR(IEOR(RNG%mt(i+m2203), ISHFT(y,-1_il)),mag01(IAND(y,1_il)))
