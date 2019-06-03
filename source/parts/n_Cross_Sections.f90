@@ -66,10 +66,8 @@ Module n_Cross_Sections
 
     Type ::  res_sig_spin_Type
         Integer :: n_r  !number of resonant energies in this spin
-        !For Riech-Moore formalism:
-        Real(dp), Allocatable :: ErGnGr(:,:)  !has dimension 1:3 and 1:n_r, dim 1 is 1=Er[keV], 2=neutron width, 3=radiation width
-        !For MLBW formalism:
-        Real(dp), Allocatable :: ErGtGnGr(:,:)  !has dimension 1:4 and 1:n_r, dim 1 is 1=Er[keV], 2=total width, 3=neutron width, 4=radiation width
+        Real(dp), Allocatable :: ErG(:,:)  !For Riech-Moore formalism: has dimension 1:3 and 1:n_r, dim 1 is 1=Er[keV], 2=neutron width, 3=radiation width
+                                           !For MLBW formalism: has dimension 1:4 and 1:n_r, dim 1 is 1=Er[keV], 2=total width, 3=neutron width, 4=radiation width
     End Type
 
     Type ::  res_sig_level_Type
@@ -1048,13 +1046,13 @@ Subroutine Read_res_sect(res_unit,res_List)
     Integer :: nS,nJsec
     Integer :: nRj
 
-    !check the LRF value on the third line to ensure Reich-Moore format
+    !check the LRF value on the third line to ensure MLBW or Reich-Moore format
     !check the NRO and NAPS value on the third line to ensure energy independent scattering radius and use of SPI instead of channel radius
     Read(res_unit,*)
     Read(res_unit,*)
     Read(res_unit,'(3E11.6E1,3I11)') res_list%E_range(1), res_list%E_range(2), trash, LRF, NRO, NAPS
     res_list%E_range = res_list%E_range / 1000._dp  !convert to keV
-    If (LRF .NE. 3) Call Output_Message('ERROR:  Cross_Sections: Read_res_sect:  Incorrectly formatted file, LRF=',LRF,kill=.TRUE.)
+    If (LRF.NE.2 .AND. LRF.NE.3) Call Output_Message('ERROR:  Cross_Sections: Read_res_sect:  Incorrectly formatted file, LRF=',LRF,kill=.TRUE.)
     If (NRO .NE. 0) Call Output_Message('ERROR:  Cross_Sections: Read_res_sect:  Incorrectly formatted file, NRO=',NRO,kill=.TRUE.)
     If (NAPS .NE. 1) Call Output_Message('ERROR:  Cross_Sections: Read_res_sect:  Incorrectly formatted file, NAPS=',NAPS,kill=.TRUE.)
     !read AP and n_L from the next line
@@ -1084,7 +1082,11 @@ Subroutine Read_res_sect(res_unit,res_List)
             Read(res_unit,'(6E11.6E1)') res_scratch(1,r),res_scratch(2,r),res_scratch(3,r),res_scratch(4,r),res_scratch(5,r),res_scratch(6,r)
         End Do
         !check for fission resonances
-        If (Any(res_scratch(5:6,:).NE.0._dp)) Call Output_Message('ERROR:  Cross_Sections: Read_res_sect:  Dude, a fissionable atmosphere is just ridiculous. ',kill=.TRUE.)
+        If (LRF .EQ. 2) Then !MLBW
+            If (Any(res_scratch(6,:).NE.0._dp)) Call Output_Message('ERROR:  Cross_Sections: Read_res_sect:  Dude, a fissionable atmosphere is just ridiculous. ',kill=.TRUE.)
+        Else !LRF .EQ.3, Reich-Moore
+            If (Any(res_scratch(5:6,:).NE.0._dp)) Call Output_Message('ERROR:  Cross_Sections: Read_res_sect:  Dude, a fissionable atmosphere is just ridiculous. ',kill=.TRUE.)
+        End If
         !count unique spin values
         Js = res_scratch(2,:)
         Call Union_Sort(Js,nJ)
@@ -1136,15 +1138,20 @@ Subroutine Read_res_sect(res_unit,res_List)
                 If (res_scratch(2,i) .EQ. Js(J)) nRj = nRj + 1
             End Do
             res_list%L(l)%J(J)%n_r = nRj
-            Allocate(res_list%L(l)%J(J)%ErGnGr(1:3,1:nRj))
+            If (LRF .EQ. 2) Then !MLBW
+                Allocate(res_list%L(l)%J(J)%ErG(1:4,1:nRj))
+            Else !LRF.EQ.3, Reich-Moore
+                Allocate(res_list%L(l)%J(J)%ErG(1:3,1:nRj))
+            End If
             k = 1
             Do i = 1,nR
                 If (res_scratch(2,i) .EQ. Js(J)) Then
                     !NOTE: Resonance parameters are stored with energy in eV (NOT keV like the rest of the cross sections)
-                    res_list%L(l)%J(J)%ErGnGr(1,k) = res_scratch(1,i)
-                    res_list%L(l)%J(J)%ErGnGr(2,k) = res_scratch(3,i)
-                    res_list%L(l)%J(J)%ErGnGr(3,k) = res_scratch(4,i)
-                    res_scratch(4,i) = 0._dp
+                    res_list%L(l)%J(J)%ErG(1,k) = res_scratch(1,i)
+                    res_list%L(l)%J(J)%ErG(2,k) = res_scratch(3,i)
+                    res_list%L(l)%J(J)%ErG(3,k) = res_scratch(4,i)
+                    If (LRF .EQ. 2) res_list%L(l)%J(J)%ErG(4,k) = res_scratch(5,i)
+                    res_scratch(2,i) = 0._dp
                     If (k .GE. nRj) Exit
                     k = k + 1
                 End If
@@ -1586,6 +1593,7 @@ End Function sig_A
 
 Subroutine sig_Resonance(r,E,sT,sS)
     Use Kinds, Only: dp
+    Use Global, Only: Pi
     Use Global, Only: TwoPi
     Implicit None
     Type(res_sig_Type), Intent(In) :: r
@@ -1624,27 +1632,32 @@ Subroutine sig_Resonance(r,E,sT,sS)
             End Select
         End If
         two_phi = 2._dp * two_phi
-        !TODO See if the following loop can be vectorized (for speed, or at least compactness of notation)
-        Do J = 1,r%L(l)%n_J  !sum over spins (J)
-            !compute the R-function
-            Rnn = cmplx1 - half_i * Sum( &  !sum over r
-                                         & CMPLX(r%L(l)%J(j)%ErGnGr(2,:),KIND=dp) / & 
-                                         & (CMPLX(r%L(l)%J(j)%ErGnGr(1,:) - E_eV,KIND=dp) - half_i*CMPLX(r%L(l)%J(j)%ErGnGr(3,:),KIND=dp)) &
-                                         & )
-            !compute the element of the scattering matrix
-            Unn = Exp(CMPLX(0._dp,two_phi,KIND=dp)) * (cmplx2 / Rnn - cmplx1)
-            !compute second channel contribution where applicable
-            If (r%L(l)%dj(J)) Then
-                Dj = 2._dp * (1._dp - Cos(two_phi))
-            Else
-                Dj = 0._dp
-            End If
-            sT = sT + r%L(l)%gj(J) * (1._dp - Real(Unn,dp) + Dj)
-            sS = sS + r%L(l)%gj(J) * (Abs(cmplx1 - Unn)**2 + Dj)
-        End Do
+        If (r%is_RM) Then !Reich-Moore formalism
+            !TODO See if the following loop can be vectorized (for speed, or at least compactness of notation)
+            Do J = 1,r%L(l)%n_J  !sum over spins (J)
+                !compute the R-function
+                Rnn = cmplx1 - half_i * Sum( &  !sum over r
+                                             & CMPLX(r%L(l)%J(j)%ErG(2,:),KIND=dp) / & 
+                                             & (CMPLX(r%L(l)%J(j)%ErG(1,:) - E_eV,KIND=dp) - half_i*CMPLX(r%L(l)%J(j)%ErG(3,:),KIND=dp)) &
+                                             & )
+                !compute the element of the scattering matrix
+                Unn = Exp(CMPLX(0._dp,two_phi,KIND=dp)) * (cmplx2 / Rnn - cmplx1)
+                !compute second channel contribution where applicable
+                If (r%L(l)%dj(J)) Then
+                    Dj = 2._dp * (1._dp - Cos(two_phi))
+                Else
+                    Dj = 0._dp
+                End If
+                sT = sT + r%L(l)%gj(J) * (1._dp - Real(Unn,dp) + Dj)
+                sS = sS + r%L(l)%gj(J) * (Abs(cmplx1 - Unn)**2 + Dj)
+            End Do
+            sT = sT * TwoPi / k**2
+            sS = sS * Pi / k**2
+        Else !r%is_MLBW, MLBW formalism
+            !UNDONE MLBW formalism reconstruction loop(s)
+        End If
     End Do
-    sT = sT * TwoPi / k**2
-    sS = sS * TwoPi / k**2
+
 End Subroutine sig_Resonance
 
 Function sig_Composite(E,n_E,E_list,lnE_list,E_index,n1,n2,t_list,sig_list) Result(sig)
@@ -1666,7 +1679,7 @@ Function sig_Composite(E,n_E,E_list,lnE_list,E_index,n1,n2,t_list,sig_list) Resu
     Real(dp) :: E1,E2
     Real(dp) :: sig1,sig2
     Integer :: method
-    Integer, Parameter :: Hist_interpolation = 1  !y is constant in x (constant, histogram)
+    Integer, Parameter :: Hist_interpolation   = 1  !y is constant in x (constant, histogram)
     Integer, Parameter :: LinLin_interpolation = 2  !y is linear in x (linear-linear)
     Integer, Parameter :: LinLog_interpolation = 3  !y is linear in ln(x) (linear-log)
     Integer, Parameter :: LogLin_interpolation = 4  !ln(y) is linear in x (log-linear)
