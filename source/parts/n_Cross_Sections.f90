@@ -114,6 +114,8 @@ Module n_Cross_Sections
 
     Real(dp), Parameter :: rTol = 1.E-5_dp  !relative tolerance for convergence of broadening integrals, cross section data has about 5 good digits...
     
+    !MT_disappearance lists the ENDF MT numbers corresponding to neutron interactions WITHOUT a neutron in the exit channel.
+    !MTs matching this list are read and stored as absorption modes for the isotope of interest.
     Integer, Parameter :: MT_disappearance(1:15) = (/ 102, &  !n,g
                                                     & 103, &  !n,p
                                                     & 104, &  !n,d
@@ -169,6 +171,8 @@ Module n_Cross_Sections
                                                 & 88, &  !n,n' of the 38-th level
                                                 & 89, &  !n,n' of the 39-th level
                                                 & 90  /) !n,n' of the 40-th level
+    !MT_excluded lists the ENDF MT numbers corresponding to neutron interactions WITH a neutron in the exit channel other than n,n and n,n'.
+    !MTs matching this list are currently IGNORED by the program.
     Integer, Parameter :: MT_excluded(1:22) = (/  5, &  !interactions not included in any other MT
                                                & 11, &  !n,2n+d
                                                & 16, &  !n,2n
@@ -211,7 +215,7 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
     Real(dp), Intent(In) :: E_min,E_max
     Logical, Intent(In), Optional :: verbose  !.TRUE. causes comprehensive output of cross section data to be generated during the setup process.
                                               !       Includes summary of ENDF data files read in and detailed output of interpreted cross section data.
-                                              !       WARNING:  This VERBOSE output is placed in the resources folder.
+                                              !       WARNING:  This VERBOSE output is placed in the resources folder and cannot be redirected (sue me).
     Integer :: n_elements
     Character(:), Allocatable :: file_name_start,ENDF_file_name
     Integer, Allocatable :: n_isotopes(:)
@@ -1052,7 +1056,15 @@ Subroutine Read_res_sect(res_unit,res_List)
     Read(res_unit,*)
     Read(res_unit,'(3E11.6E1,3I11)') res_list%E_range(1), res_list%E_range(2), trash, LRF, NRO, NAPS
     res_list%E_range = res_list%E_range / 1000._dp  !convert to keV
-    If (LRF.NE.2 .AND. LRF.NE.3) Call Output_Message('ERROR:  Cross_Sections: Read_res_sect:  Incorrectly formatted file, LRF=',LRF,kill=.TRUE.)
+    If (LRF .EQ. 2) Then  !MLBW formalism
+        res_list%is_MLBW = .TRUE.
+        res_list%is_RM = .FALSE.
+    Else If (LRF .EQ. 3) Then  !Reich-Moore formalism
+        res_list%is_MLBW = .FALSE.
+        res_list%is_RM = .TRUE.
+    Else  !this formalism is not supported
+        Call Output_Message('ERROR:  Cross_Sections: Read_res_sect:  Incorrectly formatted file, LRF=',LRF,kill=.TRUE.)
+    End If
     If (NRO .NE. 0) Call Output_Message('ERROR:  Cross_Sections: Read_res_sect:  Incorrectly formatted file, NRO=',NRO,kill=.TRUE.)
     If (NAPS .NE. 1) Call Output_Message('ERROR:  Cross_Sections: Read_res_sect:  Incorrectly formatted file, NAPS=',NAPS,kill=.TRUE.)
     !read AP and n_L from the next line
@@ -1082,9 +1094,9 @@ Subroutine Read_res_sect(res_unit,res_List)
             Read(res_unit,'(6E11.6E1)') res_scratch(1,r),res_scratch(2,r),res_scratch(3,r),res_scratch(4,r),res_scratch(5,r),res_scratch(6,r)
         End Do
         !check for fission resonances
-        If (LRF .EQ. 2) Then !MLBW
+        If (res_list%is_MLBW) Then
             If (Any(res_scratch(6,:).NE.0._dp)) Call Output_Message('ERROR:  Cross_Sections: Read_res_sect:  Dude, a fissionable atmosphere is just ridiculous. ',kill=.TRUE.)
-        Else !LRF .EQ.3, Reich-Moore
+        Else !res_list%is_RM
             If (Any(res_scratch(5:6,:).NE.0._dp)) Call Output_Message('ERROR:  Cross_Sections: Read_res_sect:  Dude, a fissionable atmosphere is just ridiculous. ',kill=.TRUE.)
         End If
         !count unique spin values
@@ -1138,9 +1150,9 @@ Subroutine Read_res_sect(res_unit,res_List)
                 If (res_scratch(2,i) .EQ. Js(J)) nRj = nRj + 1
             End Do
             res_list%L(l)%J(J)%n_r = nRj
-            If (LRF .EQ. 2) Then !MLBW
+            If (res_list%is_MLBW) Then
                 Allocate(res_list%L(l)%J(J)%ErG(1:4,1:nRj))
-            Else !LRF.EQ.3, Reich-Moore
+            Else !res_list%is_RM
                 Allocate(res_list%L(l)%J(J)%ErG(1:3,1:nRj))
             End If
             k = 1
@@ -1150,7 +1162,7 @@ Subroutine Read_res_sect(res_unit,res_List)
                     res_list%L(l)%J(J)%ErG(1,k) = res_scratch(1,i)
                     res_list%L(l)%J(J)%ErG(2,k) = res_scratch(3,i)
                     res_list%L(l)%J(J)%ErG(3,k) = res_scratch(4,i)
-                    If (LRF .EQ. 2) res_list%L(l)%J(J)%ErG(4,k) = res_scratch(5,i)
+                    If (res_list%is_MLBW) res_list%L(l)%J(J)%ErG(4,k) = res_scratch(5,i)
                     res_scratch(2,i) = 0._dp
                     If (k .GE. nRj) Exit
                     k = k + 1
@@ -1606,6 +1618,7 @@ Subroutine sig_Resonance(r,E,sT,sS)
     Real(dp) :: two_phi
     Complex(dp) :: Rnn,Unn
     Real(dp) :: Dj
+    Complex(dp), Parameter :: imag_i = CMPLX(0._dp,1._dp,KIND=dp)
     Complex(dp), Parameter :: half_i = CMPLX(0._dp,0.5_dp,KIND=dp)
     Complex(dp), Parameter :: cmplx1 = CMPLX(1._dp,KIND=dp)
     Complex(dp), Parameter :: cmplx2 = CMPLX(2._dp,KIND=dp)
@@ -1618,19 +1631,19 @@ Subroutine sig_Resonance(r,E,sT,sS)
     k = r%k0 * Sqrt(E_eV)
     Do l = 1,r%n_L  !sum over levels (l)
         rho = k * r%AP(l)
-        two_phi = rho
-        If (l .GT. 1) Then
-            Select Case (l)
-                Case (2)
-                    two_phi = two_phi - ATAN(rho)
-                Case (3)
-                    two_phi = two_phi - ATAN(3._dp * rho / (3._dp - rho**2))
-                Case (4)
-                    two_phi = two_phi - ATAN(rho * (15._dp - rho)**2 / (15._dp - 6._dp * rho**2))
-                Case (5)
-                    two_phi = two_phi - ATAN(rho * (105._dp - 10._dp * rho**2) / (105._dp - rho**2 * (45._dp + rho**2)))
-            End Select
-        End If
+        rho_sq = rho**2
+        Select Case (l)
+            Case (1)
+                two_phi = rho
+            Case (2)
+                two_phi = rho - ATAN(rho)
+            Case (3)
+                two_phi = rho - ATAN(3._dp * rho / (3._dp - rho_sq))
+            Case (4)
+                two_phi = rho - ATAN(rho * (15._dp - rho_sq) / (15._dp - 6._dp * rho_sq))
+            Case (5)
+                two_phi = rho - ATAN(rho * (105._dp - 10._dp*rho_sq) / (105._dp - rho_sq * (45._dp + rho_sq)))
+        End Select
         two_phi = 2._dp * two_phi
         If (r%is_RM) Then !Reich-Moore formalism
             !TODO See if the following loop can be vectorized (for speed, or at least compactness of notation)
@@ -1651,13 +1664,59 @@ Subroutine sig_Resonance(r,E,sT,sS)
                 sT = sT + r%L(l)%gj(J) * (1._dp - Real(Unn,dp) + Dj)
                 sS = sS + r%L(l)%gj(J) * (Abs(cmplx1 - Unn)**2 + Dj)
             End Do
-            sT = sT * TwoPi / k**2
-            sS = sS * Pi / k**2
         Else !r%is_MLBW, MLBW formalism
             !UNDONE MLBW formalism reconstruction loop(s)
+            Select Case (l)
+                Case (1)
+                    shift = 0._dp
+                    penet = rho
+                Case (2)
+                    a = 1._dp / (1._dp + rho_sq)
+                    shift = -a
+                    penet = a * rho*rho_sq
+                Case (3)
+                    a = 1._dp / (9._dp + rho_sq*(3._dp + rho_sq))
+                    shift = -a * (18._dp + 3._dp*rho_sq)
+                    penet = a * rho*rho_sq**2
+                Case (4)
+                    a = 1._dp / (225._dp + rho_sq*(45._dp + rho_sq*(6._dp + rho_sq)))
+                    shift = -a * (675._dp + rho_sq*(90._dp + 6._dp*rho_sq))
+                    penet = a * rho*rho_sq**3
+                Case (5)
+                    a = 1._dp / (11025._dp + rho_sq*(1575._dp + rho_sq*(135._dp + rho_sq*(10._dp + rho_sq))))
+                    shift = -a * (44100._dp + rho_sq*(4725._dp + rho_sq*(270._dp + 10._dp*rho_sq)))
+                    penet = a * rho*rho_sq**4
+            End Select
+            Do J = 1,r%L(l)%n_J  !sum over spins (J)
+            !UNDONE
+            !UNDONE
+            !UNDONE
+            !UNDONE
+            !UNDONE
+            !UNDONE
+                !compute the element of the scattering matrix
+                Unn = Exp(CMPLX(0._dp,two_phi,KIND=dp)) - imag_i * Sum( &  !sum over r
+                                                                        & CMPLX(r%L(l)%J(j)%ErG(3,:),KIND=dp) / & 
+                                                                        & (CMPLX(r%L(l)%J(j)%ErG(1,:) - E_eV,KIND=dp) - half_i*CMPLX(r%L(l)%J(j)%ErG(2,:),KIND=dp)) &
+                                                                        & )
+                !compute second channel contribution where applicable
+                If (r%L(l)%dj(J)) Then
+                    Dj = 2._dp * (1._dp - Cos(two_phi))
+                Else
+                    Dj = 0._dp
+                End If
+                sS = sS + r%L(l)%gj(J) * (Abs(cmplx1 - Unn)**2 + Dj)
+            !UNDONE
+            !UNDONE
+            !UNDONE
+            !UNDONE
+            !UNDONE
+            End Do
         End If
     End Do
-
+    !UNDONE Do the following lines apply to both RM and MLBW?
+    sT = sT * TwoPi / k**2
+    sS = sS * Pi / k**2
 End Subroutine sig_Resonance
 
 Function sig_Composite(E,n_E,E_list,lnE_list,E_index,n1,n2,t_list,sig_list) Result(sig)
