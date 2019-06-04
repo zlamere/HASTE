@@ -1613,13 +1613,14 @@ Subroutine sig_Resonance(r,E,sT,sS)
     Real(dp), Intent(Out) :: sT
     Real(dp), Intent(Out) :: sS
     Real(dp) :: E_eV  !energy in eV for local calcs
-    Real(dp) :: k,rho
+    Real(dp) :: k
+    Real(dp) :: rho_hat,rho_hat_sq
+    !Real(dp) :: rho,rho_sq
+    !Real(dp) :: a,shift,penet
     Integer :: l,J
     Real(dp) :: two_phi
     Complex(dp) :: Rnn,Unn
     Real(dp) :: Dj
-    Complex(dp), Parameter :: imag_i = CMPLX(0._dp,1._dp,KIND=dp)
-    Complex(dp), Parameter :: half_i = CMPLX(0._dp,0.5_dp,KIND=dp)
     Complex(dp), Parameter :: cmplx1 = CMPLX(1._dp,KIND=dp)
     Complex(dp), Parameter :: cmplx2 = CMPLX(2._dp,KIND=dp)
     
@@ -1630,31 +1631,46 @@ Subroutine sig_Resonance(r,E,sT,sS)
     E_eV = 1000._dp * E
     k = r%k0 * Sqrt(E_eV)
     Do l = 1,r%n_L  !sum over levels (l)
-        rho = k * r%AP(l)
-        rho_sq = rho**2
+        !TODO Add energy dependent scattering radius functionality (NRO /= 0 , and NAPS /= 1)
+        rho_hat = k * r%AP(l)
+        rho_hat_sq = rho_hat**2
+        !rho = rho_hat
+        !rho_sq = rho_hat_sq
         Select Case (l)
             Case (1)
-                two_phi = rho
+                two_phi = rho_hat
+                !shift = 0._dp
+                !penet = rho
             Case (2)
-                two_phi = rho - ATAN(rho)
+                two_phi = rho_hat - ATAN(rho_hat)
+                !shift = -1._dp / (1._dp + rho_sq)
+                !penet = -shift * rho*rho_sq
             Case (3)
-                two_phi = rho - ATAN(3._dp * rho / (3._dp - rho_sq))
+                two_phi = rho_hat - ATAN(3._dp * rho_hat / (3._dp - rho_hat_sq))
+                !a = 1._dp / (9._dp + rho_sq*(3._dp + rho_sq))
+                !shift = -a * (18._dp + 3._dp*rho_sq)
+                !penet = a * rho*rho_sq**2
             Case (4)
-                two_phi = rho - ATAN(rho * (15._dp - rho_sq) / (15._dp - 6._dp * rho_sq))
+                two_phi = rho_hat - ATAN(rho_hat * (15._dp - rho_hat_sq) / (15._dp - 6._dp * rho_hat_sq))
+                !a = 1._dp / (225._dp + rho_sq*(45._dp + rho_sq*(6._dp + rho_sq)))
+                !shift = -a * (675._dp + rho_sq*(90._dp + 6._dp*rho_sq))
+                !penet = a * rho*rho_sq**3
             Case (5)
-                two_phi = rho - ATAN(rho * (105._dp - 10._dp*rho_sq) / (105._dp - rho_sq * (45._dp + rho_sq)))
+                two_phi = rho_hat - ATAN(rho_hat * (105._dp - 10._dp*rho_hat_sq) / (105._dp - rho_hat_sq * (45._dp + rho_hat_sq)))
+                !a = 1._dp / (11025._dp + rho_sq*(1575._dp + rho_sq*(135._dp + rho_sq*(10._dp + rho_sq))))
+                !shift = -a * (44100._dp + rho_sq*(4725._dp + rho_sq*(270._dp + 10._dp*rho_sq)))
+                !penet = a * rho*rho_sq**4
         End Select
         two_phi = 2._dp * two_phi
         If (r%is_RM) Then !Reich-Moore formalism
-            !TODO See if the following loop can be vectorized (for speed, or at least compactness of notation)
             Do J = 1,r%L(l)%n_J  !sum over spins (J)
                 !compute the R-function
-                Rnn = cmplx1 - half_i * Sum( &  !sum over r
-                                             & CMPLX(r%L(l)%J(j)%ErG(2,:),KIND=dp) / & 
-                                             & (CMPLX(r%L(l)%J(j)%ErG(1,:) - E_eV,KIND=dp) - half_i*CMPLX(r%L(l)%J(j)%ErG(3,:),KIND=dp)) &
-                                             & )
+                Rnn = cmplx1 - Sum( &  !sum over r
+                                    & CMPLX( 0._dp , 0.5_dp*r%L(l)%J(j)%ErG(2,:) , KIND=dp ) / & 
+                                    & CMPLX( r%L(l)%J(j)%ErG(1,:)-E_eV , -0.5_dp*r%L(l)%J(j)%ErG(3,:) , KIND=dp ) &
+                                    & )
                 !compute the element of the scattering matrix
-                Unn = Exp(CMPLX(0._dp,two_phi,KIND=dp)) * (cmplx2 / Rnn - cmplx1)
+                Unn = Exp(CMPLX(0._dp,-two_phi,KIND=dp)) * (cmplx2 / Rnn - cmplx1)
                 !compute second channel contribution where applicable
                 If (r%L(l)%dj(J)) Then
                     Dj = 2._dp * (1._dp - Cos(two_phi))
@@ -1665,40 +1681,13 @@ Subroutine sig_Resonance(r,E,sT,sS)
                 sS = sS + r%L(l)%gj(J) * (Abs(cmplx1 - Unn)**2 + Dj)
             End Do
         Else !r%is_MLBW, MLBW formalism
-            !UNDONE MLBW formalism reconstruction loop(s)
-            Select Case (l)
-                Case (1)
-                    shift = 0._dp
-                    penet = rho
-                Case (2)
-                    a = 1._dp / (1._dp + rho_sq)
-                    shift = -a
-                    penet = a * rho*rho_sq
-                Case (3)
-                    a = 1._dp / (9._dp + rho_sq*(3._dp + rho_sq))
-                    shift = -a * (18._dp + 3._dp*rho_sq)
-                    penet = a * rho*rho_sq**2
-                Case (4)
-                    a = 1._dp / (225._dp + rho_sq*(45._dp + rho_sq*(6._dp + rho_sq)))
-                    shift = -a * (675._dp + rho_sq*(90._dp + 6._dp*rho_sq))
-                    penet = a * rho*rho_sq**3
-                Case (5)
-                    a = 1._dp / (11025._dp + rho_sq*(1575._dp + rho_sq*(135._dp + rho_sq*(10._dp + rho_sq))))
-                    shift = -a * (44100._dp + rho_sq*(4725._dp + rho_sq*(270._dp + 10._dp*rho_sq)))
-                    penet = a * rho*rho_sq**4
-            End Select
             Do J = 1,r%L(l)%n_J  !sum over spins (J)
-            !UNDONE
-            !UNDONE
-            !UNDONE
-            !UNDONE
-            !UNDONE
-            !UNDONE
                 !compute the element of the scattering matrix
-                Unn = Exp(CMPLX(0._dp,two_phi,KIND=dp)) - imag_i * Sum( &  !sum over r
-                                                                        & CMPLX(r%L(l)%J(j)%ErG(3,:),KIND=dp) / & 
-                                                                        & (CMPLX(r%L(l)%J(j)%ErG(1,:) - E_eV,KIND=dp) - half_i*CMPLX(r%L(l)%J(j)%ErG(2,:),KIND=dp)) &
-                                                                        & )
+                Unn = Exp(CMPLX(0._dp,-two_phi,KIND=dp)) * (cmplx1 + Sum( &  !sum over r
+                                                                          & CMPLX( 0._dp,r%L(l)%J(j)%ErG(3,:) , KIND=dp ) / & 
+                                                                          & CMPLX( r%L(l)%J(j)%ErG(1,:) - E_eV , -0.5_dp*r%L(l)%J(j)%ErG(2,:) , KIND=dp ) &
+                                                                          & ) &
+                                                           & )
                 !compute second channel contribution where applicable
                 If (r%L(l)%dj(J)) Then
                     Dj = 2._dp * (1._dp - Cos(two_phi))
@@ -1706,17 +1695,21 @@ Subroutine sig_Resonance(r,E,sT,sS)
                     Dj = 0._dp
                 End If
                 sS = sS + r%L(l)%gj(J) * (Abs(cmplx1 - Unn)**2 + Dj)
-            !UNDONE
-            !UNDONE
-            !UNDONE
-            !UNDONE
-            !UNDONE
+                !compute the absorption cross section (scattering cross section will be added to absorption to obtain total once all levels are summed)
+                sT = sT + r%L(l)%gj(J) * Sum( &  !sum over r
+                                              & r%L(l)%J(j)%ErG(3,:)*r%L(l)%J(j)%ErG(4,:) / &
+                                              & ((E_eV - r%L(l)%J(j)%ErG(1,:))**2 + 0.25_dp*r%L(l)%J(j)%ErG(2,:)**2) &
+                                              & )
             End Do
         End If
     End Do
-    !UNDONE Do the following lines apply to both RM and MLBW?
-    sT = sT * TwoPi / k**2
-    sS = sS * Pi / k**2
+    If (r%is_RM) Then
+        sS = sS * TwoPi / k**2
+        sT = sT * TwoPi / k**2
+    Else !r%is_MLBW)
+        sS = sS * Pi / k**2
+        sT = sT * Pi / k**2 + sS
+    End If
 End Subroutine sig_Resonance
 
 Function sig_Composite(E,n_E,E_list,lnE_list,E_index,n1,n2,t_list,sig_list) Result(sig)
