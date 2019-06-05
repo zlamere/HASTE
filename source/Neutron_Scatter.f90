@@ -206,9 +206,9 @@ Function Setup_Scatter_Model(setup_file_name,resources_directory,cs_setup_file,r
     !initialize scatter parameters for sampled scatter, except the lev_cs array (it is not used for the sampled scatter)
     Allocate(ScatMod%scat%a(0:ScatMod%CS%n_a_max))
     ScatMod%scat%a = 0._dp
-    Allocate(ScatMod%scat%a_tab1(1:ScatMod%CS%n_a_tab_max,1:2))
+    Allocate(ScatMod%scat%a_tab1(1:2,1:ScatMod%CS%n_a_tab_max))
     ScatMod%scat%a_tab1 = 0._dp
-    Allocate(ScatMod%scat%a_tab2(1:ScatMod%CS%n_a_tab_max,1:2))
+    Allocate(ScatMod%scat%a_tab2(1:2,1:ScatMod%CS%n_a_tab_max))
     ScatMod%scat%a_tab2 = 0._dp
     Allocate(ScatMod%scat%iso_cs(1:ScatMod%CS%n_iso))
     ScatMod%scat%iso_cs = 0._dp
@@ -377,8 +377,8 @@ Subroutine Sample_Scatter(ScatMod,n,atm,RNG)
             ScatMod%scat%da_is_legendre = .FALSE.
             ScatMod%scat%n_a1 = ScatMod%CS%lev_cs(iso)%da(lev)%da(index1)%n_a
             ScatMod%scat%n_a2 = ScatMod%CS%lev_cs(iso)%da(lev)%da(index2)%n_a
-            ScatMod%scat%a_tab1(1:ScatMod%scat%n_a1,:) = ScatMod%CS%lev_cs(iso)%da(lev)%da(index1)%ua
-            ScatMod%scat%a_tab2(1:ScatMod%scat%n_a2,:) = ScatMod%CS%lev_cs(iso)%da(lev)%da(index2)%ua
+            ScatMod%scat%a_tab1(:,1:ScatMod%scat%n_a1) = ScatMod%CS%lev_cs(iso)%da(lev)%da(index1)%ua
+            ScatMod%scat%a_tab2(:,1:ScatMod%scat%n_a2) = ScatMod%CS%lev_cs(iso)%da(lev)%da(index2)%ua
             ScatMod%scat%a_tab_Econv = (E_cm - E1) / (E2 - E1)
         End If
     End If
@@ -401,8 +401,8 @@ Subroutine Set_Scatter_prep(ScatMod,scat)
     !Set up arrays for angular distributions
     Allocate(scat%a(0:ScatMod%CS%n_a_max))
     scat%a = 0._dp
-    Allocate(scat%a_tab1(1:ScatMod%CS%n_a_tab_max,1:2))
-    Allocate(scat%a_tab2(1:ScatMod%CS%n_a_tab_max,1:2))
+    Allocate(scat%a_tab1(1:2,1:ScatMod%CS%n_a_tab_max))
+    Allocate(scat%a_tab2(1:2,1:ScatMod%CS%n_a_tab_max))
     scat%a_tab1 = 0._dp
     scat%a_tab2 = 0._dp
     !Get precomputed isotope cross sections from sampled scatter
@@ -546,8 +546,8 @@ Subroutine Set_Scatter_lev(ScatMod,scat,lev,E_cm,i_E_cm)
             scat%da_is_legendre = .FALSE.
             scat%n_a1 = ScatMod%CS%lev_cs(scat%target_index)%da(lev)%da(index1)%n_a
             scat%n_a2 = ScatMod%CS%lev_cs(scat%target_index)%da(lev)%da(index2)%n_a
-            scat%a_tab1(1:scat%n_a1,:) = ScatMod%CS%lev_cs(scat%target_index)%da(lev)%da(index1)%ua
-            scat%a_tab2(1:scat%n_a2,:) = ScatMod%CS%lev_cs(scat%target_index)%da(lev)%da(index2)%ua
+            scat%a_tab1(:,1:scat%n_a1) = ScatMod%CS%lev_cs(scat%target_index)%da(lev)%da(index1)%ua
+            scat%a_tab2(:,1:scat%n_a2) = ScatMod%CS%lev_cs(scat%target_index)%da(lev)%da(index2)%ua
             scat%a_tab_Econv = (E_cm - E1) / (E2 - E1)
         End If
     End If
