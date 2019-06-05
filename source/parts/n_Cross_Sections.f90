@@ -754,7 +754,7 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
         End If
     End Do
     CS%Mn = neutron_mass * Sum(CS%An) / CS%n_iso
-    If (v) Then
+    If (v) Then  !write cross section traces for each interaction, for each isotope
         Write(v_unit,*)
         Write(v_unit,'(A)') half_dash_line
         Write(v_unit,'(A)') 'CROSS SECTION TRACES FOR VERIFICATION'
@@ -783,14 +783,30 @@ Subroutine Write_stored_sig(v_unit,sig,n_E_uni,E_uni)
     Do k = 1,sig%n_interp_r
         Write(v_unit,'(I8,I4)') sig%interp(k,1),sig%interp(k,2)
     End Do
-    Write(v_unit,'(3A26,2A9)') '   E-keyed [keV]          ','   sig (b)                ','   ln(sig)                ','    key  ','    map  '
-    Write(v_unit,'(3A26,2A9)') '  ------------------------','  ------------------------','  ------------------------','  -------','  -------'
+    If (Any(sig%interp(:,2).EQ.4) .OR. Any(sig%interp(:,2).EQ.5)) Then !lnsigs are present
+        Write(v_unit,'(3A26,2A9)') '   E-keyed [keV]          ','   sig (b)                ','   ln(sig)                ','    key  ','   index ','   map(s)'
+        Write(v_unit,'(3A26,2A9)') '  ------------------------','  ------------------------','  ------------------------','  -------','  -------','  -------'
+    Else  !lnsig not stored
+        Write(v_unit,'(2A26,2A9)') '   E-keyed [keV]          ','   sig (b)                ','    key  ','   index ','   map(s)'
+        Write(v_unit,'(2A26,2A9)') '  ------------------------','  ------------------------','  -------','  -------','  -------'
+    End If
     Do k = 1,sig%n_sig
         If (Any(sig%interp(:,2).EQ.4) .OR. Any(sig%interp(:,2).EQ.5)) Then !lnsigs are present
-            Write(v_unit,'(3ES26.16E3,2I9)') E_uni(sig%E_key(k)),sig%sig(k),sig%lnsig(k),sig%E_map(sig%E_key(k)),k
+            Write(v_unit,'(3ES26.16E3,3I9)',ADVANCE='NO') E_uni(sig%E_key(k)) , sig%sig(k) , sig%lnsig(k) , sig%E_key(k) , k , sig%E_map(sig%E_key(k))
         Else  !lnsig not stored
-            Write(v_unit,'(2ES26.16E3,A26,2I9)') E_uni(sig%E_key(k)),sig%sig(k),'  n/a  ',sig%E_map(sig%E_key(k)),k
+            Write(v_unit,'(2ES26.16E3,3I9)',ADVANCE='NO') E_uni(sig%E_key(k)) , sig%sig(k) ,                sig%E_key(k) , k , sig%E_map(sig%E_key(k))
         End If
+        If (k .EQ. 1) Then
+            map_gap = sig%E_key(k) - 1
+        Else
+            map_gap = sig%E_key(k) - sig%E_key(k-1) - 1
+        End If
+        If (map_gap .GT. 0) Then
+            Do m = 1,map_gap
+                Write(v_unit,'(A1,I0)',ADVANCE='NO') ',' , sig%E_map(sig%E_key(k-m))
+            End Do
+        End If
+        Write(v_unit,*)
     End Do
     Write(v_unit,*)
 End Subroutine Write_stored_sig
