@@ -85,7 +85,7 @@ Module n_Cross_Sections
         Real(dp) :: k0  !=2.196771E-3_dp*(An/(An+1._dp)), gives k (neutron wave #) when miltiplied by Sqrt(E[eV])
         Integer :: n_L  !number of levels in which resonances are grouped
         Real(dp), Allocatable :: AP(:)  !has dimension 1:n_L, scattering radius for each level
-        Type(res_sig_level_Type), Allocatable :: L(:)   !has dimension 1:n_L, resonance parameters for each leval group
+        Type(res_sig_level_Type), Allocatable :: L(:)   !has dimension 1:n_L, resonance parameters for each level group
     End Type
 
     Type :: CS_Type
@@ -588,13 +588,7 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
                 Call Write_stored_sig(v_unit,CS%abs_cs(i)%sig(j),CS%n_E_uni,CS%E_uni)
             End If
         End Do
-        If (v) Then  !Write summary of absorption modes for this isotope
-            !UNDONE
-            !UNDONE
-            !UNDONE
-            !UNDONE
-            !UNDONE
-        End If
+        !N2H For verbose output, write a summary of absorption modes for this isotope
         !!  SCATTERING INTERACTION CROSS SECTIONS
         If (elastic_only) Then
             CS%lev_cs(i)%n_lev = 0
@@ -620,20 +614,18 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
             !the next read statement on ENDF_unit will read the first line of MF=2, MT=151
             Call Read_res_sect(ENDF_unit,CS%res_cs(i))
             If (v) Then  !write the stored values for this resonance representation
+                Write(v_unit,'(A,I0,A,I0,A)') Trim(isotope_names(i))//' MF=',2,', MT=',151,' (resonance)'
                 !UNDONE
                 !UNDONE
                 !UNDONE
                 !UNDONE
-                !UNDONE
+                !UNDONE Call Write_stored_res(v_unit,CS%res_cs(i))
             End If
         Else  !no resonance parameters, all interaction cross sections are tabulated in MF=3
             CS%has_res_cs(i) = .FALSE.
             If (v) Then  !write the stored values for this resonance representation
-                !UNDONE
-                !UNDONE
-                !UNDONE
-                !UNDONE
-                !UNDONE
+                Write(v_unit,'(A)') Trim(isotope_names(i))//' has no ENDF resonance data.'
+                Write(v_unit,*)
             End If
         End If
         !!  ELASTIC SCATTERING INTERACTION CROSS SECTION
@@ -646,7 +638,7 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
         End If
         Deallocate(E_scratch,sig_scratch,Interp_scratch)
         If (v) Then  !write the stored values for elastic scatter interaction cross section
-            Write(v_unit,'(A,I0,A,I0,A)') Trim(isotope_names(i))//' MF=',3,', MT=',2,' (elastic)'
+            Write(v_unit,'(A,I0,A,I0,A)') Trim(isotope_names(i))//' MF=',3,', MT=',2,' (sig, elastic)'
             Call Write_stored_sig(v_unit,CS%lev_cs(i)%sig(0),CS%n_E_uni,CS%E_uni)
         End If
         !!  ELASTIC SCATTERING ANGULAR DISTRIBUTION
@@ -666,11 +658,8 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
                 Deallocate(E_scratch,Ang_dist_scratch)
             End If
             If (v) Then  !write the stored values for elastic scatter angular distribution
-                !UNDONE
-                !UNDONE
-                !UNDONE
-                !UNDONE
-                !UNDONE
+                Write(v_unit,'(A,I0,A,I0,A)') Trim(isotope_names(i))//' MF=',4,', MT=',2,' (da, elastic)'
+                Call Write_stored_AD(v_unit,CS%lev_cs(i)%da(0),CS%n_E_uni,CS%E_uni)
             End If
             If (LTT .EQ. 1) Then
                 If (MaxVal(CS%lev_cs(i)%da(0)%da(:)%n_a) .GT. CS%n_a_max) CS%n_a_max = MaxVal(CS%lev_cs(i)%da(0)%da(:)%n_a)
@@ -704,7 +693,7 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
                 End If
                 Deallocate(E_scratch,sig_scratch,Interp_scratch)
                 If (v) Then  !write the stored values for this inelastic scatter interaction cross section
-                    Write(v_unit,'(A,I0,A,I0,A)') Trim(isotope_names(i))//' MF=',3,', MT=',50+j,' (inelastic)'
+                    Write(v_unit,'(A,I0,A,I0,A)') Trim(isotope_names(i))//' MF=',3,', MT=',50+j,' (sig, inelastic)'
                     Call Write_stored_sig(v_unit,CS%lev_cs(i)%sig(j),CS%n_E_uni,CS%E_uni)
                 End If
                 !!  INELASTIC SCATTER ANGULAR DISTRIBUTION
@@ -723,11 +712,8 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
                         Deallocate(E_scratch,Ang_dist_scratch)
                     End If
                     If (v) Then  !write the stored values for this inelastic scatter angular distribution
-                        !UNDONE
-                        !UNDONE
-                        !UNDONE
-                        !UNDONE
-                        !UNDONE
+                        Write(v_unit,'(A,I0,A,I0,A)') Trim(isotope_names(i))//' MF=',4,', MT=',50+j,' (da, inelastic)'
+                        Call Write_stored_AD(v_unit,CS%lev_cs(i)%da(j),CS%n_E_uni,CS%E_uni)
                     End If
                     If (LTT .EQ. 1) Then
                         If (MaxVal(CS%lev_cs(i)%da(j)%da(:)%n_a) .GT. CS%n_a_max) CS%n_a_max = MaxVal(CS%lev_cs(i)%da(j)%da(:)%n_a)
@@ -745,13 +731,7 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
                 End If
             End Do
         End If
-        If (v) Then  !Write summary of scattering modes for this isotope
-            !UNDONE
-            !UNDONE
-            !UNDONE
-            !UNDONE
-            !UNDONE
-        End If
+        !N2H For verbose output, write a summary of scattering modes for this isotope
     End Do
     CS%Mn = neutron_mass * Sum(CS%An) / CS%n_iso
     If (v) Then  !write cross section traces for each interaction, for each isotope
@@ -785,16 +765,16 @@ Subroutine Write_stored_sig(v_unit,sig,n_E_uni,E_uni)
         Write(v_unit,'(I8,I4)') sig%interp(k,1),sig%interp(k,2)
     End Do
     If (Any(sig%interp(:,2).EQ.4) .OR. Any(sig%interp(:,2).EQ.5)) Then !lnsigs are present
-        Write(v_unit,'(3A26,2A9)') '   E-keyed [keV]          ','   sig (b)                ','   ln(sig)                ','    key  ','   index ','   map(s)'
-        Write(v_unit,'(3A26,2A9)') '  ------------------------','  ------------------------','  ------------------------','  -------','  -------','  -------'
-    Else  !lnsig not stored
-        Write(v_unit,'(2A26,2A9)') '   E-keyed [keV]          ','   sig (b)                ','    key  ','   index ','   map(s)'
-        Write(v_unit,'(2A26,2A9)') '  ------------------------','  ------------------------','  -------','  -------','  -------'
+        Write(v_unit,'(3A26,3A9)') '   E-keyed [keV]          ','   sig (b)                ','   ln(sig)                ','    key  ','   index ','   map(s)'
+        Write(v_unit,'(3A26,3A9)') '  ------------------------','  ------------------------','  ------------------------','  -------','  -------','  -------'
+    Else  !ln(sig) not stored
+        Write(v_unit,'(2A26,3A9)') '   E-keyed [keV]          ','   sig (b)                ','    key  ','   index ','   map(s)'
+        Write(v_unit,'(2A26,3A9)') '  ------------------------','  ------------------------','  -------','  -------','  -------'
     End If
     Do k = 1,sig%n_sig
         If (Any(sig%interp(:,2).EQ.4) .OR. Any(sig%interp(:,2).EQ.5)) Then !lnsigs are present
             Write(v_unit,'(3ES26.16E3,3I9)',ADVANCE='NO') E_uni(sig%E_key(k)) , sig%sig(k) , sig%lnsig(k) , sig%E_key(k) , k , sig%E_map(sig%E_key(k))
-        Else  !lnsig not stored
+        Else  !ln(sig) not stored
             Write(v_unit,'(2ES26.16E3,3I9)',ADVANCE='NO') E_uni(sig%E_key(k)) , sig%sig(k) ,                sig%E_key(k) , k , sig%E_map(sig%E_key(k))
         End If
         If (k .EQ. 1) Then
@@ -802,7 +782,8 @@ Subroutine Write_stored_sig(v_unit,sig,n_E_uni,E_uni)
         Else
             map_gap = sig%E_key(k) - sig%E_key(k-1) - 1
         End If
-        If (map_gap .GT. 0) Then
+        If (map_gap .GT. 0) Then !gap between cs points exists in the unified list
+            !write the map values backwards through the gap
             Do m = 1,map_gap
                 Write(v_unit,'(A1,I0)',ADVANCE='NO') ',' , sig%E_map(sig%E_key(k-m))
             End Do
@@ -811,6 +792,51 @@ Subroutine Write_stored_sig(v_unit,sig,n_E_uni,E_uni)
     End Do
     Write(v_unit,*)
 End Subroutine Write_stored_sig
+
+Subroutine Write_stored_AD(v_unit,da,n_E_uni,E_uni)
+    Use Kinds, Only: dp
+    Implicit None
+    Integer, Intent(In) :: v_unit
+    Type(da_Type), Intent(In) :: da
+    Integer, Intent(In) :: n_E_uni
+    Real(dp), Intent(In) :: E_uni(1:n_E_uni)
+    Integer :: k
+    Integer :: map_gap,m
+    Integer :: d
+
+    Write(v_unit,'(A26,3A9)') '   E-keyed [keV]          ','    key  ','   index ','   map(s)'
+    Write(v_unit,'(A26,3A9)') '  ------------------------','  -------','  -------','  -------'
+    Do k = 1,da%n_da
+       Write(v_unit,'(ES26.16E3,3I9)',ADVANCE='NO') E_uni(da%E_key(k)) , da%E_key(k) , k , da%E_map(da%E_key(k))
+        If (k .EQ. 1) Then
+            map_gap = da%E_key(k) - 1
+        Else
+            map_gap = da%E_key(k) - da%E_key(k-1) - 1
+        End If
+        If (map_gap .GT. 0) Then !gap between cs points exists in the unified list
+            !write the map values backwards through the gap
+            Do m = 1,map_gap
+                Write(v_unit,'(A1,I0)',ADVANCE='NO') ',' , da%E_map(da%E_key(k-m))
+            End Do
+        End If
+        Write(v_unit,*)
+        If (da%da(k)%is_Legendre) Then
+            Write(v_unit,'(2A26)') '','    Legendre Coeffs       '
+            Write(v_unit,'(2A26)') '','  ------------------------'
+        Else !tabulated cosine pdf
+            Write(v_unit,'(4A26)') '','    Cosine                ','    PDF                   ','    ln(PDF)               '
+            Write(v_unit,'(4A26)') '','  ------------------------','  ------------------------','  ------------------------'
+        End If
+        Do a = 1,da%da(k)%n_a
+            If (da%da(k)%is_Legendre) Then
+                Write(v_unit,'(A26,ES26.16E3)') '',da%da(k)%a(a)
+            Else !tabulated cosine pdf
+                Write(v_unit,'(A26,3ES26.16E3)') '',da%da(k)%ua(1,a),Exp(da%da(k)%ua(2,a)),da%da(k)%ua(2,a)
+            End If
+        End Do
+    End Do
+    Write(v_unit,*)
+End Subroutine Write_stored_AD
 
 Subroutine Find_MFMT_end(ENDF_unit)
     Implicit None
