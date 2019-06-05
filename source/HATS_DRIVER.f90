@@ -80,7 +80,7 @@ Use FileIO_Utilities, Only: Delta_Time
 
 Implicit None
 
-Character(max_line_len), Parameter :: title = 'High-Altitude Transport to Space for Neutrons (HATS-n) v0.9.02, 25 Dec 2018'
+Character(max_line_len), Parameter :: title = 'High-Altitude Transport to Space for Neutrons (HATS-n) v0.9.03, 02 Jun 2019'
 Integer(id) :: n_histories
 Logical :: absolute_n_histories  !specifies whether number of histories is an absolute limit, or a goal to accumulate contributions on
 Logical :: prompt_exit  !specifies whether the simulation will wait for user unput before exiting
@@ -160,10 +160,8 @@ p = 0_id
 n_done = 0_id
 !start a clock to track processing time
 Call SYSTEM_CLOCK(c_start)
-If (screen_progress) Then  !run histories, periodically updating progress to the display
-    c_last = c_start
-    Do
-        !update progress on screen
+Do !run histories, periodically updating progress to the display if required
+    If (screen_progress) Then  !update progress on screen
         If (Delta_Time(clock_then = c_last,clock_now = c_now) .GT. 1._dp) Then  !only update ETTC if elapsed time is more than a second
             c_last = c_now
             If (p .GT. 0_id) Then
@@ -182,31 +180,18 @@ If (screen_progress) Then  !run histories, periodically updating progress to the
                       & creturn
             End If 
         End If
-        !run a history
-        Call Do_Neutron(source,detector,atmosphere,ScatterModel,RNG,contributed)
-        n_done = n_done + 1_id
-        If (contributed .OR. absolute_n_histories) Then
-            p = p + 1_id
-            !add the contributions from this history to the main time-energy and arrival direction contribution lists
-            Call TE_Tallies%Tally_History(detector%TE_contrib_index,detector%TE_contribs_this_history(1:detector%TE_contrib_index),detector%TE_grid(1)%n_bins,detector%TE_contribs_t,detector%TE_grid(2)%n_bins,detector%TE_contribs_E)
-            Call Dir_Tallies%Tally_History(detector%Dir_contrib_index,detector%Dir_contribs_this_history(1:detector%Dir_contrib_index),detector%Dir_grid(1)%n_bins,detector%Dir_contribs_mu,detector%Dir_grid(2)%n_bins,detector%Dir_contribs_omega)
-        End If
-        If (p .GE. n_p) Exit
-    End Do
-Else  !run histories, WITHOUT updating progress to the display
-    Do
-        !run a history
-        Call Do_Neutron(source,detector,atmosphere,ScatterModel,RNG,contributed)
-        n_done = n_done + 1_id
-        If (contributed .OR. absolute_n_histories) Then
-            p = p + 1_id
-            !add the contributions from this history to the main time-energy and arrival direction contribution lists
-            Call TE_Tallies%Tally_History(detector%TE_contrib_index,detector%TE_contribs_this_history(1:detector%TE_contrib_index),detector%TE_grid(1)%n_bins,detector%TE_contribs_t,detector%TE_grid(2)%n_bins,detector%TE_contribs_E)
-            Call Dir_Tallies%Tally_History(detector%Dir_contrib_index,detector%Dir_contribs_this_history(1:detector%Dir_contrib_index),detector%Dir_grid(1)%n_bins,detector%Dir_contribs_mu,detector%Dir_grid(2)%n_bins,detector%Dir_contribs_omega)
-        End If
-        If (p .GE. n_p) Exit
-    End Do
-End If
+    End If
+    !run a history
+    Call Do_Neutron(source,detector,atmosphere,ScatterModel,RNG,contributed)
+    n_done = n_done + 1_id
+    If (contributed .OR. absolute_n_histories) Then
+        p = p + 1_id
+        !add the contributions from this history to the main time-energy and arrival direction contribution lists
+        Call TE_Tallies%Tally_History(detector%TE_contrib_index,detector%TE_contribs_this_history(1:detector%TE_contrib_index),detector%TE_grid(1)%n_bins,detector%TE_contribs_t,detector%TE_grid(2)%n_bins,detector%TE_contribs_E)
+        Call Dir_Tallies%Tally_History(detector%Dir_contrib_index,detector%Dir_contribs_this_history(1:detector%Dir_contrib_index),detector%Dir_grid(1)%n_bins,detector%Dir_contribs_mu,detector%Dir_grid(2)%n_bins,detector%Dir_contribs_omega)
+    End If
+    If (p .GE. n_p) Exit
+End Do
 !record final completion time
 t_tot = Delta_Time(clock_then = c_start)
 If (i_img.EQ.1 .AND. detector%shape_data) Call Close_Slice_Files(detector%n_slices,detector%TE_grid(1)%collect_shape,detector%TE_grid(1)%slice_unit,detector%TE_grid(2)%collect_shape,detector%TE_grid(2)%slice_unit)
