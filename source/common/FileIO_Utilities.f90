@@ -145,7 +145,7 @@ Module FileIO_Utilities
     Character(80), Parameter :: full_dash_line = '--------------------------------------------------------------------------------'
     Character(60), Parameter :: long_dash_line = '------------------------------------------------------------'
     Character(40), Parameter :: half_dash_line = '----------------------------------------'
-    Character(40), Parameter :: tiny_dash_line = '--------------------'
+    Character(20), Parameter :: tiny_dash_line = '--------------------'
     
 Contains
 
@@ -1026,6 +1026,16 @@ Subroutine Make_Boom()
     Write(*,'(A)') '  _____.(~#%&$@%#&#~)._____  '//ding
 End Subroutine Make_Boom
 
+Subroutine check_stop(kill)
+    Implicit None
+    Logical, Intent(In) :: kill
+    
+    If (kill) Then
+        Write(*,'(3A)') ding,ding,ding
+        ERROR STOP
+    End If
+End Subroutine check_stop
+
 Subroutine Output_Message_C(message,kill)
     Implicit None
     Character(*), Intent(In) :: message
@@ -1048,9 +1058,8 @@ Subroutine Output_Message_C(message,kill)
             m = m + 1
         End Do
     End If
-    If (Present(kill)) Then
-        If (kill) ERROR STOP
-    End If
+    Write(*,'(A)') ding
+    Call check_stop(kill)
 End Subroutine Output_Message_C
 
 Subroutine Output_Message_CI4(message,i,kill)
@@ -1063,9 +1072,7 @@ Subroutine Output_Message_CI4(message,i,kill)
     
     Write(ichar,'(I0)') i
     Call Output_Message_C(message//Trim(ichar))
-    If (Present(kill)) Then
-        If (kill) ERROR STOP
-    End If
+    Call check_stop(kill)
 End Subroutine Output_Message_CI4
 
 Subroutine Output_Message_CI4C(message1,i,message2,kill)
@@ -1078,9 +1085,7 @@ Subroutine Output_Message_CI4C(message1,i,message2,kill)
     
     Write(ichar,'(I0)') i
     Call Output_Message_C(message1//Trim(ichar)//message2)
-    If (Present(kill)) Then
-        If (kill) ERROR STOP
-    End If
+    Call check_stop(kill)
 End Subroutine Output_Message_CI4C
 
 Subroutine Output_Message_CI8(message,i,kill)
@@ -1092,9 +1097,7 @@ Subroutine Output_Message_CI8(message,i,kill)
     
     Write(ichar,'(I0)') i
     Call Output_Message_C(message//Trim(ichar))
-    If (Present(kill)) Then
-        If (kill) ERROR STOP
-    End If
+    Call check_stop(kill)
 End Subroutine Output_Message_CI8
 
 Subroutine Output_Message_CI8C(message1,i,message2,kill)
@@ -1106,9 +1109,7 @@ Subroutine Output_Message_CI8C(message1,i,message2,kill)
     
     Write(ichar,'(I0)') i
     Call Output_Message_C(message1//Trim(ichar)//message2)
-    If (Present(kill)) Then
-        If (kill) ERROR STOP
-    End If
+    Call check_stop(kill)
 End Subroutine Output_Message_CI8C
 
 Subroutine Output_Message_CSP(message,r,kill)
@@ -1121,9 +1122,7 @@ Subroutine Output_Message_CSP(message,r,kill)
     
     Write(rchar,'(F0.8)') r
     Call Output_Message_C(message//Trim(rchar))
-    If (Present(kill)) Then
-        If (kill) ERROR STOP
-    End If
+    Call check_stop(kill)
 End Subroutine Output_Message_CSP
 
 Subroutine Output_Message_CSPC(message1,r,message2,kill)
@@ -1136,9 +1135,7 @@ Subroutine Output_Message_CSPC(message1,r,message2,kill)
     
     Write(rchar,'(F0.8)') r
     Call Output_Message_C(message1//Trim(rchar)//message2)
-    If (Present(kill)) Then
-        If (kill) ERROR STOP
-    End If
+    Call check_stop(kill)
 End Subroutine Output_Message_CSPC
 
 Subroutine Output_Message_CDP(message,r,kill)
@@ -1151,9 +1148,7 @@ Subroutine Output_Message_CDP(message,r,kill)
     
     Write(rchar,'(F0.16)') r
     Call Output_Message_C(message//Trim(rchar))
-    If (Present(kill)) Then
-        If (kill) ERROR STOP
-    End If
+    Call check_stop(kill)
 End Subroutine Output_Message_CDP
 
 Subroutine Output_Message_CDPC(message1,r,message2,kill)
@@ -1166,9 +1161,7 @@ Subroutine Output_Message_CDPC(message1,r,message2,kill)
     
     Write(rchar,'(F0.16)') r
     Call Output_Message_C(message1//Trim(rchar)//message2)
-    If (Present(kill)) Then
-        If (kill) ERROR STOP
-    End If
+    Call check_stop(kill)
 End Subroutine Output_Message_CDPC
 
 !!!!!!!!!!  THREAD, IMAGE, and WORKER INDEXING ROUTINES  !!!!!!!!!!
