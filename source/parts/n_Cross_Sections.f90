@@ -1436,7 +1436,7 @@ Subroutine Map_and_Store_CS(n_E_uni,E_uni,n_p,E_list,CS_list,n_r,Int_list,cs,i_t
     !Create map
     Allocate(cs%E_map(t:n_E_uni))
     cs%E_map = -1
-    j = 2
+    j = 1
     Do i = t,n_E_uni
         If (E_uni(i) .GT. E_list(j)) j = j + 1
         If (j .GE. n_p) Then
@@ -1444,7 +1444,10 @@ Subroutine Map_and_Store_CS(n_E_uni,E_uni,n_p,E_list,CS_list,n_r,Int_list,cs,i_t
             Exit
         End If
         cs%E_map(i) = j
-        If (E_uni(i) .EQ. E_list(j)) j = j + 1
+        Do !increment the index past any equal or duplicate points
+            If (E_uni(i) .EQ. E_list(j)) j = j + 1
+            If (E_uni(i) .NE. E_list(j)) Exit
+        End Do
     End Do
     !Create key
     Allocate(cs%E_key(1:n_p))
@@ -1490,7 +1493,13 @@ Subroutine Map_and_Store_AD(n_E_uni,E_uni,n_p,E_list,AD_list,ad,i_thresh)
     !Create map
     Allocate(ad%E_map(t:n_E_uni))
     ad%E_map = -1
-    j = 2
+    j = 1
+    If (Any(AD_list(:)%is_Legendre) .AND. Any(AD_list(:)%is_Tab)) Then
+    !there is a transition between legender and tabular forms to accomodate
+        check_tab = .TRUE.
+    Else
+        check_tab = .FALSE.
+    End If
     Do i = t,n_E_uni
         If (E_uni(i) .GT. E_list(j)) j = j + 1
         If (j .GE. n_p) Then
@@ -1498,7 +1507,17 @@ Subroutine Map_and_Store_AD(n_E_uni,E_uni,n_p,E_list,AD_list,ad,i_thresh)
             Exit
         End If
         ad%E_map(i) = j
-        If (E_uni(i) .EQ. E_list(j)) j = j + 1
+        !If (check_tab) Then !check for transition between Legendre and Tabular forms
+        !!at the transition between Legendre and tabular firms, there is a double energy point that causes and index error in the map
+        !    If (AD_list(j)%is_Legendre .AND. AD_list(j+1)%is_Tab) Then !the next j transitions to tabular format
+        !        j = j + 1 !increment the index so it is correct the next time through
+        !        check_tab = .FALSE. !this can only occur once, no further need to check
+        !    End If
+        !End If
+        Do !increment the index past any equal or duplicate points
+            If (E_uni(i) .EQ. E_list(j)) j = j + 1
+            If (E_uni(i) .NE. E_list(j)) Exit
+        End Do
     End Do
     !Create key
     Allocate(ad%E_key(1:n_p))
