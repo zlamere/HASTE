@@ -68,6 +68,7 @@ Module n_Cross_Sections
         Integer :: n_r  !number of resonant energies in this spin
         Real(dp), Allocatable :: ErG(:,:)  !For Riech-Moore formalism: has dimension 1:3 and 1:n_r, dim 1 is 1=Er[keV], 2=neutron width, 3=radiation width
                                            !For MLBW formalism: has dimension 1:4 and 1:n_r, dim 1 is 1=Er[keV], 2=total width, 3=neutron width, 4=radiation width
+        Real(dp), Allocatable :: SP(:,:)  !has dimension 1:2 and 1:n_r, dim 1 is 1=shift factor and 2=penetrability factor
     End Type
 
     Type ::  res_sig_level_Type
@@ -82,9 +83,9 @@ Module n_Cross_Sections
         Logical :: is_MLBW  !indicates use of MLBW formaism for resonance representation
         !Other formalisms (SLBW, Adler-Adler, Limited-R) are not supported at this time
         Real(dp) :: E_range(1:2)  ![keV]  low and high energy bounds over which resonant contribution is computed
-        Real(dp) :: k0  !=2.196771E-3_dp*(An/(An+1._dp)), gives k (neutron wave #) when miltiplied by Sqrt(E[eV])
+        Real(dp) :: k0  !=2.196771E-3_dp*(An/(An+1._dp)), gives k (neutron wave #) when multiplied by Sqrt(E[eV])
         Integer :: n_L  !number of levels in which resonances are grouped
-        Real(dp), Allocatable :: AP(:)  !has dimension 1:n_L, scattering radius for each level
+        Real(dp), Allocatable :: a(:,:)  !has dimension 1:2,1:n_L, dim 1, 1=channel radius and 2=scattering radius
         Type(res_sig_level_Type), Allocatable :: L(:)   !has dimension 1:n_L, resonance parameters for each level group
     End Type
 
@@ -1081,6 +1082,8 @@ End Subroutine Read_da_sect
 Subroutine Read_res_sect(res_unit,res_List)
     Use Kinds, Only: dp
     Use FileIO_Utilities, Only: Output_Message
+    !Use Global, Only: mn => neutron_mass
+    !Use Global, Only: h_bar => h_bar_Planck
     Use Sorting, Only: Union_Sort
     Implicit None
     Integer, Intent(In) :: res_unit
@@ -1097,9 +1100,10 @@ Subroutine Read_res_sect(res_unit,res_List)
     Real(dp) :: Jsec
     Integer :: nS,nJsec
     Integer :: nRj
+    Real(dp), Parameter :: one_third = 1._dp / 3._dp
 
     !check the LRF value on the third line to ensure MLBW or Reich-Moore format
-    !check the NRO and NAPS value on the third line to ensure energy independent scattering radius and use of SPI instead of channel radius
+    !check the NRO value on the third line to ensure energy independent scattering radius
     Read(res_unit,*)
     Read(res_unit,*)
     Read(res_unit,'(3E11.6E1,3I11)') res_list%E_range(1), res_list%E_range(2), trash, LRF, NRO, NAPS
@@ -1120,17 +1124,18 @@ Subroutine Read_res_sect(res_unit,res_List)
     !read AWRI from next line
     Read(res_unit,'(E11.6E1)') AWRI
     !compute k0
-    res_List%k0 = 2.196771E-3_dp * (AWRI / (AWRI + 1._dp))
+    res_List%k0 = 2.196771E-3_dp * (AWRI / (AWRI + 1._dp)) !(Sqrt(2._dp*mn) / h_bar) * (AWRI / (AWRI + 1._dp))  
     Backspace(res_unit)  !that line will need to be read again
     !allocate levels
     res_List%n_L = nL
-    Allocate(res_List%AP(1:nL))
-    res_List%AP = AP  !default value
+    Allocate(res_List%a(1:2,1:nL))
+    res_List%a = AP  !default value
+    If (NAPS .EQ. 0) res_list%a(1,:) = 0.08_dp + 0.123_dp * AWRI**one_third !0.08_dp + 0.123_dp * (mn * AWRI)**one_third
     Allocate(res_List%L(1:nL))
     Do l = 1,nL
         !read AWRI, APL and number of resonances in first layer from next line
         Read(res_unit,'(5E11.6E1,I11)') AWRI, AP, trash, trash, trash, nR
-        If (AP .NE. 0._dp) res_List%AP(l) = AP  !level specific scattering radius
+        If (AP .NE. 0._dp) res_List%a(2,l) = AP  !level specific scattering radius
         !Allocate a scratch array
         If (l .GT. 1) Deallocate(res_scratch)
         Allocate(res_scratch(1:6,1:nR))
@@ -1199,9 +1204,9 @@ Subroutine Read_res_sect(res_unit,res_List)
             End Do
             res_list%L(l)%J(J)%n_r = nRj
             If (res_list%is_MLBW) Then
-                Allocate(res_list%L(l)%J(J)%ErG(1:4,1:nRj))
+                Allocate(res_list%L(l)%J(J)%ErG(1:6,1:nRj))
             Else !res_list%is_RM
-                Allocate(res_list%L(l)%J(J)%ErG(1:3,1:nRj))
+                Allocate(res_list%L(l)%J(J)%ErG(1:5,1:nRj))
             End If
             k = 1
             Do i = 1,nR
@@ -1216,9 +1221,125 @@ Subroutine Read_res_sect(res_unit,res_List)
                     k = k + 1
                 End If
             End Do
+            res_list%L(l)%J(J)%ErG(4,:) = ShiftFact(l,res_list%k0*Sqrt(res_list%L(l)%J(J)%ErG(1,:)))
+            res_list%L(l)%J(J)%ErG(5,:) = PenetFact(l,res_list%k0*Sqrt(res_list%L(l)%J(J)%ErG(1,:)))
         End Do
     End Do
 End Subroutine Read_res_sect
+
+Pure Function SPden2(rho_sq) Result(SPden)
+    Use Kinds, Only: dp
+    Implicit None
+    Real(dp), Intent(In) :: rho_sq
+    
+    SPden = 1._dp + rho_sq
+End Function SPden2
+
+Pure Function SPden3(rho_sq) Result(SPden)
+    Use Kinds, Only: dp
+    Implicit None
+    Real(dp) :: SPden
+    Real(dp), Intent(In) :: rho_sq
+    
+    SPden = 9._dp + rho_sq*(3._dp + rho_sq)
+End Function SPden3
+
+Pure Function SPden4(rho_sq) Result(SPden)
+    Use Kinds, Only: dp
+    Implicit None
+    Real(dp) :: SPden
+    Real(dp), Intent(In) :: rho_sq
+    
+    SPden = 225._dp + rho_sq*(45._dp + rho_sq*(6._dp + rho_sq))
+End Function SPden4
+
+Pure Function SPden5(rho_sq) Result(SPden)
+    Use Kinds, Only: dp
+    Implicit None
+    Real(dp) :: SPden
+    Real(dp), Intent(In) :: rho_sq
+    
+    SPden = 11025._dp + rho_sq*(1575._dp + rho_sq*(135._dp + rho_sq*(10._dp + rho_sq)))
+End Function SPden5
+
+Pure Function Snum3(rho_sq) Result(Snum)
+    Use Kinds, Only: dp
+    Implicit None
+    Real(dp) :: Snum
+    Real(dp), Intent(In) :: rho_sq
+    
+    Snum = -(18._dp + 3._dp*rho_sq)
+End Function Snum3
+
+Pure Function Snum4(rho_sq) Result(Snum)
+    Use Kinds, Only: dp
+    Implicit None
+    Real(dp) :: Snum
+    Real(dp), Intent(In) :: rho_sq
+    
+    Snum = -(675._dp + rho_sq*(90._dp + 6._dp*rho_sq))
+End Function Snum4
+
+Pure Function Snum5(rho_sq) Result(Snum)
+    Use Kinds, Only: dp
+    Implicit None
+    Real(dp) :: Snum
+    Real(dp), Intent(In) :: rho_sq
+    
+    Snum = -(44100._dp + rho_sq*(4725._dp + rho_sq*(270._dp + 10._dp*rho_sq)))
+End Function Snum5
+
+Elemental Function ShiftFact(l,rho) Result(shift)
+    Use Kinds, Only: dp
+    Implicit None
+    Real(dp) :: shift
+    Integer, Intent(In) :: l
+    Real(dp), Intent(In) :: rho
+    Real(dp) :: rho_sq
+    
+    Select Case (l)
+        Case (1)
+            shift = 0._dp
+        Case (2)
+            rho_sq = rho**2
+            shift = -1._dp / SPden2(rho_sq)
+        Case (3)
+            rho_sq = rho**2
+            shift = Snum3(rho_sq) / SPden3(rho_sq)
+        Case (4)
+            rho_sq = rho**2
+            shift = Snum4(rho_sq) / SPden4(rho_sq)
+        Case (5)
+            rho_sq = rho**2
+            shift = Snum5(rho_sq) / SPden5(rho_sq)
+    End Select
+End Subroutine ShiftFact
+
+Elemental Function PenetFact(l,rho) Result(penet)
+    Use Kinds, Only: dp
+    Implicit None
+    Real(dp) :: penet
+    Integer, Intent(In) :: l
+    Real(dp), Intent(In) :: rho
+    Real(dp) :: rho_sq
+    
+    Select Case (l)
+        Case (1)
+            penet = rho
+        Case (2)
+            rho_sq = rho**2
+            penet = rho*rho_sq / SPden2(rho_sq)
+        Case (3)
+            rho_sq = rho**2
+            penet = rho*rho_sq**2 / SPden3(rho_sq)
+        Case (4)
+            rho_sq = rho**2
+            penet = rho*rho_sq**3 / SPden4(rho_sq)
+        Case (5)
+            rho_sq = rho**2
+            penet = rho*rho_sq**4 / SPden5(rho_sq)
+    End Select
+End Subroutine PenetFact
 
 Function Trim_CS_for_E(n_p,E_list,CS_list,n_r,Int_list,E_min,E_max) Result(bingo)
     Use Kinds, Only: dp
@@ -1726,11 +1847,9 @@ Subroutine sig_Resonance(r,E,sT,sS)
     Real(dp), Intent(Out) :: sS
     Real(dp) :: E_eV  !energy in eV for local calcs
     Real(dp) :: k
-    Real(dp) :: rho_hat,rho_hat_sq
-    !Real(dp) :: rho,rho_sq
-    !Real(dp) :: a,shift,penet
+    Real(dp) :: rho,rho_hat
+    Real(dp) :: two_phi,S,P
     Integer :: l,J
-    Real(dp) :: two_phi
     Complex(dp) :: Rnn,Unn
     Real(dp) :: Dj
     Complex(dp), Parameter :: cmplx1 = CMPLX(1._dp,KIND=dp)
@@ -1740,45 +1859,16 @@ Subroutine sig_Resonance(r,E,sT,sS)
     sS = 0._dp
     !check if energy is in resonance range
     If (E.LT.r%E_range(1) .OR. E.GT.r%E_range(2)) Return
-    E_eV = 1000._dp * E
+    E_eV = 1000._dp * E !local energy units in eV
     k = r%k0 * Sqrt(E_eV)
     Do l = 1,r%n_L  !sum over levels (l)
-        !TODO Add energy dependent scattering radius functionality (NRO /= 0 , and NAPS /= 1)
-        rho_hat = k * r%AP(l)
-        rho_hat_sq = rho_hat**2
-        !rho = rho_hat
-        !rho_sq = rho_hat_sq
-        Select Case (l)
-            Case (1)
-                two_phi = rho_hat
-                !shift = 0._dp
-                !penet = rho
-            Case (2)
-                two_phi = rho_hat - ATAN(rho_hat)
-                !shift = -1._dp / (1._dp + rho_sq)
-                !penet = -shift * rho*rho_sq
-            Case (3)
-                two_phi = rho_hat - ATAN(3._dp * rho_hat / (3._dp - rho_hat_sq))
-                !a = 1._dp / (9._dp + rho_sq*(3._dp + rho_sq))
-                !shift = -a * (18._dp + 3._dp*rho_sq)
-                !penet = a * rho*rho_sq**2
-            Case (4)
-                two_phi = rho_hat - ATAN(rho_hat * (15._dp - rho_hat_sq) / (15._dp - 6._dp * rho_hat_sq))
-                !a = 1._dp / (225._dp + rho_sq*(45._dp + rho_sq*(6._dp + rho_sq)))
-                !shift = -a * (675._dp + rho_sq*(90._dp + 6._dp*rho_sq))
-                !penet = a * rho*rho_sq**3
-            Case (5)
-                two_phi = rho_hat - ATAN(rho_hat * (105._dp - 10._dp*rho_hat_sq) / (105._dp - rho_hat_sq * (45._dp + rho_hat_sq)))
-                !a = 1._dp / (11025._dp + rho_sq*(1575._dp + rho_sq*(135._dp + rho_sq*(10._dp + rho_sq))))
-                !shift = -a * (44100._dp + rho_sq*(4725._dp + rho_sq*(270._dp + 10._dp*rho_sq)))
-                !penet = a * rho*rho_sq**4
-        End Select
-        two_phi = 2._dp * two_phi
         If (r%is_RM) Then !Reich-Moore formalism
+            Call phi_penet(l,k*r%a(1,l),k*r%a(2,l),two_phi,P)
+            two_phi = 2._dp * two_phi
             Do J = 1,r%L(l)%n_J  !sum over spins (J)
                 !compute the R-function
                 Rnn = cmplx1 - Sum( &  !sum over r
-                                    & CMPLX( 0._dp , 0.5_dp*r%L(l)%J(j)%ErG(2,:) , KIND=dp ) / &
+                                    & CMPLX( 0._dp , 0.5_dp*r%L(l)%J(j)%ErG(2,:)*Prat(l,P,r%k0*Sqrt(r%L(l)%J(j)%ErG(1,:))*r%a(1,l)) , KIND=dp ) / &
                                     & CMPLX( r%L(l)%J(j)%ErG(1,:)-E_eV , -0.5_dp*r%L(l)%J(j)%ErG(3,:) , KIND=dp ) &
                                     & )
                 !compute the element of the scattering matrix
@@ -1793,10 +1883,12 @@ Subroutine sig_Resonance(r,E,sT,sS)
                 sS = sS + r%L(l)%gj(J) * (Abs(cmplx1 - Unn)**2 + Dj)
             End Do
         Else !r%is_MLBW, MLBW formalism
+            Call phi_shift_penet(l,k*r%a(1,l),k*r%a(2,l),two_phi,S,P)
+            two_phi = 2._dp * two_phi
             Do J = 1,r%L(l)%n_J  !sum over spins (J)
                 !compute the element of the scattering matrix
                 Unn = Exp(CMPLX(0._dp,-two_phi,KIND=dp)) * (cmplx1 + Sum( &  !sum over r
-                                                                          & CMPLX( 0._dp,r%L(l)%J(j)%ErG(3,:) , KIND=dp ) / &
+                                                                          & CMPLX( 0._dp , r%L(l)%J(j)%ErG(3,:)*Prat(l,P,r%k0*Sqrt(r%L(l)%J(j)%ErG(1,:))*r%a(1,l)) , KIND=dp ) / &
                                                                           & CMPLX( r%L(l)%J(j)%ErG(1,:) - E_eV , -0.5_dp*r%L(l)%J(j)%ErG(2,:) , KIND=dp ) &
                                                                           & ) &
                                                            & )
@@ -1823,6 +1915,113 @@ Subroutine sig_Resonance(r,E,sT,sS)
         sT = sT * Pi / k**2 + sS
     End If
 End Subroutine sig_Resonance
+
+Elemental Function Prat(l,p,rho)
+    Use Kinds, Only: dp
+    Implicit None
+    Real(dp) :: Prat
+    Integer, Intent(In) :: l
+    Real(dp), Intent(In) :: p,rho
+    Real(dp) :: rho_sq
+    Real(dp) :: pr
+    
+    Select Case (l)
+        Case (1)
+            pr = rho
+        Case (2)
+            rho_sq = rho**2
+            pr = rho*rho_sq / (1._dp + rho_sq)
+        Case (3)
+            rho_sq = rho**2
+            pr = rho*rho_sq**2 / (9._dp + rho_sq*(3._dp + rho_sq))
+        Case (4)
+            rho_sq = rho**2
+            pr = rho*rho_sq**3 / (225._dp + rho_sq*(45._dp + rho_sq*(6._dp + rho_sq)))
+        Case (5)
+            rho_sq = rho**2
+            pr = rho*rho_sq**4 / (11025._dp + rho_sq*(1575._dp + rho_sq*(135._dp + rho_sq*(10._dp + rho_sq))))
+    End Select
+    Prat = p / pr
+End Function Prat
+
+Pure Subroutine phi_penet(l,rho,rho_hat,phi,penet)
+    Use Kinds, Only: dp
+    Implicit None
+    Integer, Intent(In) :: l
+    Real(dp), Intent(In) :: rho,rho_hat
+    Real(dp), Intent(Out) :: phi,penet
+    Real(dp) :: rho_sq,rho_hat_sq
+    
+    Select Case (l)
+        Case (1)
+            phi = rho_hat
+            penet = rho
+        Case (2)
+            rho_sq = rho**2
+            rho_hat_sq = rho_hat**2
+            phi = rho_hat - ATAN(rho_hat)
+            penet = rho*rho_sq / (1._dp + rho_sq)
+        Case (3)
+            rho_sq = rho**2
+            rho_hat_sq = rho_hat**2
+            phi = rho_hat - ATAN(3._dp * rho_hat / (3._dp - rho_hat_sq))
+            penet = rho*rho_sq**2 / (9._dp + rho_sq*(3._dp + rho_sq))
+        Case (4)
+            rho_sq = rho**2
+            rho_hat_sq = rho_hat**2
+            phi = rho_hat - ATAN(rho_hat * (15._dp - rho_hat_sq) / (15._dp - 6._dp * rho_hat_sq))
+            penet = rho*rho_sq**3 / (225._dp + rho_sq*(45._dp + rho_sq*(6._dp + rho_sq)))
+        Case (5)
+            rho_sq = rho**2
+            rho_hat_sq = rho_hat**2
+            phi = rho_hat - ATAN(rho_hat * (105._dp - 10._dp*rho_hat_sq) / (105._dp - rho_hat_sq * (45._dp + rho_hat_sq)))
+            penet = rho*rho_sq**4 / (11025._dp + rho_sq*(1575._dp + rho_sq*(135._dp + rho_sq*(10._dp + rho_sq))))
+    End Select
+End Subroutine phi_penet
+
+Pure Subroutine phi_shift_penet(l,rho,rho_hat,phi,shift,penet)
+    Use Kinds, Only: dp
+    Implicit None
+    Integer, Intent(In) :: l
+    Real(dp), Intent(In) :: rho,rho_hat
+    Real(dp), Intent(Out) :: phi,shift,penet
+    Real(dp) :: rho_sq,rho_hat_sq
+    Real(dp) :: c
+    
+    Select Case (l)
+        Case (1)
+            phi = rho_hat
+            shift = 0._dp
+            penet = rho
+        Case (2)
+            rho_sq = rho**2
+            rho_hat_sq = rho_hat**2
+            phi = rho_hat - ATAN(rho_hat)
+            shift = -1._dp / (1._dp + rho_sq)
+            penet = -shift * rho*rho_sq
+        Case (3)
+            rho_sq = rho**2
+            rho_hat_sq = rho_hat**2
+            phi = rho_hat - ATAN(3._dp * rho_hat / (3._dp - rho_hat_sq))
+            c = 1._dp / (9._dp + rho_sq*(3._dp + rho_sq))
+            shift = -c * (18._dp + 3._dp*rho_sq)
+            penet = c * rho*rho_sq**2
+        Case (4)
+            rho_sq = rho**2
+            rho_hat_sq = rho_hat**2
+            phi = rho_hat - ATAN(rho_hat * (15._dp - rho_hat_sq) / (15._dp - 6._dp * rho_hat_sq))
+            c = 1._dp / (225._dp + rho_sq*(45._dp + rho_sq*(6._dp + rho_sq)))
+            shift = -c * (675._dp + rho_sq*(90._dp + 6._dp*rho_sq))
+            penet = c * rho*rho_sq**3
+        Case (5)
+            rho_sq = rho**2
+            rho_hat_sq = rho_hat**2
+            phi = rho_hat - ATAN(rho_hat * (105._dp - 10._dp*rho_hat_sq) / (105._dp - rho_hat_sq * (45._dp + rho_hat_sq)))
+            c = 1._dp / (11025._dp + rho_sq*(1575._dp + rho_sq*(135._dp + rho_sq*(10._dp + rho_sq))))
+            shift = -c * (44100._dp + rho_sq*(4725._dp + rho_sq*(270._dp + 10._dp*rho_sq)))
+            penet = c * rho*rho_sq**4
+    End Select
+End Subroutine phi_shift_penet
 
 Function sig_Composite(E,n_E,E_list,lnE_list,E_index,n1,n2,t_list,sig_list) Result(sig)
     Use Kinds, Only: dp
