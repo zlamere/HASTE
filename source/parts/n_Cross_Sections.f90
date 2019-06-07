@@ -1,15 +1,15 @@
 !-------------------------------------------------------------------------------
 !   Copyright (C) 2017  Whitman T. Dailey
-!   
+!
 !   This program is free software: you can redistribute it and/or modify
 !   it under the terms of the GNU General Public License version 3 as
 !   published by the Free Software Foundation.
-!   
+!
 !   This program is distributed in the hope that it will be useful,
 !   but WITHOUT ANY WARRANTY; without even the implied warranty of
 !   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 !   GNU General Public License for more details.
-!   
+!
 !   You should have received a copy of the GNU General Public License
 !   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 !-------------------------------------------------------------------------------
@@ -113,7 +113,7 @@ Module n_Cross_Sections
     End Type
 
     Real(dp), Parameter :: rTol = 1.E-5_dp  !relative tolerance for convergence of broadening integrals, cross section data has about 5 good digits...
-    
+
     !MT_disappearance lists the ENDF MT numbers corresponding to neutron interactions WITHOUT a neutron in the exit channel.
     !MTs matching this list are read and stored as absorption modes for the isotope of interest.
     Integer, Parameter :: MT_disappearance(1:15) = (/ 102, &  !n,g
@@ -308,7 +308,7 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
                 Write(v_unit,'(A)') 'ENDF TAPE FILE INVENTORY'
                 Write(v_unit,'(A)') half_dash_line
                 Write(v_unit,*)
-            End If            
+            End If
             n_energies = 0
             Allocate(n_abs_modes(1:CS%n_iso))
             n_abs_modes = 0
@@ -782,10 +782,10 @@ Subroutine Write_stored_sig(v_unit,sig,n_E_uni,E_uni)
         Else
             map_gap = sig%E_key(k) - sig%E_key(k-1) - 1
         End If
-        If (map_gap .GT. 0) Then !gap between cs points exists in the unified list
+        If (k.GT.1 .AND. map_gap.GT.0) Then !gap between cs points exists in the unified list
             !write the map values backwards through the gap
             Do m = 1,map_gap
-                Write(v_unit,'(A1,I0)',ADVANCE='NO') ',' , sig%E_map(sig%E_key(k-m))
+                Write(v_unit,'(A1,I0)',ADVANCE='NO') ',' , sig%E_map(sig%E_key(k)-m)
             End Do
         End If
         Write(v_unit,*)
@@ -793,45 +793,45 @@ Subroutine Write_stored_sig(v_unit,sig,n_E_uni,E_uni)
     Write(v_unit,*)
 End Subroutine Write_stored_sig
 
-Subroutine Write_stored_AD(v_unit,da,n_E_uni,E_uni)
+Subroutine Write_stored_AD(v_unit,d,n_E_uni,E_uni)
     Use Kinds, Only: dp
     Implicit None
     Integer, Intent(In) :: v_unit
-    Type(da_Type), Intent(In) :: da
+    Type(da_Type), Intent(In) :: d
     Integer, Intent(In) :: n_E_uni
     Real(dp), Intent(In) :: E_uni(1:n_E_uni)
     Integer :: k
     Integer :: map_gap,m
-    Integer :: d
+    Integer :: a
 
     Write(v_unit,'(A26,3A9)') '   E-keyed [keV]          ','    key  ','   index ','   map(s)'
     Write(v_unit,'(A26,3A9)') '  ------------------------','  -------','  -------','  -------'
-    Do k = 1,da%n_da
-       Write(v_unit,'(ES26.16E3,3I9)',ADVANCE='NO') E_uni(da%E_key(k)) , da%E_key(k) , k , da%E_map(da%E_key(k))
+    Do k = 1,d%n_da
+       Write(v_unit,'(ES26.16E3,3I9)',ADVANCE='NO') E_uni(d%E_key(k)) , d%E_key(k) , k , d%E_map(d%E_key(k))
         If (k .EQ. 1) Then
-            map_gap = da%E_key(k) - 1
+            map_gap = d%E_key(k) - 1
         Else
-            map_gap = da%E_key(k) - da%E_key(k-1) - 1
+            map_gap = d%E_key(k) - d%E_key(k-1) - 1
         End If
-        If (map_gap .GT. 0) Then !gap between cs points exists in the unified list
+        If (k.GT.1 .AND. map_gap.GT.0) Then !gap between cs points exists in the unified list
             !write the map values backwards through the gap
             Do m = 1,map_gap
-                Write(v_unit,'(A1,I0)',ADVANCE='NO') ',' , da%E_map(da%E_key(k-m))
+                Write(v_unit,'(A1,I0)',ADVANCE='NO') ',' , d%E_map(d%E_key(k)-m)
             End Do
         End If
         Write(v_unit,*)
-        If (da%da(k)%is_Legendre) Then
+        If (d%da(k)%is_Legendre) Then
             Write(v_unit,'(2A26)') '','    Legendre Coeffs       '
             Write(v_unit,'(2A26)') '','  ------------------------'
         Else !tabulated cosine pdf
             Write(v_unit,'(4A26)') '','    Cosine                ','    PDF                   ','    ln(PDF)               '
             Write(v_unit,'(4A26)') '','  ------------------------','  ------------------------','  ------------------------'
         End If
-        Do a = 1,da%da(k)%n_a
-            If (da%da(k)%is_Legendre) Then
-                Write(v_unit,'(A26,ES26.16E3)') '',da%da(k)%a(a)
+        Do a = 1,d%da(k)%n_a
+            If (d%da(k)%is_Legendre) Then
+                Write(v_unit,'(A26,ES26.16E3)') '',d%da(k)%a(a)
             Else !tabulated cosine pdf
-                Write(v_unit,'(A26,3ES26.16E3)') '',da%da(k)%ua(1,a),Exp(da%da(k)%ua(2,a)),da%da(k)%ua(2,a)
+                Write(v_unit,'(A26,3ES26.16E3)') '',d%da(k)%ua(1,a),Exp(d%da(k)%ua(2,a)),d%da(k)%ua(2,a)
             End If
         End Do
     End Do
@@ -859,7 +859,7 @@ Subroutine Find_MFMT(ENDF_unit,MFi,MTi)
     Character(80) :: trash_c
     Integer :: stat
     Character(3) :: MFc,MTc
-    
+
     !Find this interaction (MFi,MTi) in the ENDF tape
     Rewind(ENDF_unit)  !return to the start of the file
     Do
@@ -1171,7 +1171,7 @@ Subroutine Read_res_sect(res_unit,res_List)
             End Do
             If (MaxVal(J_min).LE.MinVal(J_max)) Then !there is at least one second channel contribution
                 nJsec = 1
-                Do 
+                Do
                     If (MaxVal(J_min) + Real(nJsec,dp) .GE. MinVal(J_max)) Exit
                     nJsec = nJsec + 1
                 End Do
@@ -1355,16 +1355,30 @@ Function Trim_AD_for_E(n_p,E_list,AD_list,E_min,E_max) Result(bingo)
     m = 1
     Do k = i,j
         AD_swap(m)%n_a = AD_list(k)%n_a
-        Allocate(AD_swap(m)%a(0:AD_swap(m)%n_a))
-        AD_swap(m)%a = AD_list(k)%a
+        AD_swap(m)%is_Legendre = AD_list(k)%is_legendre
+        AD_swap(m)%is_Tab = AD_list(k)%is_Tab
+        If (AD_swap(m)%is_Legendre) Then
+            Allocate(AD_swap(m)%a(0:AD_swap(m)%n_a))
+            AD_swap(m)%a = AD_list(k)%a
+        Else If (AD_swap(m)%is_Tab) Then
+            Allocate(AD_swap(m)%ua(1:2,1:AD_swap(m)%n_a))
+            AD_swap(m)%ua = AD_list(k)%ua
+        End If
         m = m + 1
     End Do
     Deallocate(AD_list)
     Allocate(AD_list(1:n_p))
     Do k = 1,n_p
         AD_list(k)%n_a = AD_swap(k)%n_a
-        Allocate(AD_list(k)%a(0:AD_list(k)%n_a))
-        AD_list(k)%a = AD_swap(k)%a
+        AD_list(k)%is_Legendre = AD_swap(k)%is_Legendre
+        AD_list(k)%is_Tab = AD_swap(k)%is_Tab
+        If (AD_list(k)%is_Legendre) Then
+            Allocate(AD_list(k)%a(0:AD_list(k)%n_a))
+            AD_list(k)%a = AD_swap(k)%a
+        Else If (AD_list(k)%is_Tab) Then
+            Allocate(AD_list(k)%ua(1:2,1:AD_list(k)%n_a))
+            AD_list(k)%ua = AD_swap(k)%ua
+        End If
     End Do
 End Function Trim_AD_for_E
 
@@ -1476,7 +1490,18 @@ Subroutine Map_and_Store_AD(n_E_uni,E_uni,n_p,E_list,AD_list,ad,i_thresh)
     !Store cross sections
     ad%n_da = n_p
     Allocate(ad%da(1:n_p))
-    ad%da = AD_list
+    Do i = 1,n_p
+        ad%da(i)%n_a = AD_list(i)%n_a
+        ad%da(i)%is_Legendre = AD_list(i)%is_Legendre
+        ad%da(i)%is_Tab = AD_list(i)%is_Tab
+        If (ad%da(i)%is_Legendre) Then
+            Allocate(ad%da(i)%a(0:ad%da(i)%n_a))
+            ad%da(i)%a = AD_list(i)%a
+        Else If (ad%da(i)%is_Tab) Then
+            Allocate(ad%da(i)%ua(1:2,1:ad%da(i)%n_a))
+            ad%da(i)%ua = AD_list(i)%ua
+        End If
+    End Do
 End Subroutine Map_and_Store_AD
 
 Subroutine sig_T_A(CS,E,sT,sA,iE_get,iE_put)
@@ -1667,7 +1692,7 @@ Subroutine sig_Resonance(r,E,sT,sS)
     Real(dp) :: Dj
     Complex(dp), Parameter :: cmplx1 = CMPLX(1._dp,KIND=dp)
     Complex(dp), Parameter :: cmplx2 = CMPLX(2._dp,KIND=dp)
-    
+
     sT = 0._dp
     sS = 0._dp
     !check if energy is in resonance range
@@ -1710,7 +1735,7 @@ Subroutine sig_Resonance(r,E,sT,sS)
             Do J = 1,r%L(l)%n_J  !sum over spins (J)
                 !compute the R-function
                 Rnn = cmplx1 - Sum( &  !sum over r
-                                    & CMPLX( 0._dp , 0.5_dp*r%L(l)%J(j)%ErG(2,:) , KIND=dp ) / & 
+                                    & CMPLX( 0._dp , 0.5_dp*r%L(l)%J(j)%ErG(2,:) , KIND=dp ) / &
                                     & CMPLX( r%L(l)%J(j)%ErG(1,:)-E_eV , -0.5_dp*r%L(l)%J(j)%ErG(3,:) , KIND=dp ) &
                                     & )
                 !compute the element of the scattering matrix
@@ -1728,7 +1753,7 @@ Subroutine sig_Resonance(r,E,sT,sS)
             Do J = 1,r%L(l)%n_J  !sum over spins (J)
                 !compute the element of the scattering matrix
                 Unn = Exp(CMPLX(0._dp,-two_phi,KIND=dp)) * (cmplx1 + Sum( &  !sum over r
-                                                                          & CMPLX( 0._dp,r%L(l)%J(j)%ErG(3,:) , KIND=dp ) / & 
+                                                                          & CMPLX( 0._dp,r%L(l)%J(j)%ErG(3,:) , KIND=dp ) / &
                                                                           & CMPLX( r%L(l)%J(j)%ErG(1,:) - E_eV , -0.5_dp*r%L(l)%J(j)%ErG(2,:) , KIND=dp ) &
                                                                           & ) &
                                                            & )
