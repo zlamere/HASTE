@@ -804,6 +804,10 @@ Subroutine Write_stored_AD(v_unit,d,n_E_uni,E_uni)
     Integer :: map_gap,m
     Integer :: a
 
+    If (d%is_iso) Then  !isotropic distribution, no data stored
+        Write(v_unit,'(A,I0,A)') 'Angular distribution is isotropic, ',d%n_da,' da points listed/stored.'
+        RETURN
+    End If
     Write(v_unit,'(A26,3A9)') '   E-keyed [keV]          ','    key  ','   index ','   map(s)'
     Write(v_unit,'(A26,3A9)') '  ------------------------','  -------','  -------','  -------'
     Do k = 1,d%n_da
@@ -821,17 +825,17 @@ Subroutine Write_stored_AD(v_unit,d,n_E_uni,E_uni)
         End If
         Write(v_unit,*)
         If (d%da(k)%is_Legendre) Then
-            Write(v_unit,'(2A26)') '','    Legendre Coeffs       '
-            Write(v_unit,'(2A26)') '','  ------------------------'
+            Write(v_unit,'(A9,I7,A19)') '',d%da(k)%n_a,' Legendre Coeffs   '
+            Write(v_unit,'(A9,A26)') '',           '  ------------------------'
         Else !tabulated cosine pdf
-            Write(v_unit,'(4A26)') '','    Cosine                ','    PDF                   ','    ln(PDF)               '
-            Write(v_unit,'(4A26)') '','  ------------------------','  ------------------------','  ------------------------'
+            Write(v_unit,'(A9,I7,A19,2A26)') '',d%da(k)%n_a,' tabular Cosines   ','    PDF                   ','    ln(PDF)               '
+            Write(v_unit,'(A9,3A26)')            '',     '  ------------------------','  ------------------------','  ------------------------'
         End If
         Do a = 1,d%da(k)%n_a
             If (d%da(k)%is_Legendre) Then
-                Write(v_unit,'(A26,ES26.16E3)') '',d%da(k)%a(a)
+                Write(v_unit,'(A9,ES26.16E3)') '',d%da(k)%a(a)
             Else !tabulated cosine pdf
-                Write(v_unit,'(A26,3ES26.16E3)') '',d%da(k)%ua(1,a),Exp(d%da(k)%ua(2,a)),d%da(k)%ua(2,a)
+                Write(v_unit,'(A9,3ES26.16E3)') '',d%da(k)%ua(1,a),Exp(d%da(k)%ua(2,a)),d%da(k)%ua(2,a)
             End If
         End Do
     End Do
@@ -1305,6 +1309,23 @@ Function Trim_CS_for_E(n_p,E_list,CS_list,n_r,Int_list,E_min,E_max) Result(bingo
     End If
 End Function Trim_CS_for_E
 
+Elemental Subroutine copy_da(da_get,da_put)
+    Implicit None
+    Type(da_list_Type), Intent(In) :: da_get
+    Type(da_list_Type), Intent(Out) :: da_put
+    
+    da_put%n_a = da_get%n_a
+    da_put%is_Legendre = da_get%is_legendre
+    da_put%is_Tab = da_get%is_Tab
+    If (da_put%is_Legendre) Then
+        Allocate(da_put%a(0:da_put%n_a))
+        da_put%a = da_get%a
+    Else If (da_put%is_Tab) Then
+        Allocate(da_put%ua(1:2,1:da_put%n_a))
+        da_put%ua = da_get%ua
+    End If
+End Subroutine copy_da
+
 Function Trim_AD_for_E(n_p,E_list,AD_list,E_min,E_max) Result(bingo)
     Use Kinds, Only: dp
     Implicit None
@@ -1352,34 +1373,36 @@ Function Trim_AD_for_E(n_p,E_list,AD_list,E_min,E_max) Result(bingo)
     Deallocate(E_swap)
     !resize CS_list
     Allocate(AD_swap(1:n_p))
-    m = 1
-    Do k = i,j
-        AD_swap(m)%n_a = AD_list(k)%n_a
-        AD_swap(m)%is_Legendre = AD_list(k)%is_legendre
-        AD_swap(m)%is_Tab = AD_list(k)%is_Tab
-        If (AD_swap(m)%is_Legendre) Then
-            Allocate(AD_swap(m)%a(0:AD_swap(m)%n_a))
-            AD_swap(m)%a = AD_list(k)%a
-        Else If (AD_swap(m)%is_Tab) Then
-            Allocate(AD_swap(m)%ua(1:2,1:AD_swap(m)%n_a))
-            AD_swap(m)%ua = AD_list(k)%ua
-        End If
-        m = m + 1
-    End Do
+    Call copy_da(AD_list(i:j),AD_swap(:))
+    !m = 1
+    !Do k = i,j
+    !    AD_swap(m)%n_a = AD_list(k)%n_a
+    !    AD_swap(m)%is_Legendre = AD_list(k)%is_legendre
+    !    AD_swap(m)%is_Tab = AD_list(k)%is_Tab
+    !    If (AD_swap(m)%is_Legendre) Then
+    !        Allocate(AD_swap(m)%a(0:AD_swap(m)%n_a))
+    !        AD_swap(m)%a = AD_list(k)%a
+    !    Else If (AD_swap(m)%is_Tab) Then
+    !        Allocate(AD_swap(m)%ua(1:2,1:AD_swap(m)%n_a))
+    !        AD_swap(m)%ua = AD_list(k)%ua
+    !    End If
+    !    m = m + 1
+    !End Do
     Deallocate(AD_list)
     Allocate(AD_list(1:n_p))
-    Do k = 1,n_p
-        AD_list(k)%n_a = AD_swap(k)%n_a
-        AD_list(k)%is_Legendre = AD_swap(k)%is_Legendre
-        AD_list(k)%is_Tab = AD_swap(k)%is_Tab
-        If (AD_list(k)%is_Legendre) Then
-            Allocate(AD_list(k)%a(0:AD_list(k)%n_a))
-            AD_list(k)%a = AD_swap(k)%a
-        Else If (AD_list(k)%is_Tab) Then
-            Allocate(AD_list(k)%ua(1:2,1:AD_list(k)%n_a))
-            AD_list(k)%ua = AD_swap(k)%ua
-        End If
-    End Do
+    Call copy_da(AD_swap(:),AD_list(:))
+    !Do k = 1,n_p
+    !    AD_list(k)%n_a = AD_swap(k)%n_a
+    !    AD_list(k)%is_Legendre = AD_swap(k)%is_Legendre
+    !    AD_list(k)%is_Tab = AD_swap(k)%is_Tab
+    !    If (AD_list(k)%is_Legendre) Then
+    !        Allocate(AD_list(k)%a(0:AD_list(k)%n_a))
+    !        AD_list(k)%a = AD_swap(k)%a
+    !    Else If (AD_list(k)%is_Tab) Then
+    !        Allocate(AD_list(k)%ua(1:2,1:AD_list(k)%n_a))
+    !        AD_list(k)%ua = AD_swap(k)%ua
+    !    End If
+    !End Do
 End Function Trim_AD_for_E
 
 Subroutine Map_and_Store_CS(n_E_uni,E_uni,n_p,E_list,CS_list,n_r,Int_list,cs,i_thresh)
@@ -1490,18 +1513,19 @@ Subroutine Map_and_Store_AD(n_E_uni,E_uni,n_p,E_list,AD_list,ad,i_thresh)
     !Store cross sections
     ad%n_da = n_p
     Allocate(ad%da(1:n_p))
-    Do i = 1,n_p
-        ad%da(i)%n_a = AD_list(i)%n_a
-        ad%da(i)%is_Legendre = AD_list(i)%is_Legendre
-        ad%da(i)%is_Tab = AD_list(i)%is_Tab
-        If (ad%da(i)%is_Legendre) Then
-            Allocate(ad%da(i)%a(0:ad%da(i)%n_a))
-            ad%da(i)%a = AD_list(i)%a
-        Else If (ad%da(i)%is_Tab) Then
-            Allocate(ad%da(i)%ua(1:2,1:ad%da(i)%n_a))
-            ad%da(i)%ua = AD_list(i)%ua
-        End If
-    End Do
+    Call copy_da(AD_list(:),ad%da(:))
+    !Do i = 1,n_p
+    !    ad%da(i)%n_a = AD_list(i)%n_a
+    !    ad%da(i)%is_Legendre = AD_list(i)%is_Legendre
+    !    ad%da(i)%is_Tab = AD_list(i)%is_Tab
+    !    If (ad%da(i)%is_Legendre) Then
+    !        Allocate(ad%da(i)%a(0:ad%da(i)%n_a))
+    !        ad%da(i)%a = AD_list(i)%a
+    !    Else If (ad%da(i)%is_Tab) Then
+    !        Allocate(ad%da(i)%ua(1:2,1:ad%da(i)%n_a))
+    !        ad%da(i)%ua = AD_list(i)%ua
+    !    End If
+    !End Do
 End Subroutine Map_and_Store_AD
 
 Subroutine sig_T_A(CS,E,sT,sA,iE_get,iE_put)
