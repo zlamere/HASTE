@@ -66,9 +66,8 @@ Module n_Cross_Sections
 
     Type ::  res_sig_spin_Type
         Integer :: n_r  !number of resonant energies in this spin
-        Real(dp), Allocatable :: ErG(:,:)  !For Riech-Moore formalism: has dimension 1:3 and 1:n_r, dim 1 is 1=Er[keV], 2=neutron width, 3=radiation width
-                                           !For MLBW formalism: has dimension 1:4 and 1:n_r, dim 1 is 1=Er[keV], 2=total width, 3=neutron width, 4=radiation width
-        Real(dp), Allocatable :: SP(:,:)  !has dimension 1:2 and 1:n_r, dim 1 is 1=shift factor and 2=penetrability factor
+        Real(dp), Allocatable :: ErG(:,:)  !For Riech-Moore formalism: has dimension 1:n_r and 1:5, dim 2 is 1=Er[keV], 2=neutron width, 3=radiation width
+                                           !For MLBW formalism: has dimension 1:n_r and 1:6, dim 2 is 1=Er[keV], 2=total width, 3=neutron width, 4=radiation width
     End Type
 
     Type ::  res_sig_level_Type
@@ -1138,22 +1137,22 @@ Subroutine Read_res_sect(res_unit,res_List)
         If (AP .NE. 0._dp) res_List%a(2,l) = AP  !level specific scattering radius
         !Allocate a scratch array
         If (l .GT. 1) Deallocate(res_scratch)
-        Allocate(res_scratch(1:6,1:nR))
+        Allocate(res_scratch(1:nR,1:6))
         res_scratch = -1._dp
         Allocate(Js(1:nR))
         Js = -1._dp
         !read resonance parameters for this level
         Do r = 1,nR
-            Read(res_unit,'(6E11.6E1)') res_scratch(1,r),res_scratch(2,r),res_scratch(3,r),res_scratch(4,r),res_scratch(5,r),res_scratch(6,r)
+            Read(res_unit,'(6E11.6E1)') res_scratch(r,1),res_scratch(r,2),res_scratch(r,3),res_scratch(r,4),res_scratch(r,5),res_scratch(r,6)
         End Do
         !check for fission resonances
         If (res_list%is_MLBW) Then
-            If (Any(res_scratch(6,:).NE.0._dp)) Call Output_Message('ERROR:  Cross_Sections: Read_res_sect:  Dude, a fissionable atmosphere is just ridiculous. ',kill=.TRUE.)
+            If (Any(res_scratch(:,6).NE.0._dp)) Call Output_Message('ERROR:  Cross_Sections: Read_res_sect:  Dude, a fissionable atmosphere is just ridiculous. ',kill=.TRUE.)
         Else !res_list%is_RM
-            If (Any(res_scratch(5:6,:).NE.0._dp)) Call Output_Message('ERROR:  Cross_Sections: Read_res_sect:  Dude, a fissionable atmosphere is just ridiculous. ',kill=.TRUE.)
+            If (Any(res_scratch(:,5:6).NE.0._dp)) Call Output_Message('ERROR:  Cross_Sections: Read_res_sect:  Dude, a fissionable atmosphere is just ridiculous. ',kill=.TRUE.)
         End If
         !count unique spin values
-        Js = res_scratch(2,:)
+        Js = res_scratch(:,2)
         Call Union_Sort(Js,nJ)
         !Allocate and fill spin groups for this level
         res_list%L(l)%n_J = nJ
@@ -1200,7 +1199,7 @@ Subroutine Read_res_sect(res_unit,res_List)
             !count number of resonance parameters for this spin
             nRj = 0
             Do i = 1,nR
-                If (res_scratch(2,i) .EQ. Js(J)) nRj = nRj + 1
+                If (res_scratch(i,2) .EQ. Js(J)) nRj = nRj + 1
             End Do
             res_list%L(l)%J(J)%n_r = nRj
             If (res_list%is_MLBW) Then
@@ -1208,23 +1207,24 @@ Subroutine Read_res_sect(res_unit,res_List)
             Else !res_list%is_RM
                 d = 5
             End If
-            Allocate(res_list%L(l)%J(J)%ErG(1:d,1:nRj))
+            Allocate(res_list%L(l)%J(J)%ErG(1:nRj,1:d))
+            res_list%L(l)%J(J)%ErG(1:nRj,1:d) = 0._dp
             k = 1
             Do i = 1,nR
-                If (res_scratch(2,i) .EQ. Js(J)) Then
+                If (res_scratch(i,2) .EQ. Js(J)) Then
                     !NOTE: Resonance parameters are stored with energy in eV (NOT keV like the rest of the cross sections)
-                    res_list%L(l)%J(J)%ErG(1,k) = res_scratch(1,i)
-                    res_list%L(l)%J(J)%ErG(2,k) = res_scratch(3,i)
-                    res_list%L(l)%J(J)%ErG(3,k) = res_scratch(4,i)
-                    If (res_list%is_MLBW) res_list%L(l)%J(J)%ErG(4,k) = res_scratch(5,i)
-                    res_scratch(2,i) = 0._dp
+                    res_list%L(l)%J(J)%ErG(k,1) = res_scratch(i,1)
+                    res_list%L(l)%J(J)%ErG(k,2) = res_scratch(i,3)
+                    res_list%L(l)%J(J)%ErG(k,3) = res_scratch(i,4)
+                    If (res_list%is_MLBW) res_list%L(l)%J(J)%ErG(k,4) = res_scratch(i,5)
+                    res_scratch(i,2) = 0._dp
                     If (k .GE. nRj) Exit
                     k = k + 1
                 End If
             End Do
             !precompute shift and penetrability factors at each stored resonanace
-            res_list%L(l)%J(J)%ErG(d-1,:) = ShiftFact(l,res_list%k0*Sqrt(res_list%L(l)%J(J)%ErG(1,:)))
-            res_list%L(l)%J(J)%ErG(d,:) = PenetFact(l,res_list%k0*Sqrt(res_list%L(l)%J(J)%ErG(1,:)))
+            res_list%L(l)%J(J)%ErG(:,d-1) = ShiftFact(l,res_list%k0*Sqrt(res_list%L(l)%J(J)%ErG(:,1)))
+            res_list%L(l)%J(J)%ErG(:,d) = PenetFact(l,res_list%k0*Sqrt(res_list%L(l)%J(J)%ErG(:,1)))
         End Do
     End Do
 End Subroutine Read_res_sect
@@ -1879,8 +1879,8 @@ Subroutine sig_Resonance(r,E,sT,sS)
             Do J = 1,r%L(l)%n_J  !sum over spins (J)
                 !compute the R-function
                 Rnn = cmplx1 - Sum( &  !sum over r
-                                    & CMPLX( 0._dp , 0.5_dp*r%L(l)%J(j)%ErG(2,:)*P/r%L(l)%J(j)%ErG(5,:) , KIND=dp ) / &
-                                    & CMPLX( r%L(l)%J(j)%ErG(1,:)-E_eV , -0.5_dp*r%L(l)%J(j)%ErG(3,:) , KIND=dp ) &
+                                    & CMPLX( 0._dp , 0.5_dp*r%L(l)%J(j)%ErG(:,2)*P/r%L(l)%J(j)%ErG(:,5) , KIND=dp ) / &
+                                    & CMPLX( r%L(l)%J(j)%ErG(:,1)-E_eV , -0.5_dp*r%L(l)%J(j)%ErG(:,3) , KIND=dp ) &
                                     & )
                 !compute the element of the scattering matrix
                 Unn = Exp(CMPLX(0._dp,-two_phi,KIND=dp)) * (cmplx2 / Rnn - cmplx1)
@@ -1897,8 +1897,8 @@ Subroutine sig_Resonance(r,E,sT,sS)
             Do J = 1,r%L(l)%n_J  !sum over spins (J)
                 !compute the element of the scattering matrix
                 Unn = Exp(CMPLX(0._dp,-two_phi,KIND=dp)) * (cmplx1 + Sum( &  !sum over r
-                                                                          & CMPLX( 0._dp , r%L(l)%J(j)%ErG(3,:)**P/r%L(l)%J(j)%ErG(6,:) , KIND=dp ) / &
-                                                                          & CMPLX( r%L(l)%J(j)%ErG(1,:) - E_eV , -0.5_dp*r%L(l)%J(j)%ErG(2,:) , KIND=dp ) &
+                                                                          & CMPLX( 0._dp , r%L(l)%J(j)%ErG(:,3)**P/r%L(l)%J(j)%ErG(:,6) , KIND=dp ) / &
+                                                                          & CMPLX( r%L(l)%J(j)%ErG(:,1) - E_eV , -0.5_dp*r%L(l)%J(j)%ErG(:,2) , KIND=dp ) &
                                                                           & ) &
                                                            & )
                 !compute second channel contribution where applicable
@@ -1910,8 +1910,8 @@ Subroutine sig_Resonance(r,E,sT,sS)
                 sS = sS + r%L(l)%gj(J) * (Abs(cmplx1 - Unn)**2 + Dj)
                 !compute the absorption cross section (scattering cross section will be added to absorption to obtain total once all levels are summed)
                 sT = sT + r%L(l)%gj(J) * Sum( &  !sum over r
-                                              & r%L(l)%J(j)%ErG(3,:)*r%L(l)%J(j)%ErG(4,:) / &
-                                              & ((E_eV - r%L(l)%J(j)%ErG(1,:))**2 + 0.25_dp*r%L(l)%J(j)%ErG(2,:)**2) &
+                                              & r%L(l)%J(j)%ErG(:,3)*r%L(l)%J(j)%ErG(:,4) / &
+                                              & ((E_eV - r%L(l)%J(j)%ErG(:,1))**2 + 0.25_dp*r%L(l)%J(j)%ErG(:,2)**2) &
                                               & )
             End Do
         End If
