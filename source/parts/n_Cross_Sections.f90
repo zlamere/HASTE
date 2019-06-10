@@ -1849,7 +1849,7 @@ Function sig_A(CS,E,iE_get,iE_put) Result(sA)
     If (Present(iE_get)) iE_get = E_index
 End Function sig_A
 
-Subroutine sig_Resonance(r,E,sT,sS)
+Pure Subroutine sig_Resonance(r,E,sT,sS)
     Use Kinds, Only: dp
     Use Global, Only: Pi
     Use Global, Only: TwoPi
@@ -1971,7 +1971,7 @@ Pure Subroutine phi_shift_penet(l,rho,rho_hat,phi,shift,penet)
     End Select
 End Subroutine phi_shift_penet
 
-Function sig_Composite(E,n_E,E_list,lnE_list,E_index,n1,n2,t_list,sig_list) Result(sig)
+Pure Function sig_Composite(E,n_E,E_list,lnE_list,E_index,n1,n2,t_list,sig_list) Result(sig)
     Use Kinds, Only: dp
     Use Interpolation, Only: Linear_Interp
     Use FileIO_Utilities, Only: Output_Message
@@ -2034,13 +2034,13 @@ Function sig_Composite(E,n_E,E_list,lnE_list,E_index,n1,n2,t_list,sig_list) Resu
                 sig1 = sig_list(i)%lnsig( index1 )
                 sig2 = sig_list(i)%lnsig( index2 )
                 sig = sig + Exp(Linear_Interp(Log(E),E1,E2,sig1,sig2))
-            Case Default
-                Call Output_Message('ERROR:  Cross_Sections: sig_Composite:  Undefined interpolation method',kill=.TRUE.)
+!            Case Default
+!                Call Output_Message('ERROR:  Cross_Sections: sig_Composite:  Undefined interpolation method',kill=.TRUE.)
         End Select
     End Do
 End Function sig_Composite
 
-Subroutine Broad_sig_start(E,M,T,v,gamma,vRmin,vRmax)
+Pure Subroutine Broad_sig_start(E,M,T,v,gamma,vRmin,vRmax)
     Use Kinds, Only: dp
     Use Global, Only: k_Boltzmann
     Use Neutron_Utilities, Only: Neutron_Speed
