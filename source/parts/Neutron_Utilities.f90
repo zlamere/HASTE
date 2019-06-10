@@ -27,7 +27,7 @@ Module Neutron_Utilities
 
 Contains
 
-Function Neutron_Speed(E) Result(v)
+Pure Function Neutron_Speed(E) Result(v)
     Use Kinds, Only: dp
     Use Global, Only: neutron_speed_conversion
     Implicit None
@@ -37,7 +37,7 @@ Function Neutron_Speed(E) Result(v)
     v = neutron_speed_conversion * Sqrt(E)
 End Function Neutron_Speed
 
-Function Neutron_Energy_From_Speed(v) Result(E)
+Pure Function Neutron_Energy_From_Speed(v) Result(E)
     Use Kinds, Only: dp
     Use Global, Only: neutron_speed_conversion
     Implicit None
@@ -47,7 +47,7 @@ Function Neutron_Energy_From_Speed(v) Result(E)
     E = (v / neutron_speed_conversion)**2
 End Function Neutron_Energy_From_Speed
 
-Function Neutron_Energy_From_Velocity(v) Result(E)
+Pure Function Neutron_Energy_From_Velocity(v) Result(E)
     Use Kinds, Only: dp
     Use Utilities, Only: Vector_Length
     Implicit None
