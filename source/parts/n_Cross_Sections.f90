@@ -363,8 +363,7 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
                                 If (Any(MT_disappearance .EQ. MT)) Then
                                     n_abs_modes(i) = n_abs_modes(i) + 1
                                     If (v) Write(v_unit,'(A)',ADVANCE='NO') ', absorption'
-                                End If
-                                If (Any(MT_inelastic .EQ. MT)) Then
+                                Else If (Any(MT_inelastic .EQ. MT)) Then
                                     n_inel_lev(i) = n_inel_lev(i) + 1
                                     If (v) Write(v_unit,'(A)',ADVANCE='NO') ', inelastic'
                                 End If
@@ -403,9 +402,12 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
                                 End Do
                             End If
                         Case (4)
-                            If (first_time) Then  !FIRST TIME
-                                If (Any(MT_disappearance.EQ.MT) .AND. v) Write(v_unit,'(A)',ADVANCE='NO') ', absorption'
-                                If (Any(MT_inelastic.EQ.MT) .AND. v) Write(v_unit,'(A)',ADVANCE='NO') ', inelastic'
+                            If (first_time .AND. v) Then  !FIRST TIME
+                                If (Any(MT_disappearance.EQ.MT)) Then
+                                    Write(v_unit,'(A)',ADVANCE='NO') ', absorption'
+                                Else If (Any(MT_inelastic.EQ.MT)) Then
+                                    Write(v_unit,'(A)',ADVANCE='NO') ', inelastic'
+                                End If
                             End If
                             !need to read the first line again to get LTT
                             Backspace(ENDF_unit)
@@ -433,7 +435,7 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
                                     Read(ENDF_unit,*)
                                     !first entry of next line is number of additional energy points
                                     Read(ENDF_unit,'(I11)') n_p_2
-                                    If (v) Write(v_unit,'(A,I0,A,I0,A)',ADVANCE='YES') ', ',n_p,'+',n_p_2,' E-points'
+                                    If (v) Write(v_unit,'(A,I0,A,I0,A)',ADVANCE='YES') ', ',n_p,' + ',n_p_2,' E-points'
                                 Else
                                     n_p_2 = 0
                                     If (v) Write(v_unit,'(A,I0,A)',ADVANCE='YES') ', ',n_p,' E-points'
