@@ -1235,6 +1235,7 @@ Pure Function SPden2(rho_sq) Result(SPden)
 !returns the demominator for computing SHIFT and PENETRABILITY factors at the 2nd level
     Use Kinds, Only: dp
     Implicit None
+    Real(dp) :: SPden
     Real(dp), Intent(In) :: rho_sq
     
     SPden = 1._dp + rho_sq
@@ -1508,7 +1509,7 @@ Function Trim_AD_for_E(n_p,E_list,AD_list,E_min,E_max) Result(bingo)
     Real(dp), Intent(In) :: E_min,E_max
     Real(dp), Allocatable :: E_swap(:)
     Type(da_List_Type), Allocatable :: AD_swap(:)
-    Integer :: i,j,m,k
+    Integer :: i,j
 
     bingo = .TRUE.
     If (E_list(1).GE.E_min .AND. E_list(n_p).LE.E_max) Return  !no trimming required
@@ -1632,6 +1633,7 @@ Subroutine Map_and_Store_AD(n_E_uni,E_uni,n_p,E_list,AD_list,ad,i_thresh)
     Type(da_Type), Intent(Out) :: ad
     Integer, Optional, Intent(In) :: i_thresh
     Integer :: i,j,t
+    Logical :: check_tab
 
     !Determine index of threshold energy
     t = 1
@@ -1641,7 +1643,7 @@ Subroutine Map_and_Store_AD(n_E_uni,E_uni,n_p,E_list,AD_list,ad,i_thresh)
     ad%E_map = -1
     j = 1
     If (Any(AD_list(:)%is_Legendre) .AND. Any(AD_list(:)%is_Tab)) Then
-    !there is a transition between legender and tabular forms to accomodate
+    !there is a transition between legendre and tabular forms to accomodate
         check_tab = .TRUE.
     Else
         check_tab = .FALSE.
@@ -1860,7 +1862,6 @@ Pure Subroutine sig_Resonance(r,E,sT,sS)
     Real(dp), Intent(Out) :: sS
     Real(dp) :: E_eV  !energy in eV for local calcs
     Real(dp) :: k
-    Real(dp) :: rho,rho_hat
     Real(dp) :: two_phi,S,P
     Integer :: l,J
     Complex(dp) :: Rnn,Unn
@@ -1945,7 +1946,7 @@ Pure Subroutine phi_shift_penet(l,rho,rho_hat,phi,shift,penet)
             phi = rho_hat - ATAN(rho_hat)
             rho_sq = rho**2
             c = 1._dp / SPden2(rho_sq)
-            shift = Snum2(rho_sq) * c
+            shift = -c
             penet = Pnum2(rho,rho_sq) * c
         Case (3)
             rho_hat_sq = rho_hat**2
