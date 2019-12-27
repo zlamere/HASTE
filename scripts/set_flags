@@ -23,8 +23,8 @@ SYNTAX_FLAGS="-O0 -fmax-errors=5 -Wall -Wextra -pedantic ${ALWAYS_FLAGS} -fsynta
 DEBUG_FLAGS="-g -Og -Wall -pedantic -fcheck=all -fbacktrace ${ALWAYS_FLAGS}"
 # RELEASE Compiler Flags (optimize for runtime speed)
 RELEASE_FLAGS="-Ofast ${ALWAYS_FLAGS}"
-# RASPBERRY PI RELEASE Compiler Flags (because this development environment is super-high performance!)
-RELEASE_FLAGS_PI="-Ofast -mcpu=cortex-a53 -mfloat-abi=hard -mfpu=neon-fp-armv8 -mneon-for-64bits -mtune=cortex-a53 ${ALWAYS_FLAGS}"
+# SUPER RELEASE Compiler Flags (optimize for runtime speed and current architecture)
+RELEASE_FLAGS_SUPER="-Ofast -mcpu=native -mtune=native -march=native ${ALWAYS_FLAGS}"
 
 # Set preprocessor/compiler/library flags based on command line flag(s)
 # Default to debugging settings
@@ -40,7 +40,7 @@ while getopts 'sdrqwp:ck' flag; do
        ;;
     r) COMP_FLAGS="${RELEASE_FLAGS}"
        ;;
-    q) COMP_FLAGS="${RELEASE_FLAGS_PI}"
+    q) COMP_FLAGS="${RELEASE_FLAGS_SUPER}"
        ;;
     w) PREP_FLAGS="${PREP_FLAGS} -ULIN_OS"
        ;;

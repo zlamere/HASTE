@@ -1,3 +1,5 @@
 /build/obj
+/testing/PRNGs/Resources
 *.out
 *.tst
+*.stream

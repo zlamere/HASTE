@@ -197,6 +197,17 @@ Function Romb_Quad(f,a,b,aTol,rTol,p,n_ord,n_ext) Result(q)
     Write(*,'(A,2(ES10.3,A))')         '          Final Extrapolation Error: ',Abs(Tk-T(ifin-1)),' (abs), ',Abs(Tk-T(ifin-1))/Tk,' (rel)'
     Write(*,'(A,2(ES10.3,A))')         '          Convergence Criteria:      ',atol,             ' (abs), ',rtol,                ' (rel)'
     q = Tk
+#   if ROMB_TABLES
+        T(i-1) = Tk0
+        T(i) = Tk
+        Open(NEWUNIT=unit,FILE='Romb_Tables.tst',ACTION='WRITE',STATUS='UNKNOWN',POSITION='APPEND')
+        Do k = 0,i
+            Write(unit,'(ES24.15)',ADVANCE='NO') T(k)
+        End Do
+        Write(unit,'(A)') '*'
+        Write(unit,*)
+        Close(unit)
+#   endif
     If (Present(p)) p = Prec(T(ifin-1),Tk)
     If (Present(n_ord)) n_ord = n
     If (Present(n_ext)) n_ext = ifin
