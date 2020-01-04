@@ -118,7 +118,8 @@ Function Neutron_Anisotropic_mu0cm_Legendre(n,a,RNG) Result(mu0cm)
         Else If (Abs(x) .LE. 1._dp + 10._dp * Spacing(1._dp)) Then
             mu0cm = Sign(1._dp, x)
         Else
-            Call Output_Message("ERROR:  Random_Directions: Neutron_Anisotropic_mu0cm_Legendre:  Linearly-anisotropic scatter out of range.",kill=.TRUE.)
+            Call Output_Message('ERROR:  Random_Directions: Neutron_Anisotropic_mu0cm_Legendre:  & 
+                                &Linearly-anisotropic scatter out of range.',kill=.TRUE.)
         End If
         Return
     End If
@@ -149,7 +150,8 @@ Function Neutron_Anisotropic_mu0cm_Legendre(n,a,RNG) Result(mu0cm)
         If (Abs(mu0cm - muOld) .LE. AbsTol) Return  !Normal exit for convergence on mu0cm
     End Do
     !If we get this far, no normal exit
-    Call Output_Message('ERROR:  Random_Directions: Neutron_Anisotropic_mu0cm_Legendre:  Failed to converge in',i,' iterations.',kill=.TRUE.)
+    Call Output_Message('ERROR:  Random_Directions: Neutron_Anisotropic_mu0cm_Legendre:  Failed to converge in', & 
+                       & i,' iterations.',kill=.TRUE.)
 End Function Neutron_Anisotropic_mu0cm_Legendre
 
 Function Neutron_Anisotropic_mu0cm_tablePDF(n1,ua1,n2,ua2,Econv,RNG) Result(mu0cm)
@@ -209,7 +211,8 @@ Function Photon_Aniosotropic_mu_Incoherent(RNG,a) Result(mu)
         !sample mu from coherent scattering distribution
         mu = Photon_Aniosotropic_mu_Coherent(RNG)
         !compute the value of the KN distribution at this mu
-        !this is the KN distributon scaled on 0 < f(mu) < TWO  (using this scaled value eliminates a multiplication here and a multiplication in the following check for acceptance)
+        !This is the KN distributon scaled on 0 < f(mu) < TWO  (using this scaled value eliminates a multiplication here and a 
+        ! multiplication in the following check for acceptance)
         mu2p1 = 1._dp + mu**2
         amamup1 = 1._dp + a * (1._dp - mu)
         kn = mu2p1 * (1._dp + (a**2 * (mu2p1 - 2._dp*mu) / (mu2p1 * amamup1))) / amamup1**2

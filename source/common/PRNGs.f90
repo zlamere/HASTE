@@ -434,7 +434,8 @@ Subroutine seed_rng_mt2203(RNG,jj,seed,burn,resourcedir)
     Integer(il), Intent(In) :: jj  !Index of the MT2203 stream for this PRNG
     Integer(il), Intent(In) :: seed  !Seed for PRNG
     Integer(il), Intent(In), Optional :: burn  !OPTIONAL: Number of random numbers to 'burn' after seeding
-    Character(*), Intent(In), Optional :: resourcedir  !OPTIONAL: A directory, other than the default resources directory, in which to find the MT2203 parameters file
+    Character(*), Intent(In), Optional :: resourcedir  !OPTIONAL: A directory, other than the default resources directory,
+                                                       ! in which to find the MT2203 parameters file
     Integer :: i
     Integer(il) :: k,burns
     Integer(il) :: unit,stat
@@ -481,7 +482,8 @@ Subroutine seed_ar_rng_mt2203(RNG,jj,seeds,resourcedir)
     Class(MT2203_Type), Intent(InOut) :: RNG
     Integer, Intent(In) :: jj
     Integer(il), Intent(In) :: seeds(:)
-    Character(*), Intent(In), Optional :: resourcedir  !OPTIONAL: A directory, other than the default resources directory, in which to find the MT2203 parameters file
+    Character(*), Intent(In), Optional :: resourcedir  !OPTIONAL: A directory, other than the default resources directory, 
+                                                       ! in which to find the MT2203 parameters file
     Integer :: i,j,k
       
     If (Present(resourcedir)) Then

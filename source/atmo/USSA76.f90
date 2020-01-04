@@ -36,13 +36,22 @@ Module US_Std_Atm_1976
 #   endif
 
     !US Standard Atmosphere 1976 parameters
-    !The following constants are defined here to ensure consistency with 1976 atmosphere model definition.
-    !There may be more modern values for these constants, but these values ensure agreement with the 1976 US Std Atmosphere model as published
-    Real(dp), Parameter :: g0 = 9.80665_dp  ![m / s^2]  accelleration due to gravity
-    Real(dp), Parameter :: R_Earth = 6356.766_dp  ![km]  Radius of earth (nominal) at 45 deg latitude, used to relate geometric and geopotential heights, from US Std Atmosphere 1976
-    Real(dp), Parameter :: R_star = 8.31432_dp  ![J / (mol*K)]  Universal gas constant as defined in US Standard Atmosphere 1976
-    Real(dp), Parameter :: M0 = 28.964425912034_dp  ![kg / kmol] Average molecular weight of the ten most abundant species in air, weighted by relative abundance, from US Std Atmosphere 1976
-    Real(dp), Parameter :: Hb(0:7) = (/ 0._dp,  &  ![km] geopotential heights of layer boundaries, US Standard Atmosphere 1976 table 4 
+    !The following constants are defined here to ensure consistency with 1976 
+    !atmosphere model definition.  There may be more modern values for these 
+    !constants, but these values ensure agreement with the 1976 US Std
+    !Atmosphere model as published.
+
+    !TODO Each parameter needs a reference (name,description,page,units) to the 1976 US Std Atmosphere model document
+    !Accelleration due to gravity
+    Real(dp), Parameter :: g0 = 9.80665_dp  ![m / s^2]
+    !Radius of earth (nominal) at 45 deg latitude, used to relate geometric and geopotential heights, from US Std Atmosphere 1976
+    Real(dp), Parameter :: R_Earth = 6356.766_dp  ![km]
+    !Universal gas constant as defined in US Standard Atmosphere 1976
+    Real(dp), Parameter :: R_star = 8.31432_dp  ![J / (mol*K)]
+    !Average molecular weight of the ten most abundant species in air, weighted by relative abundance, from US Std Atmosphere 1976
+    Real(dp), Parameter :: M0 = 28.964425912034_dp  ![kg / kmol]
+    !Geopotential heights of layer boundaries, US Standard Atmosphere 1976 table 4
+    Real(dp), Parameter :: Hb(0:7) = (/ 0._dp,  &  ![km]
                                       & 11._dp, & 
                                       & 20._dp, & 
                                       & 32._dp, & 
@@ -50,7 +59,8 @@ Module US_Std_Atm_1976
                                       & 51._dp, & 
                                       & 71._dp, &
                                       & 86._dp * R_Earth / (86._dp + R_Earth) /)
-    Real(dp), Parameter :: Zb(0:11) = (/ 0._dp, &  ![km] geometric heights of layer boundaries, US Standard Atmosphere 1976 
+    !Geometric heights of layer boundaries, US Standard Atmosphere 1976
+    Real(dp), Parameter :: Zb(0:11) = (/ 0._dp, &  ![km]
                                        & Hb(1) * R_Earth / (R_Earth - Hb(1)), & 
                                        & Hb(2) * R_Earth / (R_Earth - Hb(2)), & 
                                        & Hb(3) * R_Earth / (R_Earth - Hb(3)), & 
@@ -62,7 +72,8 @@ Module US_Std_Atm_1976
                                        & 110._dp, &
                                        & 120._dp, &
                                        & 1000._dp /)
-    Real(dp), Parameter :: Lb(0:11) = (/ -6.5_dp, &  ![K/km] temperature lapse rates in each layer, US Standard Atmosphere 1976 table 4 
+    !Temperature lapse rates in each layer, US Standard Atmosphere 1976 table 4
+    Real(dp), Parameter :: Lb(0:11) = (/ -6.5_dp, &  ![K/km]
                                        &  0._dp,  & 
                                        &  1._dp,  & 
                                        &  2.8_dp, & 
@@ -74,7 +85,8 @@ Module US_Std_Atm_1976
                                        &  12._dp, &
                                        &  0._dp,  &
                                        &  0._dp   /)
-    Real(dp), Parameter :: Tb(0:11) = (/ 288.15_dp, &  ![K] Computed temperature at layer boundaries 
+    !Computed temperature at layer boundaries
+    Real(dp), Parameter :: Tb(0:11) = (/ 288.15_dp, &  ![K] 
                                        & 216.65_dp, &  !Molecular & Kinetic Temperature
                                        & 216.65_dp, &  !Molecular & Kinetic Temperature
                                        & 228.65_dp, &  !Molecular & Kinetic Temperature
@@ -86,7 +98,8 @@ Module US_Std_Atm_1976
                                        & 240._dp, &  !Kinetic Temperature
                                        & 360._dp, &  !Kinetic Temperature
                                        & 1000._dp /)  !Kinetic Temperature
-    Real(dp), Parameter :: Pb(0:7) = (/ 101325._dp, &   ![Pa] Computed pressure at layer boundaries
+    !Computed pressure at layer boundaries
+    Real(dp), Parameter :: Pb(0:7) = (/ 101325._dp, &   ![Pa]
                                       & 22632.0336238972840275_dp, & 
                                       & 5474.87437675730708586_dp, & 
                                       & 868.014988510785148131_dp, & 
@@ -94,6 +107,7 @@ Module US_Std_Atm_1976
                                       & 66.9384346263881217465_dp, & 
                                       & 3.95638449983647254755_dp, &
                                       & 0.37337628269333201966_dp  /)
+    !flags indicating non-zero lapse rate
     Logical, Parameter :: Lb_nonzero(0:11) = (/ .TRUE.,  & 
                                               & .FALSE., & 
                                               & .TRUE.,  & 
@@ -105,7 +119,8 @@ Module US_Std_Atm_1976
                                               & .FALSE., &
                                               & .TRUE.,  &
                                               & .FALSE., &
-                                              & .FALSE.  /)  !flags indicating non-zero lapse rate
+                                              & .FALSE.  /)
+    !flags indicating linear temperature by geopotential height
     Logical, Parameter :: T_linear_by_H(0:11) = (/ .TRUE.,  & 
                                                  & .FALSE., & 
                                                  & .TRUE.,  & 
@@ -117,7 +132,8 @@ Module US_Std_Atm_1976
                                                  & .FALSE., &
                                                  & .FALSE., &
                                                  & .FALSE., &
-                                                 & .FALSE.  /)  !flags indicating linear temperature by geopotential height
+                                                 & .FALSE.  /)
+    !flags indicating elliptical temperature by geometric height
     Logical, Parameter :: T_elliptical(0:11) = (/ .FALSE., & 
                                                 & .FALSE., & 
                                                 & .FALSE., & 
@@ -129,7 +145,8 @@ Module US_Std_Atm_1976
                                                 & .TRUE.,  &
                                                 & .FALSE., &
                                                 & .FALSE., &
-                                                & .FALSE.  /)  !flags indicating elliptical temperature by geometric height
+                                                & .FALSE.  /)  
+    !flags indicating exponential temperature by geometric height
     Logical, Parameter :: T_exponential(0:11) = (/ .FALSE., & 
                                                  & .FALSE., & 
                                                  & .FALSE., & 
@@ -141,7 +158,8 @@ Module US_Std_Atm_1976
                                                  & .FALSE., &
                                                  & .FALSE., &
                                                  & .TRUE.,  &
-                                                 & .FALSE.  /)  !flags indicating exponential temperature by geometric height
+                                                 & .FALSE.  /)
+    !flags indicating Pressure and Density computed by OTHER than number density
     Logical, Parameter :: P_rho_not_by_N(0:11) = (/ .TRUE.,  & 
                                                   & .TRUE.,  & 
                                                   & .TRUE.,  & 
@@ -153,59 +171,76 @@ Module US_Std_Atm_1976
                                                   & .FALSE., &
                                                   & .FALSE., &
                                                   & .FALSE., &
-                                                  & .FALSE.  /)  !flags indicating Pressure and Density computed by OTHER than number density
-    Real(dp), Parameter :: rho_star = M0 / R_star  !precomputed quantity for 1976 density calculations
+                                                  & .FALSE.  /)
+    !precomputed quantity for 1976 density calculations
+    Real(dp), Parameter :: rho_star = M0 / R_star
+    !US Standard Atmosphere 1976 equation B-8
     Real(dp), Parameter :: Tc = (Lb(9) * (Zb(9)-Zb(8)) * Tb(9) + Tb(8)**2 - Tb(9)**2) / &
-                              & (Lb(9) * (Zb(9)-Zb(8)) + 2._dp * Tb(8) - 2._dp * Tb(9))  !US Standard Atmosphere 1976 equation B-8
-    Real(dp), Parameter :: big_A = Tb(8) - Tc  !US Standard Atmosphere 1976 equation B-5
-    Real(dp), Parameter :: little_A = (Zb(9)-Zb(8)) * big_A / Sqrt(big_A**2 - (Tb(9)-Tc)**2)  !US Standard Atmosphere 1976 equation B-9
-    Real(dp), Parameter :: T_inf = 1000._dp
-    Real(dp), Parameter :: lambda = Lb(9) / (T_inf - Tb(10))  !precomputed quantity for 1976 temperature calculations
+                              & (Lb(9) * (Zb(9)-Zb(8)) + 2._dp * Tb(8) - 2._dp * Tb(9))
+    !US Standard Atmosphere 1976 equation B-5
+    Real(dp), Parameter :: big_A = Tb(8) - Tc
+    !US Standard Atmosphere 1976 equation B-9
+    Real(dp), Parameter :: little_A = (Zb(9)-Zb(8)) * big_A / Sqrt(big_A**2 - (Tb(9)-Tc)**2)
+    !Kinetic temperature at the top of the atmosphere (1000 deg K)
+    Real(dp), Parameter :: T_inf = Tb(11)  ![K]
+    !precomputed quantity for 1976 temperature calculations
+    Real(dp), Parameter :: lambda = Lb(9) / (T_inf - Tb(10))
+    !precomputed radii at layers of interest
     Real(dp), Parameter :: R_Z7 = R_Earth + Zb(7)
     Real(dp), Parameter :: R_Z9 = R_Earth + Zb(9)
     Real(dp), Parameter :: R_Z10 = R_Earth + Zb(10)
-    Real(dp), Parameter :: Na = 6.022169E26_dp  ![1/kmol] Avagadro's Number
+    !Avagadro's Number
+    Real(dp), Parameter :: Na = 6.022169E26_dp  ![1/kmol]
+    !
     Real(dp), Parameter :: K0 = 1.2E2_dp
+    !US Standard Atmosphere 1976 table 3
     Real(dp), Parameter :: Mi(1:6) = (/ 28.0134_dp, &  !N2
                                       & 15.9994_dp, &  !O1
                                       & 31.9988_dp, &  !O2
                                       & 39.948_dp,  &  !Ar
                                       &  4.0026_dp, &  !He
-                                      &  0.5_dp * 2.01594_dp  /) !H1  !US Standard Atmosphere 1976 table 3
-    Real(dp), Parameter :: alphaHe = -0.40_dp  !He  !US Standard Atmosphere 1976 table 6
-    Real(dp), Parameter :: alphaHe_star = alphaHe * R_star  !precomputed quantity for 1976 He number density calculations
-    ! Real(dp), Parameter :: alphaH1 = -0.25_dp  !H1  !US Standard Atmosphere 1976 table 6
+                                      &  0.5_dp * 2.01594_dp  /) !H1
+    !US Standard Atmosphere 1976 table 6
+    Real(dp), Parameter :: alphaHe = -0.40_dp  !He
+    ! Real(dp), Parameter :: alphaH1 = -0.25_dp  !H1
     Real(dp), Parameter :: ai(2:6) = (/ 6.986E20_dp, &  !O1
                                       & 4.863E20_dp, &  !O2
                                       & 4.487E20_dp, &  !Ar
                                       & 1.700E21_dp, &  !He
-                                      & 3.305E21_dp  /) !H1  !US Standard Atmosphere 1976 table 6
+                                      & 3.305E21_dp  /) !H1
     Real(dp), Parameter :: bi(2:5) = (/ 0.750_dp, &  !O1
                                       & 0.750_dp, &  !O2
                                       & 0.870_dp, &  !Ar
-                                      & 0.691_dp  /) !He  !US Standard Atmosphere 1976 table 6
+                                      & 0.691_dp  /) !He
+    !precomputed quantity for 1976 He number density calculations
+    Real(dp), Parameter :: alphaHe_star = alphaHe * R_star
+    !US Standard Atmosphere 1976 table 7
     Real(dp), Parameter :: bigQi(2:5) = (/ -5.809644E-4_dp, &  !O1
                                          &  1.366212E-4_dp, &  !O2
                                          &  9.434079E-5_dp, &  !Ar
-                                         & -2.457369E-4_dp  /) !He  !US Standard Atmosphere 1976 table 7
+                                         & -2.457369E-4_dp  /) !He
     Real(dp), Parameter :: bigUi(2:5) = (/ 56.90311_dp, &  !O1
                                          & 86._dp,      &  !O2
                                          & 86._dp,      &  !Ar
-                                         & 86._dp       /) !He  !US Standard Atmosphere 1976 table 7
+                                         & 86._dp       /) !He
     Real(dp), Parameter :: bigWi(2:5) = (/ 2.706240E-5_dp, &  !O1
                                          & 8.333333E-5_dp, &  !O2
                                          & 8.333333E-5_dp, &  !Ar
-                                         & 6.666667E-4_dp  /) !He  !US Standard Atmosphere 1976 table 7
-    Real(dp), Parameter :: littleQi = -3.416248E-3_dp !only defined for O1  !US Standard Atmosphere 1976 table 7
-    Real(dp), Parameter :: littleUi = 97._dp          !only defined for O1  !US Standard Atmosphere 1976 table 7
-    Real(dp), Parameter :: littleWi = 5.008765E-4_dp  !only defined for O1  !US Standard Atmosphere 1976 table 7
+                                         & 6.666667E-4_dp  /) !He
+    Real(dp), Parameter :: littleQi = -3.416248E-3_dp !only defined for O1
+    Real(dp), Parameter :: littleUi = 97._dp          !only defined for O1
+    Real(dp), Parameter :: littleWi = 5.008765E-4_dp  !only defined for O1
+    !US Standard Atmosphere 1976 table 9
     Real(dp), Parameter :: N7(1:5) = (/ 1.129794E20_dp, &  !N2
                                       & 8.6E16_dp,      &  !O1
                                       & 3.030898E19_dp, &  !O2
                                       & 1.351400E18_dp, &  !Ar
-                                      & 7.5817E14_dp    /) !He  !US Standard Atmosphere 1976 table 9
-    Real(dp), Parameter :: N7_T7(1:5) = N7 * Tb(7)  !precomputed quantity for 1976 diffusion coeff calculations
+                                      & 7.5817E14_dp    /) !He
+    !precomputed quantity for 1976 diffusion coeff calculations
+    Real(dp), Parameter :: N7_T7(1:5) = N7 * Tb(7)
+    !
     Real(dp), Parameter :: nH500 = 8.E10_dp
+    !
     Real(dp), Parameter :: phiH = 7.2E11_dp
     !Convergence criteria for quadrature routines
 #   if (INTEGRAND_STOPS || GL_POINTS)
@@ -331,7 +366,8 @@ Function Teq31(Z) !b=10
     Real(dp) :: Teq31
     Real(dp), Intent(In) :: Z
 
-    Teq31 = T_inf - (T_inf - Tb(10)) * Exp(-lambda * (Z - Zb(10)) * R_Z10 / (R_Earth + Z))  !US Standard Atmosphere 1976 equation 31
+    Teq31 = T_inf - & 
+          & (T_inf - Tb(10)) * Exp(-lambda * (Z - Zb(10)) * R_Z10 / (R_Earth + Z))  !US Standard Atmosphere 1976 equation 31
 End Function Teq31
 
 Function dT_dZ(Z,layer,layer_range)
@@ -358,9 +394,11 @@ Function dT_dZ(Z,layer,layer_range)
         dT_dZ = Lb(b)
         If (b.EQ.6 .AND. Z.GT.80._dp) dT_dZ = dT_dZ * T_M0_correction(Z)  !US Standard Atmosphere 1976 equation 22
     Else If (T_exponential(b)) Then  !b=10
-        dT_dZ = lambda * (T_inf - Tb(10)) * (R_Z10 / (R_Earth + Z))**2 * Exp(-lambda * (Z - Zb(10)) * R_Z10 / (R_Earth + Z))  !US Standard Atmosphere 1976 equation 32
+        dT_dZ = lambda * (T_inf - Tb(10)) * (R_Z10 / (R_Earth + Z))**2 * & 
+              & Exp(-lambda * (Z - Zb(10)) * R_Z10 / (R_Earth + Z))  !US Standard Atmosphere 1976 equation 32
     Else If (T_elliptical(b)) Then  !b=8
-        dT_dZ = -big_A * (Z - Zb(8)) / ((little_A**2) * Sqrt(1._dp - ((Z - Zb(8)) / little_A)**2))  !US Standard Atmosphere 1976 equation 28
+        dT_dZ = -big_A * (Z - Zb(8)) / & 
+              & ((little_A**2) * Sqrt(1._dp - ((Z - Zb(8)) / little_A)**2))  !US Standard Atmosphere 1976 equation 28
     Else !b=1,4,7
         dT_dZ = 0._dp
     End If
@@ -1276,7 +1314,8 @@ End Subroutine N_density
 !     If (Z .LT. 150._dp) Then
 !         N = 0._dp
 !     Else If (Z .LT. 500._dp) Then
-!         N = (nH500 - phiH * Romberg_Quad(nH_integrand,500._dp,Z,0._dp,rTol_tier4b)) / p6(Z)  !US Standard Atmosphere 1976 equation 39
+!         N = (nH500 - phiH * Romberg_Quad(nH_integrand,500._dp,Z,0._dp,rTol_tier4b)) / &
+!           & p6(Z)  !US Standard Atmosphere 1976 equation 39
 !     Else !z .GE. 500
 !         N = nH500 / p6(Z)  !US Standard Atmosphere 1976 equation 39
 !     End If
@@ -1383,8 +1422,9 @@ Function Peq33a(Tz,b)
     Real(dp) :: Peq33a
     Real(dp), Intent(In) :: Tz
     Integer, Intent(In) :: b
-    Real(dp), Parameter :: L_star = g0 * M0 / R_star  !precomputed quantity for 1976 pressure calculations
-    Real(dp), Parameter :: L_star_Lb(0:7) = (/  L_star / Lb(0), &  !precomputed quantity for 1976 pressure calculations
+    !precomputed quantities for 1976 pressure calculations
+    Real(dp), Parameter :: L_star = g0 * M0 / R_star
+    Real(dp), Parameter :: L_star_Lb(0:7) = (/  L_star / Lb(0), & 
                                              & -1._dp,          & 
                                              &  L_star / Lb(2), & 
                                              &  L_star / Lb(3), & 
@@ -1392,7 +1432,7 @@ Function Peq33a(Tz,b)
                                              &  L_star / Lb(5), & 
                                              &  L_star / Lb(6), &
                                              & -1._dp           /)
-    Real(dp), Parameter :: Pb_Tb_L_star_Lb(0:7) = (/  Pb(0) * Tb(0)**L_star_Lb(0), &  !precomputed quantity for 1976 pressure calculations
+    Real(dp), Parameter :: Pb_Tb_L_star_Lb(0:7) = (/  Pb(0) * Tb(0)**L_star_Lb(0), & 
                                                    & -1._dp,                       & 
                                                    &  Pb(2) * Tb(2)**L_star_Lb(2), & 
                                                    &  Pb(3) * Tb(3)**L_star_Lb(3), & 
@@ -1581,7 +1621,8 @@ Function nN2_power_stops() Result(xb)
     i = 4
     xb(i,2) = xb(i-1,2) + M_over_R(i-1) * Romberg_Quad(nN2_integrand_no_b,Zs(i-1),Zs(i),0._dp,rTol_tier1) !up to 110 km
     i = 5
-    xb(i,2) = xb(i-1,2) + c9a * ( Lb(9) * (Log(T(Zb(10),10)/(R_Earth+Zb(10))) + c9b) - c9c * (Zb(10)-Zb(9)) / (R_Earth+Zb(10)) ) !up to 120 km
+    xb(i,2) = xb(i-1,2) + & 
+            & c9a * ( Lb(9) * (Log(T(Zb(10),10)/(R_Earth+Zb(10))) + c9b) - c9c * (Zb(10)-Zb(9)) / (R_Earth+Zb(10)) ) !up to 120 km
 End Function nN2_power_stops
 
 Function nO1_O2_power_stops() Result(xb)
@@ -1675,7 +1716,8 @@ Function nO1_O2_power_stops() Result(xb)
     xb(i,3) = xb(i-1,3) + Romberg_Quad(nO1_O2_integrand4_2,Zs(i-1),Zs(i),0._dp,rTol_tier2)
     xb(i,2:3) = xb(i,2:3) + bigQ_3W * Exp(bigWi(2:3) * (bigUi(2:3) - Zs(i))**3) - eWUZb3(:,9)
     i = 8  !up to 120km
-    xb(i,2:3) = xb(i-1,2:3) +  c9ba * (c9bb * (Zs(i)-115._dp) / (R_Earth+Zs(i)) + Lb(9) * (Log(T(Zs(i),10)/(R_Earth+Zs(i))) + c9bc))
+    xb(i,2:3) = xb(i-1,2:3) +  & 
+              & c9ba * (c9bb * (Zs(i)-115._dp) / (R_Earth+Zs(i)) + Lb(9) * (Log(T(Zs(i),10)/(R_Earth+Zs(i))) + c9bc))
     xb(i,2:3) = xb(i,2:3) +  bigQ_3W * Exp(bigWi(2:3) * (bigUi(2:3) - Zs(i))**3) - eWUZb3_115
 End Function nO1_O2_power_stops
 
@@ -1755,8 +1797,9 @@ Function nAr_He_power_stops() Result(xb)
     xb(i,3) = xb(i-1,3) + Romberg_Quad(nAr_He_integrand4_2,Zs(i-1),Zs(i),0._dp,rTol_tier3)
     xb(i,2:3) = xb(i,2:3) + bigQ_3W * Exp(bigWi(4:5) * (bigUi(4:5) - Zs(i))**3) - eWUZb3(:,9)
     i = 8  !up to 120km
-    xb(i,2:3) = xb(i-1,2:3) +  c9ba * (c9bb * (Zs(i)-115._dp) / (R_Earth+Zs(i)) + Lb(9) * (Log(T(Zs(i),10)/(R_Earth+Zs(i))) + c9bc))
-    xb(i,2:3) = xb(i,2:3) +  bigQ_3W * Exp(bigWi(4:5) * (bigUi(4:5) - Zs(i))**3) - eWUZb3_115
+    xb(i,2:3) = xb(i-1,2:3) + & 
+              & c9ba * (c9bb * (Zs(i)-115._dp) / (R_Earth+Zs(i)) + Lb(9) * (Log(T(Zs(i),10)/(R_Earth+Zs(i))) + c9bc))
+    xb(i,2:3) = xb(i,2:3) + bigQ_3W * Exp(bigWi(4:5) * (bigUi(4:5) - Zs(i))**3) - eWUZb3_115
     xb(i,3) = xb(i,3) + alphaHe * Log(T(Zs(i),10)) - c9bd
 End Function nAr_He_power_stops
 # endif
@@ -1799,7 +1842,8 @@ Subroutine nN2_GLpoints(zbs,nb,xb)
         Do j = 3,100
             xb(i,3) = GaussLegendreN(j,nN2_integrand_no_b,Zs(i-1),Zs(i))
             If (Floor(Prec(xb(i,3),xb(i,1))) .GE. Pgoal1) Then
-                If (Floor(Prec(GaussLegendreN(j+1,nN2_integrand_no_b,Zs(i-1),Zs(i)),xb(i,1))).GE.Floor(Prec(xb(i,3),xb(i,1)))) Then
+                If (Floor(Prec(GaussLegendreN(j+1,nN2_integrand_no_b,Zs(i-1),Zs(i)),xb(i,1))).GE.Floor(Prec(xb(i,3),xb(i,1)))) & 
+                & Then
                     nb(i,3) = j
                     Exit
                 End If
@@ -1808,7 +1852,8 @@ Subroutine nN2_GLpoints(zbs,nb,xb)
         Do j = 3,100
             xb(i,4) = GaussLegendreN(j,nN2_integrand_no_b,Zs(i-1),Zs(i))
             If (Floor(Prec(xb(i,4),xb(i,1))) .GE. Pgoal2) Then
-                If (Floor(Prec(GaussLegendreN(j+1,nN2_integrand_no_b,Zs(i-1),Zs(i)),xb(i,1))).GE.Floor(Prec(xb(i,4),xb(i,1)))) Then
+                If (Floor(Prec(GaussLegendreN(j+1,nN2_integrand_no_b,Zs(i-1),Zs(i)),xb(i,1))).GE.Floor(Prec(xb(i,4),xb(i,1)))) &
+                & Then
                     nb(i,4) = j
                     Exit
                 End If
@@ -1857,7 +1902,10 @@ Subroutine nO1_O2_GLpoints(zbs,nb,xb)
     Do j = 3,100
         xb(i+1,3,1) = GaussLegendreN(j,nO1_O2_integrand1_1,Zs(i),Zs(i+1))
         If (Floor(Prec(xb(i+1,3,1),xb(i+1,1,1))) .GE. Pgoal1) Then
-            If (Floor(Prec(GaussLegendreN(j+1,nO1_O2_integrand1_1,Zs(i),Zs(i+1)),xb(i+1,1,1))).GE.Floor(Prec(xb(i+1,3,1),xb(i+1,1,1)))) Then
+            If ( Floor(Prec(GaussLegendreN(j+1,nO1_O2_integrand1_1,Zs(i),Zs(i+1)),xb(i+1,1,1))) & 
+               & .GE. & 
+               & Floor(Prec(xb(i+1,3,1),xb(i+1,1,1))) ) & 
+            & Then
                 nb(i+1,3,1) = j
                 Exit
             End If
@@ -1866,7 +1914,10 @@ Subroutine nO1_O2_GLpoints(zbs,nb,xb)
     Do j = 3,100
         xb(i+1,3,2) = GaussLegendreN(j,nO1_O2_integrand1_2,Zs(i),Zs(i+1))
         If (Floor(Prec(xb(i+1,3,2),xb(i+1,1,2))) .GE. Pgoal1) Then
-            If (Floor(Prec(GaussLegendreN(j+1,nO1_O2_integrand1_2,Zs(i),Zs(i+1)),xb(i+1,1,2))).GE.Floor(Prec(xb(i+1,3,2),xb(i+1,1,2)))) Then
+            If ( Floor(Prec(GaussLegendreN(j+1,nO1_O2_integrand1_2,Zs(i),Zs(i+1)),xb(i+1,1,2))) & 
+               & .GE. & 
+               & Floor(Prec(xb(i+1,3,2),xb(i+1,1,2))) ) & 
+            & Then
                 nb(i+1,3,2) = j
                 Exit
             End If
@@ -1875,7 +1926,10 @@ Subroutine nO1_O2_GLpoints(zbs,nb,xb)
     Do j = 3,100
         xb(i+1,4,1) = GaussLegendreN(j,nO1_O2_integrand1_1,Zs(i),Zs(i+1))
         If (Floor(Prec(xb(i+1,4,1),xb(i+1,1,1))) .GE. Pgoal2) Then
-            If (Floor(Prec(GaussLegendreN(j+1,nO1_O2_integrand1_1,Zs(i),Zs(i+1)),xb(i+1,1,1))).GE.Floor(Prec(xb(i+1,4,1),xb(i+1,1,1)))) Then
+            If ( Floor(Prec(GaussLegendreN(j+1,nO1_O2_integrand1_1,Zs(i),Zs(i+1)),xb(i+1,1,1))) & 
+               & .GE. & 
+               Floor(Prec(xb(i+1,4,1),xb(i+1,1,1))) ) & 
+            & Then
                 nb(i+1,4,1) = j
                 Exit
             End If
@@ -1884,7 +1938,10 @@ Subroutine nO1_O2_GLpoints(zbs,nb,xb)
     Do j = 3,100
         xb(i+1,4,2) = GaussLegendreN(j,nO1_O2_integrand1_2,Zs(i),Zs(i+1))
         If (Floor(Prec(xb(i+1,4,2),xb(i+1,1,2))) .GE. Pgoal2) Then
-            If (Floor(Prec(GaussLegendreN(j+1,nO1_O2_integrand1_2,Zs(i),Zs(i+1)),xb(i+1,1,2))).GE.Floor(Prec(xb(i+1,4,2),xb(i+1,1,2)))) Then
+            If ( Floor(Prec(GaussLegendreN(j+1,nO1_O2_integrand1_2,Zs(i),Zs(i+1)),xb(i+1,1,2))) & 
+               & .GE. & 
+               & Floor(Prec(xb(i+1,4,2),xb(i+1,1,2))) ) & 
+            & Then
                 nb(i+1,4,2) = j
                 Exit
             End If
@@ -1900,7 +1957,10 @@ Subroutine nO1_O2_GLpoints(zbs,nb,xb)
     Do j = 3,100
         xb(i+1,3,1) = GaussLegendreN(j,nO1_O2_integrand2_1,Zs(i),Zs(i+1))
         If (Floor(Prec(xb(i+1,3,1),xb(i+1,1,1))) .GE. Pgoal1) Then
-            If (Floor(Prec(GaussLegendreN(j+1,nO1_O2_integrand2_1,Zs(i),Zs(i+1)),xb(i+1,1,1))).GE.Floor(Prec(xb(i+1,3,1),xb(i+1,1,1)))) Then
+            If ( Floor(Prec(GaussLegendreN(j+1,nO1_O2_integrand2_1,Zs(i),Zs(i+1)),xb(i+1,1,1))) &
+               & .GE. & 
+               & Floor(Prec(xb(i+1,3,1),xb(i+1,1,1))) ) & 
+            & Then
                 nb(i+1,3,1) = j
                 Exit
             End If
@@ -1909,7 +1969,10 @@ Subroutine nO1_O2_GLpoints(zbs,nb,xb)
     Do j = 3,100
         xb(i+1,3,2) = GaussLegendreN(j,nO1_O2_integrand2_2,Zs(i),Zs(i+1))
         If (Floor(Prec(xb(i+1,3,2),xb(i+1,1,2))) .GE. Pgoal1) Then
-            If (Floor(Prec(GaussLegendreN(j+1,nO1_O2_integrand2_2,Zs(i),Zs(i+1)),xb(i+1,1,2))).GE.Floor(Prec(xb(i+1,3,2),xb(i+1,1,2)))) Then
+            If ( Floor(Prec(GaussLegendreN(j+1,nO1_O2_integrand2_2,Zs(i),Zs(i+1)),xb(i+1,1,2))) & 
+               & .GE. & 
+               & Floor(Prec(xb(i+1,3,2),xb(i+1,1,2))) ) & 
+            & Then
                 nb(i+1,3,2) = j
                 Exit
             End If
@@ -1918,7 +1981,10 @@ Subroutine nO1_O2_GLpoints(zbs,nb,xb)
     Do j = 3,100
         xb(i+1,4,1) = GaussLegendreN(j,nO1_O2_integrand2_1,Zs(i),Zs(i+1))
         If (Floor(Prec(xb(i+1,4,1),xb(i+1,1,1))) .GE. Pgoal2) Then
-            If (Floor(Prec(GaussLegendreN(j+1,nO1_O2_integrand2_1,Zs(i),Zs(i+1)),xb(i+1,1,1))).GE.Floor(Prec(xb(i+1,4,1),xb(i+1,1,1)))) Then
+            If ( Floor(Prec(GaussLegendreN(j+1,nO1_O2_integrand2_1,Zs(i),Zs(i+1)),xb(i+1,1,1))) & 
+               & .GE. & 
+               & Floor(Prec(xb(i+1,4,1),xb(i+1,1,1))) ) 
+            & Then
                 nb(i+1,4,1) = j
                 Exit
             End If
@@ -1927,7 +1993,10 @@ Subroutine nO1_O2_GLpoints(zbs,nb,xb)
     Do j = 3,100
         xb(i+1,4,2) = GaussLegendreN(j,nO1_O2_integrand2_2,Zs(i),Zs(i+1))
         If (Floor(Prec(xb(i+1,4,2),xb(i+1,1,2))) .GE. Pgoal2) Then
-            If (Floor(Prec(GaussLegendreN(j+1,nO1_O2_integrand2_2,Zs(i),Zs(i+1)),xb(i+1,1,2))).GE.Floor(Prec(xb(i+1,4,2),xb(i+1,1,2)))) Then
+            If (Floor( Prec(GaussLegendreN(j+1,nO1_O2_integrand2_2,Zs(i),Zs(i+1)),xb(i+1,1,2))) & 
+               & .GE. & 
+               & Floor(Prec(xb(i+1,4,2),xb(i+1,1,2))) ) & 
+            & Then
                 nb(i+1,4,2) = j
                 Exit
             End If
@@ -1943,7 +2012,10 @@ Subroutine nO1_O2_GLpoints(zbs,nb,xb)
     Do j = 3,100
         xb(i+1,3,1) = GaussLegendreN(j,nO1_O2_integrand3_1,Zs(i),Zs(i+1))
         If (Floor(Prec(xb(i+1,3,1),xb(i+1,1,1))) .GE. Pgoal1) Then
-            If (Floor(Prec(GaussLegendreN(j+1,nO1_O2_integrand3_1,Zs(i),Zs(i+1)),xb(i+1,1,1))).GE.Floor(Prec(xb(i+1,3,1),xb(i+1,1,1)))) Then
+            If ( Floor(Prec(GaussLegendreN(j+1,nO1_O2_integrand3_1,Zs(i),Zs(i+1)),xb(i+1,1,1))) & 
+               & .GE. & 
+               & Floor(Prec(xb(i+1,3,1),xb(i+1,1,1))) ) & 
+            & Then
                 nb(i+1,3,1) = j
                 Exit
             End If
@@ -1952,7 +2024,10 @@ Subroutine nO1_O2_GLpoints(zbs,nb,xb)
     Do j = 3,100
         xb(i+1,3,2) = GaussLegendreN(j,nO1_O2_integrand3_2,Zs(i),Zs(i+1))
         If (Floor(Prec(xb(i+1,3,2),xb(i+1,1,2))) .GE. Pgoal1) Then
-            If (Floor(Prec(GaussLegendreN(j+1,nO1_O2_integrand3_2,Zs(i),Zs(i+1)),xb(i+1,1,2))).GE.Floor(Prec(xb(i+1,3,2),xb(i+1,1,2)))) Then
+            If ( Floor(Prec(GaussLegendreN(j+1,nO1_O2_integrand3_2,Zs(i),Zs(i+1)),xb(i+1,1,2))) & 
+               & .GE. & 
+               & Floor(Prec(xb(i+1,3,2),xb(i+1,1,2))) ) & 
+            & Then
                 nb(i+1,3,2) = j
                 Exit
             End If
@@ -1961,7 +2036,10 @@ Subroutine nO1_O2_GLpoints(zbs,nb,xb)
     Do j = 3,100
         xb(i+1,4,1) = GaussLegendreN(j,nO1_O2_integrand3_1,Zs(i),Zs(i+1))
         If (Floor(Prec(xb(i+1,4,1),xb(i+1,1,1))) .GE. Pgoal2) Then
-            If (Floor(Prec(GaussLegendreN(j+1,nO1_O2_integrand3_1,Zs(i),Zs(i+1)),xb(i+1,1,1))).GE.Floor(Prec(xb(i+1,4,1),xb(i+1,1,1)))) Then
+            If ( Floor(Prec(GaussLegendreN(j+1,nO1_O2_integrand3_1,Zs(i),Zs(i+1)),xb(i+1,1,1))) & 
+               & .GE. & 
+               & Floor(Prec(xb(i+1,4,1),xb(i+1,1,1))) ) & 
+            & Then
                 nb(i+1,4,1) = j
                 Exit
             End If
@@ -1970,7 +2048,10 @@ Subroutine nO1_O2_GLpoints(zbs,nb,xb)
     Do j = 3,100
         xb(i+1,4,2) = GaussLegendreN(j,nO1_O2_integrand3_2,Zs(i),Zs(i+1))
         If (Floor(Prec(xb(i+1,4,2),xb(i+1,1,2))) .GE. Pgoal2) Then
-            If (Floor(Prec(GaussLegendreN(j+1,nO1_O2_integrand3_2,Zs(i),Zs(i+1)),xb(i+1,1,2))).GE.Floor(Prec(xb(i+1,4,2),xb(i+1,1,2)))) Then
+            If ( Floor(Prec(GaussLegendreN(j+1,nO1_O2_integrand3_2,Zs(i),Zs(i+1)),xb(i+1,1,2))) & 
+               & .GE. & 
+               & Floor(Prec(xb(i+1,4,2),xb(i+1,1,2))) ) & 
+            & Then
                 nb(i+1,4,2) = j
                 Exit
             End If
@@ -1986,7 +2067,10 @@ Subroutine nO1_O2_GLpoints(zbs,nb,xb)
     Do j = 3,100
         xb(i+1,3,1) = GaussLegendreN(j,nO1_O2_integrand3_1,Zs(i),Zs(i+1))
         If (Floor(Prec(xb(i+1,3,1),xb(i+1,1,1))) .GE. Pgoal1) Then
-            If (Floor(Prec(GaussLegendreN(j+1,nO1_O2_integrand3_1,Zs(i),Zs(i+1)),xb(i+1,1,1))).GE.Floor(Prec(xb(i+1,3,1),xb(i+1,1,1)))) Then
+            If ( Floor(Prec(GaussLegendreN(j+1,nO1_O2_integrand3_1,Zs(i),Zs(i+1)),xb(i+1,1,1))) & 
+               & .GE. & 
+               & Floor(Prec(xb(i+1,3,1),xb(i+1,1,1))) ) & 
+            & Then
                 nb(i+1,3,1) = j
                 Exit
             End If
@@ -1995,7 +2079,10 @@ Subroutine nO1_O2_GLpoints(zbs,nb,xb)
     Do j = 3,100
         xb(i+1,3,2) = GaussLegendreN(j,nO1_O2_integrand3_2,Zs(i),Zs(i+1))
         If (Floor(Prec(xb(i+1,3,2),xb(i+1,1,2))) .GE. Pgoal1) Then
-            If (Floor(Prec(GaussLegendreN(j+1,nO1_O2_integrand3_2,Zs(i),Zs(i+1)),xb(i+1,1,2))).GE.Floor(Prec(xb(i+1,3,2),xb(i+1,1,2)))) Then
+            If ( Floor(Prec(GaussLegendreN(j+1,nO1_O2_integrand3_2,Zs(i),Zs(i+1)),xb(i+1,1,2))) & 
+               & .GE. & 
+               & Floor(Prec(xb(i+1,3,2),xb(i+1,1,2))) ) & 
+            & Then
                 nb(i+1,3,2) = j
                 Exit
             End If
@@ -2004,7 +2091,10 @@ Subroutine nO1_O2_GLpoints(zbs,nb,xb)
     Do j = 3,100
         xb(i+1,4,1) = GaussLegendreN(j,nO1_O2_integrand3_1,Zs(i),Zs(i+1))
         If (Floor(Prec(xb(i+1,4,1),xb(i+1,1,1))) .GE. Pgoal2) Then
-            If (Floor(Prec(GaussLegendreN(j+1,nO1_O2_integrand3_1,Zs(i),Zs(i+1)),xb(i+1,1,1))).GE.Floor(Prec(xb(i+1,4,1),xb(i+1,1,1)))) Then
+            If ( Floor(Prec(GaussLegendreN(j+1,nO1_O2_integrand3_1,Zs(i),Zs(i+1)),xb(i+1,1,1))) & 
+               & .GE. & 
+               & Floor(Prec(xb(i+1,4,1),xb(i+1,1,1))) ) & 
+            & Then
                 nb(i+1,4,1) = j
                 Exit
             End If
@@ -2013,7 +2103,10 @@ Subroutine nO1_O2_GLpoints(zbs,nb,xb)
     Do j = 3,100
         xb(i+1,4,2) = GaussLegendreN(j,nO1_O2_integrand3_2,Zs(i),Zs(i+1))
         If (Floor(Prec(xb(i+1,4,2),xb(i+1,1,2))) .GE. Pgoal2) Then
-            If (Floor(Prec(GaussLegendreN(j+1,nO1_O2_integrand3_2,Zs(i),Zs(i+1)),xb(i+1,1,2))).GE.Floor(Prec(xb(i+1,4,2),xb(i+1,1,2)))) Then
+            If ( Floor(Prec(GaussLegendreN(j+1,nO1_O2_integrand3_2,Zs(i),Zs(i+1)),xb(i+1,1,2))) & 
+               & .GE. & 
+               & Floor(Prec(xb(i+1,4,2),xb(i+1,1,2))) ) & 
+            & Then
                 nb(i+1,4,2) = j
                 Exit
             End If
@@ -2029,7 +2122,10 @@ Subroutine nO1_O2_GLpoints(zbs,nb,xb)
     Do j = 3,100
         xb(i+1,3,1) = GaussLegendreN(j,nO1_O2_integrand4_1,Zs(i),Zs(i+1))
         If (Floor(Prec(xb(i+1,3,1),xb(i+1,1,1))) .GE. Pgoal1) Then
-            If (Floor(Prec(GaussLegendreN(j+1,nO1_O2_integrand4_1,Zs(i),Zs(i+1)),xb(i+1,1,1))).GE.Floor(Prec(xb(i+1,3,1),xb(i+1,1,1)))) Then
+            If ( Floor(Prec(GaussLegendreN(j+1,nO1_O2_integrand4_1,Zs(i),Zs(i+1)),xb(i+1,1,1))) & 
+               & .GE. & 
+               & Floor(Prec(xb(i+1,3,1),xb(i+1,1,1))) ) & 
+            & Then
                 nb(i+1,3,1) = j
                 Exit
             End If
@@ -2038,7 +2134,10 @@ Subroutine nO1_O2_GLpoints(zbs,nb,xb)
     Do j = 3,100
         xb(i+1,3,2) = GaussLegendreN(j,nO1_O2_integrand4_2,Zs(i),Zs(i+1))
         If (Floor(Prec(xb(i+1,3,2),xb(i+1,1,2))) .GE. Pgoal1) Then
-            If (Floor(Prec(GaussLegendreN(j+1,nO1_O2_integrand4_2,Zs(i),Zs(i+1)),xb(i+1,1,2))).GE.Floor(Prec(xb(i+1,3,2),xb(i+1,1,2)))) Then
+            If ( Floor(Prec(GaussLegendreN(j+1,nO1_O2_integrand4_2,Zs(i),Zs(i+1)),xb(i+1,1,2))) & 
+               & .GE. & 
+               & Floor(Prec(xb(i+1,3,2),xb(i+1,1,2))) ) & 
+            & Then
                 nb(i+1,3,2) = j
                 Exit
             End If
@@ -2047,7 +2146,10 @@ Subroutine nO1_O2_GLpoints(zbs,nb,xb)
     Do j = 3,100
         xb(i+1,4,1) = GaussLegendreN(j,nO1_O2_integrand4_1,Zs(i),Zs(i+1))
         If (Floor(Prec(xb(i+1,4,1),xb(i+1,1,1))) .GE. Pgoal2) Then
-            If (Floor(Prec(GaussLegendreN(j+1,nO1_O2_integrand4_1,Zs(i),Zs(i+1)),xb(i+1,1,1))).GE.Floor(Prec(xb(i+1,4,1),xb(i+1,1,1)))) Then
+            If ( Floor(Prec(GaussLegendreN(j+1,nO1_O2_integrand4_1,Zs(i),Zs(i+1)),xb(i+1,1,1))) & 
+               & .GE. & 
+               & Floor(Prec(xb(i+1,4,1),xb(i+1,1,1))) ) & 
+            & Then
                 nb(i+1,4,1) = j
                 Exit
             End If
@@ -2056,7 +2158,10 @@ Subroutine nO1_O2_GLpoints(zbs,nb,xb)
     Do j = 3,100
         xb(i+1,4,2) = GaussLegendreN(j,nO1_O2_integrand4_2,Zs(i),Zs(i+1))
         If (Floor(Prec(xb(i+1,4,2),xb(i+1,1,2))) .GE. Pgoal2) Then
-            If (Floor(Prec(GaussLegendreN(j+1,nO1_O2_integrand4_2,Zs(i),Zs(i+1)),xb(i+1,1,2))).GE.Floor(Prec(xb(i+1,4,2),xb(i+1,1,2)))) Then
+            If ( Floor(Prec(GaussLegendreN(j+1,nO1_O2_integrand4_2,Zs(i),Zs(i+1)),xb(i+1,1,2))) & 
+               & .GE. & 
+               & Floor(Prec(xb(i+1,4,2),xb(i+1,1,2))) ) & 
+            & Then
                 nb(i+1,4,2) = j
                 Exit
             End If
@@ -2106,7 +2211,10 @@ Subroutine nAr_He_GLpoints(zbs,nb,xb)
     Do j = 3,100
         xb(i+1,3,1) = GaussLegendreN(j,nAr_He_integrand1_1,Zs(i),Zs(i+1))
         If (Floor(Prec(xb(i+1,3,1),xb(i+1,1,1))) .GE. Pgoal1) Then
-            If (Floor(Prec(GaussLegendreN(j+1,nAr_He_integrand1_1,Zs(i),Zs(i+1)),xb(i+1,1,1))).GE.Floor(Prec(xb(i+1,3,1),xb(i+1,1,1)))) Then
+            If ( Floor(Prec(GaussLegendreN(j+1,nAr_He_integrand1_1,Zs(i),Zs(i+1)),xb(i+1,1,1))) & 
+               & .GE. & 
+               & Floor(Prec(xb(i+1,3,1),xb(i+1,1,1))) ) & 
+            & Then
                 nb(i+1,3,1) = j
                 Exit
             End If
@@ -2115,7 +2223,10 @@ Subroutine nAr_He_GLpoints(zbs,nb,xb)
     Do j = 3,100
         xb(i+1,3,2) = GaussLegendreN(j,nAr_He_integrand1_2,Zs(i),Zs(i+1))
         If (Floor(Prec(xb(i+1,3,2),xb(i+1,1,2))) .GE. Pgoal1) Then
-            If (Floor(Prec(GaussLegendreN(j+1,nAr_He_integrand1_2,Zs(i),Zs(i+1)),xb(i+1,1,2))).GE.Floor(Prec(xb(i+1,3,2),xb(i+1,1,2)))) Then
+            If ( Floor(Prec(GaussLegendreN(j+1,nAr_He_integrand1_2,Zs(i),Zs(i+1)),xb(i+1,1,2))) & 
+               & .GE. & 
+               & Floor(Prec(xb(i+1,3,2),xb(i+1,1,2))) ) & 
+            & Then
                 nb(i+1,3,2) = j
                 Exit
             End If
@@ -2124,7 +2235,10 @@ Subroutine nAr_He_GLpoints(zbs,nb,xb)
     Do j = 3,100
         xb(i+1,4,1) = GaussLegendreN(j,nAr_He_integrand1_1,Zs(i),Zs(i+1))
         If (Floor(Prec(xb(i+1,4,1),xb(i+1,1,1))) .GE. Pgoal2) Then
-            If (Floor(Prec(GaussLegendreN(j+1,nAr_He_integrand1_1,Zs(i),Zs(i+1)),xb(i+1,1,1))).GE.Floor(Prec(xb(i+1,4,1),xb(i+1,1,1)))) Then
+            If ( Floor(Prec(GaussLegendreN(j+1,nAr_He_integrand1_1,Zs(i),Zs(i+1)),xb(i+1,1,1))) & 
+               & .GE. & 
+               & Floor(Prec(xb(i+1,4,1),xb(i+1,1,1))) ) & 
+            & Then
                 nb(i+1,4,1) = j
                 Exit
             End If
@@ -2133,7 +2247,10 @@ Subroutine nAr_He_GLpoints(zbs,nb,xb)
     Do j = 3,100
         xb(i+1,4,2) = GaussLegendreN(j,nAr_He_integrand1_2,Zs(i),Zs(i+1))
         If (Floor(Prec(xb(i+1,4,2),xb(i+1,1,2))) .GE. Pgoal2) Then
-            If (Floor(Prec(GaussLegendreN(j+1,nAr_He_integrand1_2,Zs(i),Zs(i+1)),xb(i+1,1,2))).GE.Floor(Prec(xb(i+1,4,2),xb(i+1,1,2)))) Then
+            If ( Floor(Prec(GaussLegendreN(j+1,nAr_He_integrand1_2,Zs(i),Zs(i+1)),xb(i+1,1,2))) & 
+               & .GE. & 
+               & Floor(Prec(xb(i+1,4,2),xb(i+1,1,2))) ) & 
+            & Then
                 nb(i+1,4,2) = j
                 Exit
             End If
@@ -2149,7 +2266,10 @@ Subroutine nAr_He_GLpoints(zbs,nb,xb)
     Do j = 3,100
         xb(i+1,3,1) = GaussLegendreN(j,nAr_He_integrand1_1,Zs(i),Zs(i+1))
         If (Floor(Prec(xb(i+1,3,1),xb(i+1,1,1))) .GE. Pgoal1) Then
-            If (Floor(Prec(GaussLegendreN(j+1,nAr_He_integrand1_1,Zs(i),Zs(i+1)),xb(i+1,1,1))).GE.Floor(Prec(xb(i+1,3,1),xb(i+1,1,1)))) Then
+            If ( Floor(Prec(GaussLegendreN(j+1,nAr_He_integrand1_1,Zs(i),Zs(i+1)),xb(i+1,1,1))) & 
+               & .GE. & 
+               & Floor(Prec(xb(i+1,3,1),xb(i+1,1,1))) ) & 
+            & Then
                 nb(i+1,3,1) = j
                 Exit
             End If
@@ -2158,7 +2278,10 @@ Subroutine nAr_He_GLpoints(zbs,nb,xb)
     Do j = 3,100
         xb(i+1,3,2) = GaussLegendreN(j,nAr_He_integrand1_2,Zs(i),Zs(i+1))
         If (Floor(Prec(xb(i+1,3,2),xb(i+1,1,2))) .GE. Pgoal1) Then
-            If (Floor(Prec(GaussLegendreN(j+1,nAr_He_integrand1_2,Zs(i),Zs(i+1)),xb(i+1,1,2))).GE.Floor(Prec(xb(i+1,3,2),xb(i+1,1,2)))) Then
+            If ( Floor(Prec(GaussLegendreN(j+1,nAr_He_integrand1_2,Zs(i),Zs(i+1)),xb(i+1,1,2))) & 
+               & .GE. & 
+               & Floor(Prec(xb(i+1,3,2),xb(i+1,1,2))) ) & 
+            & Then
                 nb(i+1,3,2) = j
                 Exit
             End If
@@ -2167,7 +2290,10 @@ Subroutine nAr_He_GLpoints(zbs,nb,xb)
     Do j = 3,100
         xb(i+1,4,1) = GaussLegendreN(j,nAr_He_integrand1_1,Zs(i),Zs(i+1))
         If (Floor(Prec(xb(i+1,4,1),xb(i+1,1,1))) .GE. Pgoal2) Then
-            If (Floor(Prec(GaussLegendreN(j+1,nAr_He_integrand1_1,Zs(i),Zs(i+1)),xb(i+1,1,1))).GE.Floor(Prec(xb(i+1,4,1),xb(i+1,1,1)))) Then
+            If ( Floor(Prec(GaussLegendreN(j+1,nAr_He_integrand1_1,Zs(i),Zs(i+1)),xb(i+1,1,1))) & 
+               & .GE. & 
+               & Floor(Prec(xb(i+1,4,1),xb(i+1,1,1))) ) & 
+            & Then
                 nb(i+1,4,1) = j
                 Exit
             End If
@@ -2176,7 +2302,10 @@ Subroutine nAr_He_GLpoints(zbs,nb,xb)
     Do j = 3,100
         xb(i+1,4,2) = GaussLegendreN(j,nAr_He_integrand1_2,Zs(i),Zs(i+1))
         If (Floor(Prec(xb(i+1,4,2),xb(i+1,1,2))) .GE. Pgoal2) Then
-            If (Floor(Prec(GaussLegendreN(j+1,nAr_He_integrand1_2,Zs(i),Zs(i+1)),xb(i+1,1,2))).GE.Floor(Prec(xb(i+1,4,2),xb(i+1,1,2)))) Then
+            If ( Floor(Prec(GaussLegendreN(j+1,nAr_He_integrand1_2,Zs(i),Zs(i+1)),xb(i+1,1,2))) & 
+            & .GE. & 
+            & Floor(Prec(xb(i+1,4,2),xb(i+1,1,2))) ) & 
+        & Then
                 nb(i+1,4,2) = j
                 Exit
             End If
@@ -2192,7 +2321,10 @@ Subroutine nAr_He_GLpoints(zbs,nb,xb)
     Do j = 3,100
         xb(i+1,3,1) = GaussLegendreN(j,nAr_He_integrand2_1,Zs(i),Zs(i+1))
         If (Floor(Prec(xb(i+1,3,1),xb(i+1,1,1))) .GE. Pgoal1) Then
-            If (Floor(Prec(GaussLegendreN(j+1,nAr_He_integrand2_1,Zs(i),Zs(i+1)),xb(i+1,1,1))).GE.Floor(Prec(xb(i+1,3,1),xb(i+1,1,1)))) Then
+            If ( Floor(Prec(GaussLegendreN(j+1,nAr_He_integrand2_1,Zs(i),Zs(i+1)),xb(i+1,1,1))) & 
+               & .GE. & 
+               & Floor(Prec(xb(i+1,3,1),xb(i+1,1,1))) ) & 
+            & Then
                 nb(i+1,3,1) = j
                 Exit
             End If
@@ -2201,7 +2333,10 @@ Subroutine nAr_He_GLpoints(zbs,nb,xb)
     Do j = 3,100
         xb(i+1,3,2) = GaussLegendreN(j,nAr_He_integrand2_2,Zs(i),Zs(i+1))
         If (Floor(Prec(xb(i+1,3,2),xb(i+1,1,2))) .GE. Pgoal1) Then
-            If (Floor(Prec(GaussLegendreN(j+1,nAr_He_integrand2_2,Zs(i),Zs(i+1)),xb(i+1,1,2))).GE.Floor(Prec(xb(i+1,3,2),xb(i+1,1,2)))) Then
+            If ( Floor(Prec(GaussLegendreN(j+1,nAr_He_integrand2_2,Zs(i),Zs(i+1)),xb(i+1,1,2))) & 
+               & .GE. & 
+               & Floor(Prec(xb(i+1,3,2),xb(i+1,1,2))) ) & 
+            & Then
                 nb(i+1,3,2) = j
                 Exit
             End If
@@ -2210,7 +2345,10 @@ Subroutine nAr_He_GLpoints(zbs,nb,xb)
     Do j = 3,100
         xb(i+1,4,1) = GaussLegendreN(j,nAr_He_integrand2_1,Zs(i),Zs(i+1))
         If (Floor(Prec(xb(i+1,4,1),xb(i+1,1,1))) .GE. Pgoal2) Then
-            If (Floor(Prec(GaussLegendreN(j+1,nAr_He_integrand2_1,Zs(i),Zs(i+1)),xb(i+1,1,1))).GE.Floor(Prec(xb(i+1,4,1),xb(i+1,1,1)))) Then
+            If ( Floor(Prec(GaussLegendreN(j+1,nAr_He_integrand2_1,Zs(i),Zs(i+1)),xb(i+1,1,1))) & 
+               & .GE. & 
+               & Floor(Prec(xb(i+1,4,1),xb(i+1,1,1))) ) & 
+            & Then
                 nb(i+1,4,1) = j
                 Exit
             End If
@@ -2219,7 +2357,10 @@ Subroutine nAr_He_GLpoints(zbs,nb,xb)
     Do j = 3,100
         xb(i+1,4,2) = GaussLegendreN(j,nAr_He_integrand2_2,Zs(i),Zs(i+1))
         If (Floor(Prec(xb(i+1,4,2),xb(i+1,1,2))) .GE. Pgoal2) Then
-            If (Floor(Prec(GaussLegendreN(j+1,nAr_He_integrand2_2,Zs(i),Zs(i+1)),xb(i+1,1,2))).GE.Floor(Prec(xb(i+1,4,2),xb(i+1,1,2)))) Then
+            If ( Floor(Prec(GaussLegendreN(j+1,nAr_He_integrand2_2,Zs(i),Zs(i+1)),xb(i+1,1,2))) & 
+               & .GE. & 
+               & Floor(Prec(xb(i+1,4,2),xb(i+1,1,2))) ) & 
+            & Then
                 nb(i+1,4,2) = j
                 Exit
             End If
@@ -2235,7 +2376,10 @@ Subroutine nAr_He_GLpoints(zbs,nb,xb)
     Do j = 3,100
         xb(i+1,3,1) = GaussLegendreN(j,nAr_He_integrand2_1,Zs(i),Zs(i+1))
         If (Floor(Prec(xb(i+1,3,1),xb(i+1,1,1))) .GE. Pgoal1) Then
-            If (Floor(Prec(GaussLegendreN(j+1,nAr_He_integrand2_1,Zs(i),Zs(i+1)),xb(i+1,1,1))).GE.Floor(Prec(xb(i+1,3,1),xb(i+1,1,1)))) Then
+            If ( Floor(Prec(GaussLegendreN(j+1,nAr_He_integrand2_1,Zs(i),Zs(i+1)),xb(i+1,1,1))) & 
+               & .GE. & 
+               & Floor(Prec(xb(i+1,3,1),xb(i+1,1,1))) ) & 
+            & Then
                 nb(i+1,3,1) = j
                 Exit
             End If
@@ -2244,7 +2388,10 @@ Subroutine nAr_He_GLpoints(zbs,nb,xb)
     Do j = 3,100
         xb(i+1,3,2) = GaussLegendreN(j,nAr_He_integrand2_2,Zs(i),Zs(i+1))
         If (Floor(Prec(xb(i+1,3,2),xb(i+1,1,2))) .GE. Pgoal1) Then
-            If (Floor(Prec(GaussLegendreN(j+1,nAr_He_integrand2_2,Zs(i),Zs(i+1)),xb(i+1,1,2))).GE.Floor(Prec(xb(i+1,3,2),xb(i+1,1,2)))) Then
+            If ( Floor(Prec(GaussLegendreN(j+1,nAr_He_integrand2_2,Zs(i),Zs(i+1)),xb(i+1,1,2))) & 
+               & .GE. & 
+               & Floor(Prec(xb(i+1,3,2),xb(i+1,1,2))) ) & 
+            & Then
                 nb(i+1,3,2) = j
                 Exit
             End If
@@ -2253,7 +2400,10 @@ Subroutine nAr_He_GLpoints(zbs,nb,xb)
     Do j = 3,100
         xb(i+1,4,1) = GaussLegendreN(j,nAr_He_integrand2_1,Zs(i),Zs(i+1))
         If (Floor(Prec(xb(i+1,4,1),xb(i+1,1,1))) .GE. Pgoal2) Then
-            If (Floor(Prec(GaussLegendreN(j+1,nAr_He_integrand2_1,Zs(i),Zs(i+1)),xb(i+1,1,1))).GE.Floor(Prec(xb(i+1,4,1),xb(i+1,1,1)))) Then
+            If ( Floor(Prec(GaussLegendreN(j+1,nAr_He_integrand2_1,Zs(i),Zs(i+1)),xb(i+1,1,1))) & 
+               & .GE. & 
+               & Floor(Prec(xb(i+1,4,1),xb(i+1,1,1))) ) & 
+            & Then
                 nb(i+1,4,1) = j
                 Exit
             End If
@@ -2262,7 +2412,10 @@ Subroutine nAr_He_GLpoints(zbs,nb,xb)
     Do j = 3,100
         xb(i+1,4,2) = GaussLegendreN(j,nAr_He_integrand2_2,Zs(i),Zs(i+1))
         If (Floor(Prec(xb(i+1,4,2),xb(i+1,1,2))) .GE. Pgoal2) Then
-            If (Floor(Prec(GaussLegendreN(j+1,nAr_He_integrand2_2,Zs(i),Zs(i+1)),xb(i+1,1,2))).GE.Floor(Prec(xb(i+1,4,2),xb(i+1,1,2)))) Then
+            If ( Floor(Prec(GaussLegendreN(j+1,nAr_He_integrand2_2,Zs(i),Zs(i+1)),xb(i+1,1,2))) & 
+               & .GE. & 
+               & Floor(Prec(xb(i+1,4,2),xb(i+1,1,2))) ) & 
+            & Then
                 nb(i+1,4,2) = j
                 Exit
             End If
@@ -2278,7 +2431,10 @@ Subroutine nAr_He_GLpoints(zbs,nb,xb)
     Do j = 3,100
         xb(i+1,3,1) = GaussLegendreN(j,nAr_He_integrand4_1,Zs(i),Zs(i+1))
         If (Floor(Prec(xb(i+1,3,1),xb(i+1,1,1))) .GE. Pgoal1) Then
-            If (Floor(Prec(GaussLegendreN(j+1,nAr_He_integrand4_1,Zs(i),Zs(i+1)),xb(i+1,1,1))).GE.Floor(Prec(xb(i+1,3,1),xb(i+1,1,1)))) Then
+            If ( Floor(Prec(GaussLegendreN(j+1,nAr_He_integrand4_1,Zs(i),Zs(i+1)),xb(i+1,1,1))) & 
+               & .GE. & 
+               & Floor(Prec(xb(i+1,3,1),xb(i+1,1,1))) ) & 
+            & Then
                 nb(i+1,3,1) = j
                 Exit
             End If
@@ -2287,7 +2443,10 @@ Subroutine nAr_He_GLpoints(zbs,nb,xb)
     Do j = 3,100
         xb(i+1,3,2) = GaussLegendreN(j,nAr_He_integrand4_2,Zs(i),Zs(i+1))
         If (Floor(Prec(xb(i+1,3,2),xb(i+1,1,2))) .GE. Pgoal1) Then
-            If (Floor(Prec(GaussLegendreN(j+1,nAr_He_integrand4_2,Zs(i),Zs(i+1)),xb(i+1,1,2))).GE.Floor(Prec(xb(i+1,3,2),xb(i+1,1,2)))) Then
+            If ( Floor(Prec(GaussLegendreN(j+1,nAr_He_integrand4_2,Zs(i),Zs(i+1)),xb(i+1,1,2))) & 
+               & .GE. & 
+               & Floor(Prec(xb(i+1,3,2),xb(i+1,1,2))) ) & 
+            & Then
                 nb(i+1,3,2) = j
                 Exit
             End If
@@ -2296,7 +2455,10 @@ Subroutine nAr_He_GLpoints(zbs,nb,xb)
     Do j = 3,100
         xb(i+1,4,1) = GaussLegendreN(j,nAr_He_integrand4_1,Zs(i),Zs(i+1))
         If (Floor(Prec(xb(i+1,4,1),xb(i+1,1,1))) .GE. Pgoal2) Then
-            If (Floor(Prec(GaussLegendreN(j+1,nAr_He_integrand4_1,Zs(i),Zs(i+1)),xb(i+1,1,1))).GE.Floor(Prec(xb(i+1,4,1),xb(i+1,1,1)))) Then
+            If ( Floor(Prec(GaussLegendreN(j+1,nAr_He_integrand4_1,Zs(i),Zs(i+1)),xb(i+1,1,1))) & 
+               & .GE. & 
+               & Floor(Prec(xb(i+1,4,1),xb(i+1,1,1))) ) & 
+            & Then
                 nb(i+1,4,1) = j
                 Exit
             End If
@@ -2305,7 +2467,10 @@ Subroutine nAr_He_GLpoints(zbs,nb,xb)
     Do j = 3,100
         xb(i+1,4,2) = GaussLegendreN(j,nAr_He_integrand4_2,Zs(i),Zs(i+1))
         If (Floor(Prec(xb(i+1,4,2),xb(i+1,1,2))) .GE. Pgoal2) Then
-            If (Floor(Prec(GaussLegendreN(j+1,nAr_He_integrand4_2,Zs(i),Zs(i+1)),xb(i+1,1,2))).GE.Floor(Prec(xb(i+1,4,2),xb(i+1,1,2)))) Then
+            If ( Floor(Prec(GaussLegendreN(j+1,nAr_He_integrand4_2,Zs(i),Zs(i+1)),xb(i+1,1,2))) & 
+               & .GE. & 
+               & Floor(Prec(xb(i+1,4,2),xb(i+1,1,2))) ) & 
+            & Then
                 nb(i+1,4,2) = j
                 Exit
             End If
@@ -2321,7 +2486,10 @@ Subroutine nAr_He_GLpoints(zbs,nb,xb)
     Do j = 3,100
         xb(i+1,3,1) = GaussLegendreN(j,nAr_He_integrand4_1,Zs(i),Zs(i+1))
         If (Floor(Prec(xb(i+1,3,1),xb(i+1,1,1))) .GE. Pgoal1) Then
-            If (Floor(Prec(GaussLegendreN(j+1,nAr_He_integrand4_1,Zs(i),Zs(i+1)),xb(i+1,1,1))).GE.Floor(Prec(xb(i+1,3,1),xb(i+1,1,1)))) Then
+            If ( Floor(Prec(GaussLegendreN(j+1,nAr_He_integrand4_1,Zs(i),Zs(i+1)),xb(i+1,1,1))) & 
+               & .GE. & 
+               & Floor(Prec(xb(i+1,3,1),xb(i+1,1,1))) ) & 
+            & Then
                 nb(i+1,3,1) = j
                 Exit
             End If
@@ -2330,7 +2498,10 @@ Subroutine nAr_He_GLpoints(zbs,nb,xb)
     Do j = 3,100
         xb(i+1,3,2) = GaussLegendreN(j,nAr_He_integrand4_2,Zs(i),Zs(i+1))
         If (Floor(Prec(xb(i+1,3,2),xb(i+1,1,2))) .GE. Pgoal1) Then
-            If (Floor(Prec(GaussLegendreN(j+1,nAr_He_integrand4_2,Zs(i),Zs(i+1)),xb(i+1,1,2))).GE.Floor(Prec(xb(i+1,3,2),xb(i+1,1,2)))) Then
+            If ( Floor(Prec(GaussLegendreN(j+1,nAr_He_integrand4_2,Zs(i),Zs(i+1)),xb(i+1,1,2))) & 
+               & .GE. & 
+               & Floor(Prec(xb(i+1,3,2),xb(i+1,1,2))) ) & 
+            & Then
                 nb(i+1,3,2) = j
                 Exit
             End If
@@ -2339,7 +2510,10 @@ Subroutine nAr_He_GLpoints(zbs,nb,xb)
     Do j = 3,100
         xb(i+1,4,1) = GaussLegendreN(j,nAr_He_integrand4_1,Zs(i),Zs(i+1))
         If (Floor(Prec(xb(i+1,4,1),xb(i+1,1,1))) .GE. Pgoal2) Then
-            If (Floor(Prec(GaussLegendreN(j+1,nAr_He_integrand4_1,Zs(i),Zs(i+1)),xb(i+1,1,1))).GE.Floor(Prec(xb(i+1,4,1),xb(i+1,1,1)))) Then
+            If ( Floor(Prec(GaussLegendreN(j+1,nAr_He_integrand4_1,Zs(i),Zs(i+1)),xb(i+1,1,1))) & 
+               & .GE. & 
+               & Floor(Prec(xb(i+1,4,1),xb(i+1,1,1))) ) & 
+            & Then
                 nb(i+1,4,1) = j
                 Exit
             End If
@@ -2348,7 +2522,10 @@ Subroutine nAr_He_GLpoints(zbs,nb,xb)
     Do j = 3,100
         xb(i+1,4,2) = GaussLegendreN(j,nAr_He_integrand4_2,Zs(i),Zs(i+1))
         If (Floor(Prec(xb(i+1,4,2),xb(i+1,1,2))) .GE. Pgoal2) Then
-            If (Floor(Prec(GaussLegendreN(j+1,nAr_He_integrand4_2,Zs(i),Zs(i+1)),xb(i+1,1,2))).GE.Floor(Prec(xb(i+1,4,2),xb(i+1,1,2)))) Then
+            If ( Floor(Prec(GaussLegendreN(j+1,nAr_He_integrand4_2,Zs(i),Zs(i+1)),xb(i+1,1,2))) & 
+               & .GE. & 
+               & Floor(Prec(xb(i+1,4,2),xb(i+1,1,2))) ) & 
+            & Then
                 nb(i+1,4,2) = j
                 Exit
             End If

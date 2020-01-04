@@ -20,7 +20,7 @@ Module Global
     Public
     
 ! Mathematical Constants
-    Real(dp), Parameter :: pi = 3.141592653589793238462643383279502884_dp  !36 digits carried in case needed for quadruple precision
+    Real(dp), Parameter :: pi = 3.141592653589793238462643383279502884_dp  !36 digits carried in case needed for quad precision
     Real(dp), Parameter :: TwoPi = 2._dp * pi
     Real(dp), Parameter :: FourPi = 4._dp * pi
     Real(dp), Parameter :: HalfPi = 0.5_dp * pi
@@ -45,8 +45,10 @@ Module Global
 ! NEUTRON constants
     Real(dp), Parameter :: neutron_mass = 1.674927471E-27_dp  ![kg]
     Real(dp), Parameter :: neutron_mass_E = neutron_mass * speed_of_light**2 * 1000._dp**2 ![J]  Mass-energy of a neutron
-    Real(dp), Parameter :: neutron_speed_conversion = Sqrt( (2._dp / keV_per_Joule) / (neutron_mass) ) / 1000._dp  ![km/s per Sqrt(keV)]  When multiplied by Sqrt(Energy in keV), gives speed of neutron in km/s
-    Real(dp), Parameter :: neutron_PE_conversion = g0 * neutron_mass * keV_per_Joule  ![kg keV m/s^2 per J]  When multiplied by change in height, gives change in PE in keV
+    Real(dp), Parameter :: neutron_speed_conversion = &  !When multiplied by Sqrt(Energy in keV), gives speed of neutron in km/s
+                               & Sqrt( (2._dp / keV_per_Joule) / (neutron_mass) ) / 1000._dp  ![km/s per Sqrt(keV)]
+    Real(dp), Parameter :: neutron_PE_conversion = &  !When multiplied by change in height, gives change in PE in keV
+                               & g0 * neutron_mass * keV_per_Joule  ![kg keV m/s^2 per J]
     Real(dp), Parameter :: mfp_per_barn_per_km_at_seaLevel = 5.07_dp
     ! With 1 barn microscopic cross section, a path length of 1 km in sea level air
     !   is an optical path length of 5.07 (mean free paths)
@@ -54,13 +56,15 @@ Module Global
     ! Note: EPL (effective path length) is the path length at sea level
     !   that has the same optical thickness as the actual path
     Real(dp), Parameter :: n_lambda = Log(2._dp) / 611._dp  ![1/s] ln(2) divided by neutron half-life
-    Real(dp), Parameter :: n_kill_weight = 1._dp / (0.35_dp * nA * 1000._dp)  !weight corresponding to 1 neutron having chance to exist from a 1MT source
+    Real(dp), Parameter :: n_kill_weight = &  !weight of 1 particular neutron having chance to exist from a 1MT source
+                               & 1._dp / (0.35_dp * nA * 1000._dp)
 
 !  Earth and Gravitation
     Real(dp), Parameter :: R_Earth = 6371._dp     ![km] Mean radius of earth
     Real(dp), Parameter :: std_grav_parameter = 398600.4418_dp  ![km^3 / s^2]  standard gravitational parameter of Earth
-    Real(dp), Parameter :: Escape_speed = Sqrt(2._dp * std_grav_parameter / R_Earth)  ![km/s]  minimum speed to escape earth's gravitational influence from the surface
-    Real(dp), Parameter :: rot_Earth = 7.292115E-5_dp  ![rad/s] Mean rotational speed of Earth about its axis (radians per SIDEREAL second)
+    Real(dp), Parameter :: Escape_speed = &  !minimum speed to escape earth's gravitational influence from the surface
+                               & Sqrt(2._dp * std_grav_parameter / R_Earth)  ![km/s]
+    Real(dp), Parameter :: rot_Earth = 7.292115E-5_dp  ![rad/s] Mean rotational speed of the Earth (radians per SIDEREAL second)
     Real(dp), Parameter :: Sid_Day_sec = 86164.09053_dp  !number of seconds in a sidereal day
 
 End Module Global

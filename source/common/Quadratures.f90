@@ -170,7 +170,7 @@ Function Romb_Quad(f,a,b,aTol,rTol,p,n_ord,n_ext) Result(q)
                 ifin = Tmax
                 Exit
             Else If (i.GT.Tmax/2) Then
-                If (Prec(T(i-1),Tk).LT.Prec0) Then  !precision was LOST instead of gained on this extrapolation, convergence will not occur
+                If (Prec(T(i-1),Tk).LT.Prec0) Then  !precision was LOST on this extrapolation, convergence will not occur
                     ifin = i
                     Exit
                 End If
@@ -191,11 +191,13 @@ Function Romb_Quad(f,a,b,aTol,rTol,p,n_ord,n_ext) Result(q)
     End Do
     !If we get this far, we did not converge
     Write(*,*)
-    Write(*,'(A,I0,A)')                'WARNING:  Quadratures: Romberg_Quad:  Failed to converge in ',ifin,' extrapolations.'
-    If (ifin .LT. Tmax) Write(*,'(A)') '          Extrapolation was terminated for loss of precision.'
-    Write(*,'(A,ES23.15,A,F0.5,A)')    '          Final estimated value: ',Tk,' (~',Prec(T(ifin-1),Tk),' good digits)'
-    Write(*,'(A,2(ES10.3,A))')         '          Final Extrapolation Error: ',Abs(Tk-T(ifin-1)),' (abs), ',Abs(Tk-T(ifin-1))/Tk,' (rel)'
-    Write(*,'(A,2(ES10.3,A))')         '          Convergence Criteria:      ',atol,             ' (abs), ',rtol,                ' (rel)'
+    Write(*,'(A,I0,A)')          'WARNING:  Quadratures: Romberg_Quad:  Failed to converge in ',ifin,' extrapolations.'
+    If (ifin .LT. Tmax) Then
+        Write(*,'(A10,A)')              '','Extrapolation was terminated for loss of precision.'
+    End If
+    Write(*,'(A10,A,ES23.15,A,F0.5,A)') '','Final estimated value: ',Tk,' (~',Prec(T(ifin-1),Tk),' good digits)'
+    Write(*,'(A10,A,2(ES10.3,A))')      '','Final Extrapolation Error: ',Abs(Tk-T(ifin-1)),' (abs), ',Abs(Tk-T(ifin-1))/Tk,' (rel)'
+    Write(*,'(A10,A,2(ES10.3,A))')      '','Convergence Criteria:      ',atol,             ' (abs), ',rtol,                ' (rel)'
     q = Tk
 #   if ROMB_TABLES
         T(i-1) = Tk0
