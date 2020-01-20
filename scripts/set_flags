@@ -16,7 +16,7 @@ PREP_FLAGS="-cpp -DLIN_OS -DGFORT"
 OBJ_DIR="../build/obj/"
 DIR_FLAGS="-I${OBJ_DIR} -J${OBJ_DIR}"
 MATH_FLAGS="-ffinite-math-only -fno-signed-zeros -fwrapv"
-ALWAYS_FLAGS="${MATH_FLAGS} -ffree-line-length-0 -fimplicit-none -fexceptions -fnon-call-exceptions -ffpe-trap=invalid,zero,overflow -fmax-errors=5 ${DIR_FLAGS}"
+ALWAYS_FLAGS="${MATH_FLAGS} -fimplicit-none -fexceptions -fnon-call-exceptions -ffpe-trap=invalid,zero,overflow -fmax-errors=5 ${DIR_FLAGS}"
 # DEVELOPMENT Flags (fastest compile cycle, no object files, no linking)
 SYNTAX_FLAGS="-O0 -fmax-errors=5 -Wall -Wextra -pedantic ${ALWAYS_FLAGS} -fsyntax-only"
 # DEBUG Compiler Flags (for debug builds, fast compile with full debug information)

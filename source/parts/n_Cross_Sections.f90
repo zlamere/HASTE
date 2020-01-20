@@ -528,6 +528,8 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
                     Else  !SECOND TIME
                         n_start = n_start + n_p
                     End If
+                Else If (MF.EQ.1 .AND. MT.EQ.451) Then
+                    If (first_time .AND. v) Write(v_unit,'(A)',ADVANCE='YES') ' - uncounted, resonances'  !FIRST TIME
                 Else
                     If (first_time .AND. v) Write(v_unit,'(A)',ADVANCE='YES') ' - uncounted'  !FIRST TIME
                 End If
@@ -904,7 +906,11 @@ Subroutine Write_stored_AD(v_unit,d,n_E_uni,E_uni)
             Write(v_unit,'(A9,I7,A19)') '',d%da(k)%n_a,' Legendre Coeffs   '
             Write(v_unit,'(A9,A26)') '','  ------------------------'
         Else !tabulated cosine pdf
-            Write(v_unit,'(A9,I7,A19,2A26)') '',d%da(k)%n_a,' tabular Cosines   ','    PDF                   ','    ln(PDF)               '
+            Write(v_unit,'(A9,I7,A19,2A26)') '', & 
+                                           & d%da(k)%n_a, & 
+                                           & ' tabular Cosines   ', & 
+                                           & '    PDF                   ', & 
+                                           & '    ln(PDF)               '
             Write(v_unit,'(A9,3A26)') '','  ------------------------','  ------------------------','  ------------------------'
         End If
         Do a = 1,d%da(k)%n_a
@@ -1041,7 +1047,7 @@ Subroutine Read_da_sect(da_unit,E_list,da_list,n_p,LTT)
     !Skip the next line
     Read (da_unit,*)
     If (LTT .EQ. 3) Then !there is a second range of energies later in the section
-        !Ddvance in the file to the end of the Legendre section
+        !Advance in the file to the end of the Legendre section
         n_skipped_lines = 0
         Do i = 1,n_p
             !The first line in each energy contains the energy in eV in the second position and the number of Legendre coefficents 
@@ -1203,9 +1209,6 @@ Subroutine Read_res_sect(res_unit,res_List)
     End If
     If (NRO .NE. 0) Then
         Call Output_Message('ERROR:  Cross_Sections: Read_res_sect:  Incorrectly formatted file, NRO=',NRO,kill=.TRUE.)
-    End If
-    If (NAPS .NE. 1) Then
-        Call Output_Message('ERROR:  Cross_Sections: Read_res_sect:  Incorrectly formatted file, NAPS=',NAPS,kill=.TRUE.)
     End If
     !read AP and n_L from the next line
     Read(res_unit,'(4E11.6E1,I11)') SPI, AP, trash, trash, nL
@@ -1727,7 +1730,6 @@ Subroutine Map_and_Store_AD(n_E_uni,E_uni,n_p,E_list,AD_list,ad,i_thresh)
     Type(da_Type), Intent(Out) :: ad
     Integer, Optional, Intent(In) :: i_thresh
     Integer :: i,j,t
-    Logical :: check_tab
 
     !Determine index of threshold energy
     t = 1
@@ -1736,12 +1738,6 @@ Subroutine Map_and_Store_AD(n_E_uni,E_uni,n_p,E_list,AD_list,ad,i_thresh)
     Allocate(ad%E_map(t:n_E_uni))
     ad%E_map = -1
     j = 1
-    If (Any(AD_list(:)%is_Legendre) .AND. Any(AD_list(:)%is_Tab)) Then
-    !there is a transition between legendre and tabular forms to accomodate
-        check_tab = .TRUE.
-    Else
-        check_tab = .FALSE.
-    End If
     Do i = t,n_E_uni
         If (E_uni(i) .GT. E_list(j)) j = j + 1
         If (j .GE. n_p) Then
@@ -1749,15 +1745,9 @@ Subroutine Map_and_Store_AD(n_E_uni,E_uni,n_p,E_list,AD_list,ad,i_thresh)
             Exit
         End If
         ad%E_map(i) = j
-        !If (check_tab) Then !check for transition between Legendre and Tabular forms
-        !At the transition between Legendre and tabular firms, there is a double energy point that causes and index error in the map
-        !    If (AD_list(j)%is_Legendre .AND. AD_list(j+1)%is_Tab) Then !the next j transitions to tabular format
-        !        j = j + 1 !increment the index so it is correct the next time through
-        !        check_tab = .FALSE. !this can only occur once, no further need to check
-        !    End If
-        !End If
         Do !increment the index past any equal or duplicate points
             If (E_uni(i) .EQ. E_list(j)) j = j + 1
+            If (j .GT. n_p) Exit
             If (E_uni(i) .NE. E_list(j)) Exit
         End Do
     End Do
