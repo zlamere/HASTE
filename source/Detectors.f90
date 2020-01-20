@@ -53,8 +53,8 @@ Module Detectors
         Integer :: TE_contrib_index  !number of time-energy contributions stored for the current history
         Integer :: Dir_contrib_index  !number of direction contributions stored for the current history
         Integer :: Contrib_size  !number of contributions spaces for the current history
-        Type(Contrib_triplet), Allocatable :: TE_contribs_this_history(:)  !list of contributions to time energy bins for the current history
-        Type(Contrib_triplet), Allocatable :: Dir_contribs_this_history(:)  !list of contributions to direction of arrival bins for the current history
+        Type(Contrib_triplet), Allocatable :: TE_contribs_this_history(:)  !list of contribs to time-energy for the current hist
+        Type(Contrib_triplet), Allocatable :: Dir_contribs_this_history(:)  !list of contribs to dir of arrival for the current hist
         Real(dp), Allocatable :: TE_contribs_t(:)  !list of contributions to time bins for the current history
         Real(dp), Allocatable :: TE_contribs_E(:)  !list of contributions to energy bins for the current history
         Real(dp), Allocatable :: Dir_contribs_mu(:)  !list of contributions to mu bins for the current history
@@ -64,7 +64,7 @@ Module Detectors
         Integer :: n_slices
     Contains
         Procedure, Pass :: Tally_Scatter  !records contribution in TE contribs arrays
-        Procedure, Pass :: Combine_Duplicate_Tallies  !scrubs list of contributions, combining duplicate time-energy bins and condensing the list
+        Procedure, Pass :: Combine_Duplicate_Tallies  !scrubs list of contributions: combines duplicate bins, condenses the list
     End Type
     
 Contains
@@ -116,7 +116,8 @@ Function Setup_Detector(setup_file_name,run_file_name,slice_file_name,R_top_atm)
                                    & shape_data_limit
     
     Open(NEWUNIT = setup_unit , FILE = setup_file_name , STATUS = 'OLD' , ACTION = 'READ' , IOSTAT = stat)
-    If (stat .NE. 0) Call Output_Message('ERROR:  Detectors: Setup_Detector:  File open error, '//setup_file_name//', IOSTAT=',stat,kill=.TRUE.)
+    If (stat .NE. 0) Call Output_Message( 'ERROR:  Detectors: Setup_Detector:  File open error, '//setup_file_name// & 
+                                        & ', IOSTAT=',stat,kill=.TRUE.)
     Read(setup_unit,NML = NeutronDetectorList)
     Close(setup_unit)
     Select Case(position_geometry)
@@ -135,7 +136,6 @@ Function Setup_Detector(setup_file_name,run_file_name,slice_file_name,R_top_atm)
     !check for exoatmospheric detector
     If (Vector_Length(d%sat%r0) .LT. R_top_atm) Then
         d%exoatmospheric = .FALSE.
-        !UNDONE In-atmosphere detector currently unsupported, will need to implement batching or some other scheme for variance estimation for this
         Call Output_Message('ERROR:  Detectors: Setup_Detector:  Endo-atmospheric detector not supported.',kill=.TRUE.)
     Else
         d%exoatmospheric = .TRUE.
@@ -266,7 +266,8 @@ Function Setup_Detector(setup_file_name,run_file_name,slice_file_name,R_top_atm)
                     Else
                         slice_name_end = '-e'//j_char//'.txt'
                     End If
-                    Open(NEWUNIT = d%TE_grid(i)%slice_unit(j) , FILE = slice_file_name//slice_name_end , STATUS = 'REPLACE' , ACTION = 'WRITE' , IOSTAT = stat)
+                    Open( NEWUNIT = d%TE_grid(i)%slice_unit(j) , FILE = slice_file_name//slice_name_end , STATUS = 'REPLACE' , &
+                        & ACTION = 'WRITE' , IOSTAT = stat)
                     Write(d%TE_grid(i)%slice_unit(j),'(ES30.15E3)') d%TE_grid(i)%Bin_Center(d%TE_grid(i)%slice_bin(j))
                 End Do
             End Do
@@ -275,7 +276,8 @@ Function Setup_Detector(setup_file_name,run_file_name,slice_file_name,R_top_atm)
         End If
         !Write setup info to file
         Open(NEWUNIT = setup_unit , FILE = run_file_name , STATUS = 'OLD' , ACTION = 'WRITE' , POSITION = 'APPEND' , IOSTAT = stat)
-        If (stat .NE. 0) Call Output_Message('ERROR:  Detectors: Setup_Detector:  File open error, '//run_file_name//', IOSTAT=',stat,kill=.TRUE.)
+        If (stat .NE. 0) Call Output_Message( 'ERROR:  Detectors: Setup_Detector:  File open error, '//run_file_name// & 
+                                            & ', IOSTAT=',stat,kill=.TRUE.)
         Write(setup_unit,NML = NeutronDetectorList)
         Write(setup_unit,*)
         Close(setup_unit)
@@ -337,7 +339,9 @@ Subroutine Tally_Scatter(d,E,Omega_Hat,t,weight)
         If ( .NOT.Any(d%TE_grid(1)%collect_shape) .AND. .NOT.Any(d%TE_grid(2)%collect_shape) ) d%shape_data = .FALSE.
     End If
     !resize the list if necessary
-    If (d%TE_contrib_index .GT. d%Contrib_size) Call Resize_Contrib_Lists(d%TE_contribs_this_history,d%Dir_contribs_this_history,d%Contrib_size)
+    If (d%TE_contrib_index .GT. d%Contrib_size) Then
+        Call Resize_Contrib_Lists(d%TE_contribs_this_history,d%Dir_contribs_this_history,d%Contrib_size)
+    End If
     d%TE_contribs_this_history(d%TE_contrib_index)%i1 = t_bin
     d%TE_contribs_this_history(d%TE_contrib_index)%i2 = E_bin
     d%TE_contribs_this_history(d%TE_contrib_index)%f = weight
@@ -345,7 +349,7 @@ Subroutine Tally_Scatter(d,E,Omega_Hat,t,weight)
     d%TE_contribs_E(E_bin) = d%TE_contribs_E(E_bin) + weight
     !convert incoming vector to DNF coordinates
     If (d%sat%is_stationary) Then
-        !N2H For stationary detector, the orientation never changes, we can save arithmetic by computing and saving the orientation basis just once
+        !N2H For stationary detector, we can save arithmetic by computing and saving the orientation basis just once
         D_hat = -Unit_Vector(d%sat%r0)
         DdotY = Dot_Product(D_hat,Y_hat)
         If (Abs(DdotY) .GT. 0._dp) Then !use +/- Y_hat as direction of motion
@@ -566,7 +570,8 @@ Subroutine Write_Detector(d,file_name)
     Real(dp) :: t,r(1:3),v(1:3)
     
     Open(NEWUNIT = unit , FILE = file_name , STATUS = 'UNKNOWN' , ACTION = 'WRITE' , POSITION = 'APPEND' , IOSTAT = stat)
-    If (stat .NE. 0) Call Output_Message('ERROR:  Detectors: Write_Detector:  File open error, '//file_name//', IOSTAT=',stat,kill=.TRUE.)
+    If (stat .NE. 0) Call Output_Message( 'ERROR:  Detectors: Write_Detector:  File open error, '//file_name// & 
+                                        & ', IOSTAT=',stat,kill=.TRUE.)
     Write(unit,'(A)') half_dash_line
     Write(unit,'(A)') 'DETECTOR INFORMATION'
     Write(unit,'(A)') half_dash_line
@@ -574,7 +579,10 @@ Subroutine Write_Detector(d,file_name)
     Write(unit,'(A,ES24.16E3,A)') '    x = ',d%sat%r0(1),' km'
     Write(unit,'(A,ES24.16E3,A)') '    y = ',d%sat%r0(2),' km'
     Write(unit,'(A,ES24.16E3,A)') '    z = ',d%sat%r0(3),' km'
-    Write(unit,'(A,ES24.16E3,A)') '    Right Ascension = ',Acos(d%sat%r0(1)/(Vector_Length(d%sat%r0)*Cos(Asin(d%sat%r0(3)/Vector_Length(d%sat%r0))))) / (Pi/180._dp),' deg'
+    Write(unit,'(A,ES24.16E3,A)') '    Right Ascension = ',Acos( & 
+                                                               & d%sat%r0(1)/(Vector_Length(d%sat%r0)* & 
+                                                               & Cos(Asin(d%sat%r0(3)/Vector_Length(d%sat%r0))))) & 
+                                                          & / (Pi/180._dp),' deg'
     Write(unit,'(A,ES24.16E3,A)') '    Declination     = ',Asin(d%sat%r0(3)/Vector_Length(d%sat%r0)) / (Pi/180._dp),' deg'
     Write(unit,'(A,ES24.16E3,A)') '    Altitude        = ',Vector_Length(d%sat%r0)-R_Earth,' km'
     If (d%sat%is_stationary) Then
@@ -594,7 +602,9 @@ Subroutine Write_Detector(d,file_name)
     Write(unit,*)
     Write(unit,'(A)') '  Position Trace:'
     Write(unit,'(A7,7A27)') 'Bin #','t [sec]','x-pos [km]','y-pos [km]','z-pos [km]','x-vel [km/s]','y-vel [km/s]','z-vel [km/s]'
-    Write(unit,'(A7,7A27)') '-----','-------------------------','-------------------------','-------------------------','-------------------------','-------------------------','-------------------------','-------------------------'
+    Write(unit,'(A7,7A27)') '-----','-------------------------','-------------------------','-------------------------', & 
+                          & '-------------------------','-------------------------','-------------------------', & 
+                          & '-------------------------'
     Write(unit,'(I7,7ES27.16E3)') 0,0._dp,d%sat%r0(1),d%sat%r0(2),d%sat%r0(3),d%sat%v0(1),d%sat%v0(2),d%sat%v0(3)
     If (write_full_position_trace) Then
         Do i = 1,d%TE_grid(1)%n_bins
@@ -606,9 +616,17 @@ Subroutine Write_Detector(d,file_name)
     Write(unit,*)
     Write(unit,'(A,ES24.16E3,A,ES24.16E3,A)') '  Time range: ',d%TE_grid(1)%min,' sec to ',d%TE_grid(1)%max,' sec'
     If (d%TE_grid(1)%log_spacing) Then
-        Write(unit,'(A,I5,A,I5,A)') '  Logarithmically spaced bins: ',d%TE_grid(1)%n_bins,' bins, with ',d%TE_grid(1)%n_bins / d%TE_grid(1)%n_decades,' bins per decade'
+        Write(unit,'(A,I5,A,I5,A)') '  Logarithmically spaced bins: ', & 
+                                  & d%TE_grid(1)%n_bins, & 
+                                  & ' bins, with ', & 
+                                  & d%TE_grid(1)%n_bins / d%TE_grid(1)%n_decades, & 
+                                  & ' bins per decade'
     Else
-        Write(unit,'(A,I7,A,ES24.16E3,A)') '  Linearly spaced bins: ',d%TE_grid(1)%n_bins,' bins, with width ',d%TE_grid(1)%res,' sec'
+        Write(unit,'(A,I7,A,ES24.16E3,A)') '  Linearly spaced bins: ', & 
+                                         & d%TE_grid(1)%n_bins, & 
+                                         & ' bins, with width ', & 
+                                         & d%TE_grid(1)%res, & 
+                                         & ' sec'
     End If
     Write(unit,*)
     Write(unit,'(A7,2A27)') 'Bin #','t-low [sec]','t-high [sec]'
@@ -619,9 +637,17 @@ Subroutine Write_Detector(d,file_name)
     Write(unit,*)
     Write(unit,'(A,ES24.16E3,A,ES24.16E3,A)') '  Energy range: ',d%TE_grid(2)%min,' keV to ',d%TE_grid(2)%max,' keV'
     If (d%TE_grid(2)%log_spacing) Then
-        Write(unit,'(A,I5,A,I5,A)') '  Logarithmically spaced bins: ',d%TE_grid(2)%n_bins,' bins, with ',d%TE_grid(2)%n_bins / d%TE_grid(2)%n_decades,' bins per decade'
+        Write(unit,'(A,I5,A,I5,A)') '  Logarithmically spaced bins: ', & 
+                                  & d%TE_grid(2)%n_bins, & 
+                                  & ' bins, with ', & 
+                                  & d%TE_grid(2)%n_bins / d%TE_grid(2)%n_decades, & 
+                                  & ' bins per decade'
     Else
-        Write(unit,'(A,I7,A,ES24.16E3,A)') '  Linearly spaced bins: ',d%TE_grid(2)%n_bins,' bins, with width ',d%TE_grid(2)%res,' keV'
+        Write(unit,'(A,I7,A,ES24.16E3,A)') '  Linearly spaced bins: ', & 
+                                         & d%TE_grid(2)%n_bins, & 
+                                         & ' bins, with width ', & 
+                                         & d%TE_grid(2)%res, & 
+                                         & ' keV'
     End If
     Write(unit,'(A7,2A27)') 'Bin #','E-low [keV]','E-high [keV]'
     Write(unit,'(A7,2A27)') '-----','-------------------------','-------------------------'
@@ -631,7 +657,11 @@ Subroutine Write_Detector(d,file_name)
     Write(unit,*)
     Write(unit,'(A)') '  Arrival Direction:  mu, cosine of angle from forward'
     Write(unit,'(A,I7,A,ES24.16E3)') '  Linearly spaced bins: ',d%Dir_grid(1)%n_bins,' bins, with width ',d%Dir_grid(1)%res
-    Write(unit,'(A,ES24.16E3,A)') '                                       max width ',MaxVal( Abs(Acos(d%Dir_grid(1)%bounds(1:d%Dir_grid(1)%n_bins))-Acos(d%Dir_grid(1)%bounds(0:d%Dir_grid(1)%n_bins-1))) ),' rad'
+    Write(unit,'(A,ES24.16E3,A)') '                                       max width ', & 
+                                & MaxVal( Abs( Acos(d%Dir_grid(1)%bounds(1:d%Dir_grid(1)%n_bins))- & 
+                                             & Acos(d%Dir_grid(1)%bounds(0:d%Dir_grid(1)%n_bins-1)) ) & 
+                                        & ), & 
+                                & ' rad'
     Write(unit,'(A7,2A27)') 'Bin #','mu-low','mu-high'
     Write(unit,'(A7,2A27)') '-----','-------------------------','-------------------------'
     Do i = 1,d%Dir_grid(1)%n_bins
@@ -649,11 +679,18 @@ Subroutine Write_Detector(d,file_name)
     Write(unit,'(A,I11)') '  Contrib Stack Size: ',d%Contrib_size
     If (d%shape_data) Then
         Write(unit,*)
-        Write(unit,'(A,I5,A,I11,A)') '  Shape data collected in ',d%n_slices,' time and energy slices, up to ',d%max_shape_data,' contributions recorded'
+        Write(unit,'(A,I5,A,I11,A)') '  Shape data collected in ', & 
+                                   & d%n_slices, & 
+                                   & ' time and energy slices, up to ', & 
+                                   & d%max_shape_data, & 
+                                   & ' contributions recorded'
         Write(unit,'(A13,A13,A19,A13)') 'Time Bin','Contribs','Energy Bin','Contribs'
         Write(unit,'(A13,A13,A19,A13)') '--------','--------','----------','--------'
         Do i = 1,d%n_slices
-            Write(unit,'(I13,I13,I19,I13)') d%TE_grid(1)%slice_bin(i),d%TE_grid(1)%slice_c(i),d%TE_grid(2)%slice_bin(i),d%TE_grid(2)%slice_c(i)
+            Write(unit,'(I13,I13,I19,I13)') d%TE_grid(1)%slice_bin(i), & 
+                                          & d%TE_grid(1)%slice_c(i), & 
+                                          & d%TE_grid(2)%slice_bin(i), & 
+                                          & d%TE_grid(2)%slice_c(i)
         End Do
     End If
     Write(unit,*)

@@ -93,7 +93,8 @@ Subroutine Next_Event_Trajectory(sat, Gravity, r1, t1, s1cm, u_vec, Found, r2, t
             Call New_TOF_and_DS(tof_1,tof_2,ds_1,ds_2,tof,ds)
             !compare to desired post-scatter speed and convergence of TOF interval
             !N2H Study convergence criteria for speed and tof, current criteria is probably overkill
-            If ( (Abs(ds).LT.1.E-6_dp .AND. Converged(tof_1,tof_2,rTol=1.E-12_dp,aTol=1.E-6_dp)) & !w/in 1 cm/s of desired neutron speed (a 1 micro-eV neutron goes about 14 m/s..) AND w/in 1 microsecond of actual TOF
+            !w/in 1 cm/s of desired neutron speed (a 1 micro-eV neutron goes about 14 m/s..) AND w/in 1 microsecond of actual TOF
+            If ( (Abs(ds).LT.1.E-6_dp .AND. Converged(tof_1,tof_2,rTol=1.E-12_dp,aTol=1.E-6_dp)) & 
                & .OR. ds.EQ.0._dp .OR. tof_1.EQ.tof_2 ) Then  !OR iteration landed on answer or closed interval
                 !check that trajectory does not intersect Earth
                 If (Hits_Earth(r1,v1,r2,v2)) Return
@@ -160,10 +161,12 @@ Subroutine Next_Event_Trajectory(sat, Gravity, r1, t1, s1cm, u_vec, Found, r2, t
             v1 = (r2 - r1) / tof_1
             s1cm_1 = Vector_Length(v1 - u_vec)  !this s1cm_i needs to be higher than s1cm
             If (s1cm_1 .LT. s1cm) Return  !there is not a trajectory that joins the two points with the available neutron speed
-            !estimate maximum TOF: use same criteria when gravity is on, checked against the minimum possible closing speed without gravity
+            !estimate maximum TOF: use same criteria when gravity is on, checked against minimum possible closing speed w/o gravity
             Call Find_max_TOF(tof_2)
             !check if straight flight time at min closing speed is a better bound
-            If ( Abs(s1cm - (u_speed + sat%vp)) .GT. 0._dp ) tof_2 = Min( tof_2 , Vector_Length(r2 - r1) / Abs(s1cm - (u_speed + sat%vp)) )
+            If ( Abs(s1cm - (u_speed + sat%vp)) .GT. 0._dp ) Then
+                tof_2 = Min( tof_2 , Vector_Length(r2 - r1) / Abs(s1cm - (u_speed + sat%vp)) )
+            End If
             !check if this maximum TOF bounds true TOF
             v1 = (r2 - r1) / tof_2
             s1cm_2 = Vector_Length(v1 - u_vec)  !this s1cm_i needs to be lower than s1cm
@@ -189,7 +192,8 @@ Subroutine Next_Event_Trajectory(sat, Gravity, r1, t1, s1cm, u_vec, Found, r2, t
                 Call New_TOF_and_DS_straight(tof_1,tof_2,ds_1,ds_2,tof,ds)
                 !compare to desired post-scatter speed and convergence of TOF interval
                 !N2H Study convergence criteria for speed and tof, current criteria is probably overkill
-                If ( (Abs(ds).LT.1.E-6_dp .AND. Converged(tof_1,tof_2,rTol=1.E-12_dp,aTol=1.E-6_dp)) & !w/in 1 cm/s of desired neutron speed (a 1 micro-eV neutron goes about 14 m/s..) AND w/in 1 microsecond of actual TOF
+                !w/in 1 cm/s of desired neutron speed (1 micro-eV neutron goes about 14 m/s..) AND w/in 1 microsecond of actual TOF
+                If ( (Abs(ds).LT.1.E-6_dp .AND. Converged(tof_1,tof_2,rTol=1.E-12_dp,aTol=1.E-6_dp)) & 
                    & .OR. ds.EQ.0._dp .OR. tof_1.EQ.tof_2 ) Then  !OR iteration landed on answer or closed interval
                     found = .TRUE.
                     vScm = vS2 - u_vec
@@ -252,7 +256,7 @@ Subroutine Next_Event_Trajectory(sat, Gravity, r1, t1, s1cm, u_vec, Found, r2, t
     End If
 Contains
     !Contains construct gives these subroutines access to parent routine variables and USE statements
-    !NOTE:  These contained subroutines INTENTIONALLY CAUSE SIDE-EFFECTS in the calling routine other than the explicit In and Out variables
+    !NOTE:  These contained subroutines INTENTIONALLY CAUSE SIDE-EFFECTS in the calling routine OTHER THAN the In and Out variables
     !NOTE:  Removing these subroutines from the contained construct will change the functionality of the containing routine
     Subroutine Find_max_TOF(max_TOF)
         Use Astro_Utilities, Only: SME
@@ -261,7 +265,8 @@ Contains
         Implicit None
         Real(dp), Intent(Out) :: max_TOF
         
-        If (SME(Vector_Length(r1),s1cm-u_speed) .GE. 0._dp) Then  !neutron must be on a parabolic or hyperbolic trajectory, max TOF occurs where transfer SME is zero
+        If (SME(Vector_Length(r1),s1cm-u_speed) .GE. 0._dp) Then
+        !neutron must be on a parabolic or hyperbolic trajectory, max TOF occurs where transfer SME is zero
             !find transfer orbit TOF where SME=0 (parabolic transfer)
             !initial guess is parabolic flight time from r1 to sat at time of scatter
             max_TOF = Parabolic_TOF(r1,r2)
@@ -274,8 +279,9 @@ Contains
                 End Do
             End If
         Else  !transfer orbits include elliptical 
-            !HACK Elliptical transfers and large u_speed introduce the complication of multiple roots, currently only one TOF is found
-            !UNDONE The elliptical cases in this routine also do not account for complication of the available velocity function, multiple roots could pose problems...
+        !HACK Elliptical transfers and large u_speed introduce the complication of multiple roots, currently only one TOF is found
+        !UNDONE The elliptical cases in this routine also do not account for complication of the available velocity function: 
+        !UNDONE Multiple roots are ignored (either not found, or could potentially prevent convergence)
             !find transfer orbit TOF where minV TOF is same as Lambert TOF
             !initial guess is minimum energy flight time from r1 to sat at time of scatter
             Call Lambert_minV(r1,r2,tof = max_TOF)
@@ -284,7 +290,10 @@ Contains
                     tof = max_TOF
                     r2 = sat%R(t1+max_TOF)  !target position after tof_max
                     Call Lambert_minV(r1,r2,tof = max_TOF)
-                    If (Converged(max_TOF,tof,rTol=1.E-9_dp,aTol=1.E-3_dp)) Exit  !w/in 1 millisecond of TOF for transfer where minV TOF is same as Lambert TOF
+                    If (Converged(max_TOF,tof,rTol=1.E-9_dp,aTol=1.E-3_dp)) Then
+                    !w/in 1 ms of TOF for transfer where minV TOF is same as Lambert TOF
+                        Exit
+                    End If
                 End Do
             End If
         End If
@@ -327,7 +336,7 @@ Contains
         v1cm = v1 - u_vec
         ds3 = Vector_Length(v1cm) - s1cm
     End Subroutine New_TOF_and_DS_straight
-    !NOTE:  The preceeding contained subroutines INTENTIONALLY CAUSE SIDE-EFFECTS in the calling routine other than the explicit In and Out variables
+    !NOTE:  The preceeding contained subroutines INTENTIONALLY CAUSE SIDE-EFFECTS in the calling routine
     !NOTE:  Removing these subroutines from the contained construct will change the functionality of the containing routine
 End Subroutine Next_Event_Trajectory
     

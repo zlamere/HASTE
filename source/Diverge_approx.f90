@@ -96,7 +96,7 @@ Function Div_Fact_by_shooting(r1,Omega_hat1cm,s1cm,u,tof,vS2,v2) Result(D)
     End Do
     !Compute area as appoximation of solid angle at emission
     Acm = Quadrilateral_Area(Omega_hat1cm_shots)
-    !Compute area as approximation of solid angle at rendezvous, accounting for incidence angle relative to detector motion if applicable
+    !Compute area as approximation of solid angle at rendezvous, accounting for incidence angle relative to detector motion
     Surf_Normal = Normal_Vector_4(r2_shots)
     mag_Surf_Normal = Vector_Length(Surf_Normal)
     Aar = 0.5_dp * mag_Surf_Normal!Quadrilateral_Area(r2_shots)

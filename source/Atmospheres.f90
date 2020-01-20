@@ -97,11 +97,13 @@ Module Atmospheres
     Integer, Parameter :: atm_comp_Ar40 = 137
     
     !Uniform, Isothermal, and shared parameter
-    Real(dp), Parameter :: rho_SL = 1225.0002517923321962_dp  ![g/m^3] atmospheric density at seal level on a standard day according to US Standard Atmosphere 1976
+    !atmospheric density at seal level on a standard day according to US Standard Atmosphere 1976
+    Real(dp), Parameter :: rho_SL = 1225.0002517923321962_dp  ![g/m^3]
     Real(dp), Parameter :: inv_rho_SL = 1._dp / rho_SL
     
     !Isothermal atmosphere parameter
-    Real(dp), Parameter :: scale_Height_conv = 0.02927176966650182_dp  ![km / K]  converts temperature to scale height for isothermal atmosphere model
+    !converts temperature to scale height for isothermal atmosphere model
+    Real(dp), Parameter :: scale_Height_conv = 0.02927176966650182_dp  ![km/K]
     
 Contains
 
@@ -163,7 +165,8 @@ Function Setup_Atmosphere(setup_file_name,resources_dir,run_file_name,cs_file_na
     NameList /isoSetupList1/ iso_fraction,n_absorption_modes,n_inelastic_lev,has_resonance
     
     Open(NEWUNIT = setup_unit , FILE = setup_file_name , STATUS = 'OLD' , ACTION = 'READ' , IOSTAT = stat)
-    If (stat .NE. 0) Call Output_Message('ERROR:  Atmospheres: Setup_Atmosphere:  File open error, '//setup_file_name//', IOSTAT=',stat,kill=.TRUE.)
+    If (stat .NE. 0) Call Output_Message( 'ERROR:  Atmospheres: Setup_Atmosphere:  File open error, '//setup_file_name// & 
+                                        & ', IOSTAT=',stat,kill=.TRUE.)
     Read(setup_unit,NML = AtmosphereList)
     Close(setup_unit)
     Select Case (atmosphere_model)
@@ -235,8 +238,10 @@ Function Setup_Atmosphere(setup_file_name,resources_dir,run_file_name,cs_file_na
     End Select
     If (Present(cs_file_name)) cs_file_name = f_name
     !read number of elements, isotopes, and fractions from cross sections setup file
-    Open(NEWUNIT = setup_unit , FILE = resources_dir//'cs'//slash//'n_cs'//slash//f_name , STATUS = 'OLD' , ACTION = 'READ' , IOSTAT = stat)
-    If (stat .NE. 0) Call Output_Message('ERROR:  Atmospheres: Setup_Atmosphere:  File open error, '//resources_dir//'cs'//slash//'n_cs'//slash//f_name//', IOSTAT=',stat,kill=.TRUE.)
+    Open( NEWUNIT = setup_unit , FILE = resources_dir//'cs'//slash//'n_cs'//slash//f_name , STATUS = 'OLD' , ACTION = 'READ' , & 
+        & IOSTAT = stat)
+    If (stat .NE. 0) Call Output_Message( 'ERROR:  Atmospheres: Setup_Atmosphere:  File open error, '//resources_dir// & 
+                                        & 'cs'//slash//'n_cs'//slash//f_name//', IOSTAT=',stat,kill=.TRUE.)
     Read(setup_unit,NML = csSetupList1)
     atm%n_el = n_elements
     Allocate(el_fractions(1:n_elements))
@@ -287,8 +292,10 @@ Function Setup_Atmosphere(setup_file_name,resources_dir,run_file_name,cs_file_na
     Call Define_EPL_Layers(atm,resources_dir)
     If (Worker_Index() .EQ. 1) Then
         If (Present(run_file_name)) Then
-            Open(NEWUNIT = setup_unit , FILE = run_file_name , STATUS = 'OLD' , ACTION = 'WRITE' , POSITION = 'APPEND' , IOSTAT = stat)
-            If (stat .NE. 0) Call Output_Message('ERROR:  Atmospheres: Setup_Atmosphere:  File open error, '//run_file_name//', IOSTAT=',stat,kill=.TRUE.)
+            Open( NEWUNIT = setup_unit , FILE = run_file_name , STATUS = 'OLD' , ACTION = 'WRITE' , POSITION = 'APPEND' , & 
+                & IOSTAT = stat)
+            If (stat .NE. 0) Call Output_Message( 'ERROR:  Atmospheres: Setup_Atmosphere:  File open error, '//run_file_name// & 
+                                                & ', IOSTAT=',stat,kill=.TRUE.)
             Write(setup_unit,NML = AtmosphereList)
             Write(setup_unit,*)
             Close(setup_unit)
@@ -308,14 +315,21 @@ Subroutine Write_Atmosphere(a,file_name)
     Real(dp) :: z
     
     Open(NEWUNIT = unit , FILE = file_name , STATUS = 'UNKNOWN' , ACTION = 'WRITE' , POSITION = 'APPEND' , IOSTAT = stat)
-    If (stat .NE. 0) Call Output_Message('ERROR:  Atmospheres: Write_Atmosphere:  File open error, '//file_name//', IOSTAT=',stat,kill=.TRUE.)
+    If (stat .NE. 0) Call Output_Message( 'ERROR:  Atmospheres: Write_Atmosphere:  File open error, '//file_name// & 
+                                        & ', IOSTAT=',stat,kill=.TRUE.)
     Write(unit,'(A)') half_dash_line
     Write(unit,'(A)') 'ATMOSPHERE INFORMATION'
     Write(unit,'(A)') half_dash_line
     Write(unit,'(A,ES24.16E3,A,ES24.16E3,A)') '  Extent: ',a%z_bot,' km to ',a%z_top,' km geometric altitude'
     Select Case (a%model_index)
         Case (atm_mod_IsoTherm)
-            Write(unit,'(A,ES24.16E3,A,ES24.16E3,A,ES24.16E3,A)') '  Atmosphere Model:  Isothermal, ',a%Isothermal_temp,' K,',a%uniform_density_ratio*rho_SL,' g/m^3 @ sea-level,',scale_Height_conv*a%Isothermal_temp,' km scale height'
+            Write(unit,'(A,ES24.16E3,A,ES24.16E3,A,ES24.16E3,A)')   '  Atmosphere Model:  Isothermal, ', & 
+                                                                  & a%Isothermal_temp, & 
+                                                                  & ' K,', & 
+                                                                  & a%uniform_density_ratio*rho_SL, & 
+                                                                  & ' g/m^3 @ sea-level,', & 
+                                                                  & scale_Height_conv*a%Isothermal_temp, & 
+                                                                  & ' km scale height'
             Write(unit,'(2A27)') 'Alt [km]','Density [g/m^3]'
             Write(unit,'(2A27)') '-----------------------','-----------------------'
             i = 0
@@ -460,7 +474,8 @@ Subroutine Define_EPL_Layers(atm,resources_dir)
                 atm%EPL_lay(b)%nRk = EPL_Quad_nIsoT_largeZeta_p12
                 atm%EPL_lay(b)%nTk = EPL_Quad_nIsoT_smallZeta_p12
             Case Default
-                Call Output_Message('ERROR:  Amospheres: Define_EPL_Layers: Quad points for this atmosphere model are not implemented',kill=.TRUE.)
+                Call Output_Message('ERROR:  Amospheres: Define_EPL_Layers: Quad points for this atmosphere model are not &
+                                   &implemented',kill=.TRUE.)
         End Select
         !Read in weights and abscissa
         Call Get_Q_points(resources_dir,atm%EPL_lay(b)%nZ,atm%EPL_lay(b)%uZ,atm%EPL_lay(b)%wZ)
@@ -519,7 +534,8 @@ Subroutine Get_Q_points(dir,n,a,w)
     Write(n_char,'(I3.3)') n
     file_name = dir//'Qpoints'//slash//'Weights_Abscissa-GaussLegendre_n'//n_char//'.txt'
     Open(NEWUNIT = unit , FILE = file_name , STATUS = 'OLD' , ACTION = 'READ' , IOSTAT = stat)
-    If (stat .NE. 0) Call Output_Message('ERROR:  Atmospheres: Define_EPL_Layer:  File open error, '//file_name//', IOSTAT=',stat,kill=.TRUE.)
+    If (stat .NE. 0) Call Output_Message( 'ERROR:  Atmospheres: Define_EPL_Layer:  File open error, '//file_name// & 
+                                        & ', IOSTAT=',stat,kill=.TRUE.)
     Allocate(w(1:n))
     w = 0._dp
     Allocate(a(1:n))

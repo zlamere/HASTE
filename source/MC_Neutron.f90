@@ -82,7 +82,13 @@ Subroutine Do_Neutron(s,d,atm,ScatMod,RNG,contributed)
         If (ScatMod%n_scatters .EQ. -1) Then  !check kill criteria
             If (Kill_Neutron(n%t,n%E,d%TE_Grid(1)%max,d%TE_grid(2)%min,ScatMod%n_kills(1:2))) Exit
             If (ScatMod%roulette) Then
-                If (Roulette_Neutron(n%weight,ScatMod%roulette_weight,ScatMod%roulette_rate,ScatMod%roulette_mult,ScatMod%n_kills(3),RNG)) Exit
+                If ( Roulette_Neutron( n%weight, & 
+                                     & ScatMod%roulette_weight, & 
+                                     & ScatMod%roulette_rate, & 
+                                     & ScatMod%roulette_mult, & 
+                                     & ScatMod%n_kills(3), & 
+                                     & RNG ) & 
+                   & ) Exit
             End If
         Else  !increment the scatter count and continue
             scatter = scatter + 1
@@ -145,7 +151,7 @@ Function Start_Neutron(source,atm,RNG,ScatMod,detector) Result(n)
                 s = Neutron_Speed(n%E)
                 v = s * n%Omega_hat
                 xi = SME(n%r,v)
-                If (zeta.LT.0._dp .OR. xi.LT.0._dp) Then !downward path or return trajectory, the path might intersect the atmosphere
+                If (zeta.LT.0._dp .OR. xi.LT.0._dp) Then !downward path or return trajectory, the path might intersect the atmo
                     rp = Radius_of_Perigee(n%r,v)
                     If (rp .LT. atm%R_top) Then  !this path intersects the atmosphere
                         !find flight time to atmosphere interface
@@ -256,7 +262,7 @@ Subroutine First_Event_Neutron(n,ScatMod,s,d,atm)
     Real(dp) :: Bn  !used to compute dmu0cm_dmu0
     Real(dp) :: dmu0ef_dmu0  !conversion from angular pdf in CM fram to lab frame
     Real(dp) :: w2  !modified weight for forced scatter to detector
-    Real(dp) :: tof  !time of flight to detector, simulation time of this scatter plus time of flight from current position to the detector
+    Real(dp) :: tof  !time of flight to detector, simulation time of this scatter plus TOF from current position to the detector
     Real(dp) :: dt  ![s]  flight time from scatter to satellite
     Logical :: path_found  !indicates whether path to satellite was found
     Real(dp) :: v2sat(1:3)  ![km/s]  velocity vector of neutron at arrival to satellite in satellite frame
@@ -271,9 +277,16 @@ Subroutine First_Event_Neutron(n,ScatMod,s,d,atm)
         
     ScatMod%next_events(1) = ScatMod%next_events(1) + 1_id
     If (ScatMod%Gravity) Then !check if energy is adequate to reach detector
-        If (SME(s%big_r,n%s0ef+s%speed) .LT. 0._dp) Then !neutron's max velocity is less than escape velocity, check if satellite altitude is achievable
-            If (-2._dp * s%big_r * std_grav_parameter / ( (n%s0ef + s%speed)**2 * s%big_r - 2._dp * std_grav_parameter ) .LT. d%sat%rp) Return  !neutron max height is insufficent to reach satellite at its lowest point
-            !A more robust check for trajectories that can meet the satellite is performed later, but this saves computation time if the max achievable height is insufficent
+        If (SME(s%big_r,n%s0ef+s%speed) .LT. 0._dp) Then
+        !neutron's max velocity is less than escape velocity, check if satellite altitude is achievable
+            If ( -2._dp * s%big_r * std_grav_parameter / ((n%s0ef + s%speed)**2 * s%big_r - 2._dp * std_grav_parameter) &
+               & .LT. & 
+               & d%sat%rp ) &
+            & Then !neutron max height is insufficent to reach satellite at its lowest point
+                Return
+                !A more robust check for trajectories that can meet the satellite is performed later, 
+                !but this saves computation time if the max achievable height is insufficent
+            End If
         End If
     End If
     Call Next_Event_Trajectory(d%sat,ScatMod%Gravity,s%r,n%t,n%s0ef,s%v,path_found,rS2,dt,v1ef,v2sat,vS2)
@@ -311,7 +324,7 @@ Subroutine First_Event_Neutron(n,ScatMod,s,d,atm)
         End If
     Else  !emission point is in the atmosphere
         !check for LOS, compute distance along the path as a side-effect
-        If (ScatMod%Gravity) Then  !LOS is not actually checked in the gravity case, the solver does not return trajectories without line of sight
+        If (ScatMod%Gravity) Then  !LOS need not be checked in the gravity case, the solver does not return trajectories w/o LOS
             no_LOS = Next_Event_L_to_edge(atm,s%big_r,s1,s%Z,zeta1,xEff_top_atm)
         Else
             no_LOS = Next_Event_L_to_edge(atm,s%big_r,s%Z,zeta1,xEff_top_atm)
@@ -351,7 +364,8 @@ Subroutine First_Event_Neutron(n,ScatMod,s,d,atm)
     Call Scattered_Angles(s%A_hat,Omega_hat1_ef,mu0ef,omega0ef,s%B_hat,s%C_hat)
     If (s%has_velocity) Then
         Bn = n%s0ef / s%speed
-        dmu0ef_dmu0 = Abs((1._dp + Bn * (2._dp * mu0ef + Bn))**(1.5_dp) / (Bn**2 * (Bn + mu0ef)))  !Eqn 479 from Haste-N removed material (p 39)
+        dmu0ef_dmu0 = Abs((1._dp + Bn * (2._dp * mu0ef + Bn))**(1.5_dp) / (Bn**2 * (Bn + mu0ef)))
+        !Eqn 479 from Haste-N removed material (p 39)
     Else
         dmu0ef_dmu0 = 1._dp
     End If
@@ -560,7 +574,7 @@ Subroutine Attempt_Next_Event(n,ScatMod,d,atm,scat,w_scat)
     Real(dp) :: Bn  !used to compute dmu0cm_dmu0
     Real(dp) :: dmu0cm_dmu0  !conversion from angular pdf in CM fram to lab frame
     Real(dp) :: w2  !modified weight for forced scatter to detector
-    Real(dp) :: tof  !time of flight to detector, simulation time of this scatter plus time of flight from current position to the detector
+    Real(dp) :: tof  !time of flight to detector, simulation time of this scatter plus TOF from current position to the detector
     Real(dp) :: dt  ![s]  flight time from scatter to satellite
     Logical :: path_found  !indicates whether path to satellite was found
     Real(dp) :: v2sat(1:3)  ![km/s]  velocity vector of neutron at arrival to satellite in satellite frame
@@ -573,9 +587,16 @@ Subroutine Attempt_Next_Event(n,ScatMod,d,atm,scat,w_scat)
         
     ScatMod%next_events(1) = ScatMod%next_events(1) + 1_id
     If (ScatMod%Gravity) Then !check if energy is adequate to reach detector
-        If (SME(n%big_r,scat%s1cm+scat%u_speed) .LT. 0._dp) Then !neutron's max velocity is less than escape velocity, check if satellite altitude is achievable
-            If (-2._dp * n%big_r * std_grav_parameter / ( (scat%s1cm + scat%u_speed)**2 * n%big_r - 2._dp * std_grav_parameter ) .LT. d%sat%rp) Return  !neutron max height is insufficent to reach satellite at its lowest point
-            !A more robust check for trajectories that can meet the satellite is performed later, but this saves computation time if the max achievable height is insufficent
+        If (SME(n%big_r,scat%s1cm+scat%u_speed) .LT. 0._dp) Then
+        !neutron's max velocity is less than escape velocity, check if satellite altitude is achievable
+            If ( -2._dp * n%big_r * std_grav_parameter / ( (scat%s1cm + scat%u_speed)**2 * n%big_r - 2._dp * std_grav_parameter ) & 
+               & .LT. & 
+               & d%sat%rp) & 
+            & Then !neutron max height is insufficent to reach satellite at its lowest point
+                Return
+                !A more robust check for trajectories that can meet the satellite is performed later, 
+                !but this saves computation time if the max achievable height is insufficent
+            End If
         End If
     End If
     Call Next_Event_Trajectory(d%sat,ScatMod%Gravity,n%r,n%t,scat%s1cm,scat%u,path_found,rS2,dt,v1cm,v2sat,vS2)
@@ -583,7 +604,7 @@ Subroutine Attempt_Next_Event(n,ScatMod,d,atm,scat,w_scat)
     !Check for line of sight, compute EPL along the path as a side-effect
     v1 = v1cm + scat%u
     zeta1 = Dot_Product(Unit_Vector(n%r),Unit_Vector(v1))
-    If (ScatMod%Gravity) Then  !LOS is not actually checked in the gravity case, the sover does not return trajectories without line of sight
+    If (ScatMod%Gravity) Then  !LOS need not be checked in the gravity case, the sover does not return trajectories w/o LOS
         no_LOS = Next_Event_L_to_edge(atm,n%big_r,Vector_Length(v1),n%Z,zeta1,xEff_top_atm)
     Else
         no_LOS = Next_Event_L_to_edge(atm,n%big_r,n%Z,zeta1,xEff_top_atm)
@@ -616,18 +637,24 @@ Subroutine Attempt_Next_Event(n,ScatMod,d,atm,scat,w_scat)
     !DIRECTION AT ARRIVAL
     Omega_hat2_sat = Unit_Vector(v2sat)
     !WEIGHT ADJUSTMENTS... Scattered angle, divergence, absorption & scatter suppression, decay
-    w2 = n%weight !initial value (neutron weight multiplied by scatter weight for all mat/mech and/or exoatmospheric weight adjustment where applicable)
+    w2 = n%weight !initial value (neutron wt multiplied by scatter wt for all mat/mech and exoatmospheric wt adj where applicable)
     If (Present(w_scat)) w2 = w2 * w_scat
     !Adjust for scatter angle
     Omega_hat1_cm = Unit_Vector(v1cm)
     Call Scattered_Angles(scat%Omega_hat0_cm,Omega_hat1_cm,mu0cm,omega0cm,scat%B_hat,scat%C_hat)
     Bn = scat%s1cm / scat%u_speed
-    dmu0cm_dmu0 = Abs((1._dp + Bn * (2._dp * mu0cm + Bn))**(1.5_dp) / (Bn**2 * (Bn + mu0cm)))  !Eqn 479 from Haste-N removed material (p 39)
+    dmu0cm_dmu0 = Abs((1._dp + Bn * (2._dp * mu0cm + Bn))**(1.5_dp) / (Bn**2 * (Bn + mu0cm)))
+    !Eqn 479 from Haste-N removed material (p 39)
     If (ScatMod%aniso_dist) Then
         If (scat%da_is_Legendre) Then
             w2 = w2 * dmu0cm_dmu0 * Legendre_pdf(mu0cm,scat%n_a,scat%a(0:scat%n_a)) * inv_TwoPi
         Else
-            w2 = w2 * dmu0cm_dmu0 * Tabular_Cosine_pdf(mu0cm,scat%n_a1,scat%a_tab1(1:scat%n_a1,:),scat%n_a2,scat%a_tab2(1:scat%n_a2,:),scat%a_tab_Econv) * inv_TwoPi
+            w2 = w2 * dmu0cm_dmu0 * inv_TwoPi * Tabular_Cosine_pdf( mu0cm, & 
+                                                                  & scat%n_a1, & 
+                                                                  & scat%a_tab1(1:scat%n_a1,:), & 
+                                                                  & scat%n_a2, & 
+                                                                  & scat%a_tab2(1:scat%n_a2,:), & 
+                                                                  & scat%a_tab_Econv )
         End If
     Else
         w2 = w2 * dmu0cm_dmu0 * inv_FourPi
@@ -691,7 +718,12 @@ Subroutine Scatter_Neutron(n,ScatMod,RNG,absorbed)
         If (ScatMod%scat%da_is_Legendre) Then
             mu0cm = Neutron_Anisotropic_mu0cm(ScatMod%scat%n_a,ScatMod%scat%a(0:ScatMod%scat%n_a),RNG)
         Else
-            mu0cm = Neutron_Anisotropic_mu0cm(ScatMod%scat%n_a1,ScatMod%scat%a_tab1(1:ScatMod%scat%n_a1,:),ScatMod%scat%n_a2,ScatMod%scat%a_tab2(1:ScatMod%scat%n_a2,:),ScatMod%scat%a_tab_Econv,RNG)
+            mu0cm = Neutron_Anisotropic_mu0cm( ScatMod%scat%n_a1, & 
+                                             & ScatMod%scat%a_tab1(1:ScatMod%scat%n_a1,:), & 
+                                             & ScatMod%scat%n_a2, & 
+                                             & ScatMod%scat%a_tab2(1:ScatMod%scat%n_a2,:), & 
+                                             & ScatMod%scat%a_tab_Econv, & 
+                                             & RNG )
         End If
         omega0cm = Isotropic_Azimuth(RNG)
         Omega_hat1_cm = Scattered_Direction(mu0cm,omega0cm,ScatMod%scat%A_hat,ScatMod%scat%B_hat,ScatMod%scat%C_hat)

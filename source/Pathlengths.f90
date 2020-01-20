@@ -392,7 +392,13 @@ Subroutine Check_EPL(L,z0,z1,zeta0,b,atm)
         zeta00 = zeta0
     End If
     Write(*,'(A,ES24.16)')           '    zeta00 = ',zeta00
-    Write(*,'(A,ES24.16,A,F6.2,A)')  '         S = ',Smax,' (',100._dp * (Smax / (dZ * (2._dp * r0 + dZ) / ( zeta00 * r0 + Sqrt( (zeta00 * r0)**2 + dZ * (2._dp * r0 + dZ) ) ))),'% of full layer path)'
+    Write(*,'(A,ES24.16,A,F6.2,A)')  '         S = ', &
+                                  &  Smax, &
+                                  &  ' (', &
+                                  &  100._dp*( Smax /  &
+                                  &          & (dZ*(2._dp * r0 + dZ) / (zeta00*r0 + Sqrt((zeta00*r0)**2 + dZ*(2._dp*r0 + dZ)))) & 
+                                             & ), &
+                                  &  '% of full layer path)'
 #   if GFORT
         Call abort  !<--GFORT implementation
 #   else
@@ -733,7 +739,8 @@ Function EPL_Tk_partial_layer(z1,z2,p,e,b,n,atm) Result(L)
     Real(dp) :: dZs(1:n)
     Integer :: i
     
-    !UNDONE small delta theta will result in poorly conditioned limits of integration, need to find well conditioned formulae for limits or change variables
+    !UNDONE small delta theta will result in poorly conditioned limits of integration
+    !UNDONE need to find well conditioned formulae for limits or change variables
     r1 = R_earth + z1
     r2 = R_earth + z2
     x1 = (p - r1) / (e * r1)
@@ -757,7 +764,7 @@ Function EPL_Tk_partial_layer(z1,z2,p,e,b,n,atm) Result(L)
     dZs = (p / (1._dp + e*cos_ts)) - r1
     L = 0._dp
     Do i = 1,n
-        L = L + atm%EPL_lay(b)%wTk(i) * atm%rho(z1 + dZs(i),b) * Sqrt(1._dp + e*e + 2._dp * e * cos_ts(i)) / ((1._dp + e * cos_ts(i))**2)
+        L = L + atm%EPL_lay(b)%wTk(i)*atm%rho(z1 + dZs(i),b)*Sqrt(1._dp + e*e + 2._dp*e*cos_ts(i)) / ((1._dp + e*cos_ts(i))**2)
     End Do
     L = 0.5_dp * dt * p * inv_rho_SL * L    
 End Function EPL_Tk_partial_layer
@@ -774,7 +781,7 @@ Function EPL_Tk_known_layer(p,e,b,atm) Result(L)
     L = EPL_tk_partial_layer(atm%Zb(b-1),atm%Zb(b),p,e,b,atm%EPL_lay(b)%nTk,atm)
 End Function EPL_Tk_known_layer
 
-!NEEDSDONE Switch Kepler EPL calculations from p-e-rp formulations to p-xi formulations, this will reduce arithmetic and improve conditioning
+!NEEDSDONE Switch Kepler EPL calculations from p-e-rp formulations to p-xi form to reduce arithmetic and improve conditioning
 Function EPL_Rk_partial_layer(z1,z2,p,e,rp,b1,n,atm) Result(L)
     Use Kinds, Only: dp
     Use Global, Only: R_earth

@@ -67,8 +67,10 @@ Module n_Cross_Sections
 
     Type ::  res_sig_spin_Type
         Integer :: n_r  !number of resonant energies in this spin
-        Real(dp), Allocatable :: ErG(:,:)  !For Riech-Moore formalism: has dimension 1:n_r and 1:5, dim 2 is 1=Er[keV], 2=neutron width, 3=radiation width
-                                           !For MLBW formalism: has dimension 1:n_r and 1:6, dim 2 is 1=Er[keV], 2=total width, 3=neutron width, 4=radiation width
+        Real(dp), Allocatable :: ErG(:,:)  !For Riech-Moore formalism: has dimension 1:n_r and 1:5, dim 2 is 1=Er[keV], 
+                                           !    2=neutron width, 3=radiation width
+                                           !For MLBW formalism: has dimension 1:n_r and 1:6, dim 2 is 1=Er[keV], 2=total width, 
+                                           !    3=neutron width, 4=radiation width
     End Type
 
     Type ::  res_sig_level_Type
@@ -116,7 +118,8 @@ Module n_Cross_Sections
         Procedure, Pass :: sig_S_iso_broad
     End Type
 
-    Real(dp), Parameter :: rTol = 1.E-5_dp  !relative tolerance for convergence of broadening integrals, cross section data has about 5 good digits...
+    Real(dp), Parameter :: rTol = 1.E-5_dp  !relative tolerance for convergence of broadening integrals, cross section data has 
+                                            !about 5 good digits...
 
     !MT_disappearance lists the ENDF MT numbers corresponding to neutron interactions WITHOUT a neutron in the exit channel.
     !MTs matching this list are read and stored as absorption modes for the isotope of interest.
@@ -175,8 +178,8 @@ Module n_Cross_Sections
                                                 & 88, &  !n,n' of the 38-th level
                                                 & 89, &  !n,n' of the 39-th level
                                                 & 90  /) !n,n' of the 40-th level
-    !MT_excluded lists the ENDF MT numbers corresponding to neutron interactions WITH a neutron in the exit channel other than n,n and n,n'.
-    !MTs matching this list are currently IGNORED by the program.
+    !MT_excluded lists the ENDF MT numbers corresponding to neutron interactions WITH a neutron in the exit channel other than 
+    !n,n and n,n'.  MTs matching this list are currently IGNORED by the program.
     Integer, Parameter :: MT_excluded(1:22) = (/  5, &  !interactions not included in any other MT
                                                & 11, &  !n,2n+d
                                                & 16, &  !n,2n
@@ -217,9 +220,11 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
     Logical, Intent(In) :: elastic_only
     Logical, Intent(In) :: aniso_dist
     Real(dp), Intent(In) :: E_min,E_max
-    Logical, Intent(In), Optional :: verbose  !.TRUE. causes comprehensive output of cross section data to be generated during the setup process.
-                                              !       Includes summary of ENDF data files read in and detailed output of interpreted cross section data.
-                                              !       WARNING:  This VERBOSE output is placed in the resources folder and cannot be redirected (sue me).
+    Logical, Intent(In), Optional :: verbose  !.TRUE. causes comprehensive output of cross section data to be generated during the 
+                                              !       setup process.  Includes summary of ENDF data files read in and detailed 
+                                              !       output of interpreted cross section data.
+                                              !       WARNING:  This VERBOSE output is placed in the resources folder and cannot be 
+                                              !                 redirected (sue me).
     Integer :: n_elements
     Character(:), Allocatable :: file_name_start,ENDF_file_name
     Integer, Allocatable :: n_isotopes(:)
@@ -261,7 +266,8 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
     Allocate(Character(max_path_len) :: file_name_start)
     file_name_start = resources_directory//'cs'//slash//'n_cs'//slash
     Open(NEWUNIT = setup_unit , FILE = file_name_start//cs_setup_file , STATUS = 'OLD' , ACTION = 'READ' , IOSTAT = stat)
-    If (stat .NE. 0) Call Output_Message('ERROR:  Cross_Sections: Setup_Cross_Sections:  File open error, '//file_name_start//cs_setup_file//', IOSTAT=',stat,kill=.TRUE.)
+    If (stat .NE. 0) Call Output_Message( 'ERROR:  Cross_Sections: Setup_Cross_Sections:  File open error, ' & 
+                                        & //file_name_start//cs_setup_file//', IOSTAT=',stat,kill=.TRUE. )
     Read(setup_unit,NML = csSetupList1)
     Allocate(el_fractions(1:n_elements))
     Allocate(n_isotopes(1:n_elements))
@@ -293,7 +299,8 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
     Allocate(CS%res_cs(1:CS%n_iso))
     If (v) Then  !create a  file for verbose output
         Open(NEWUNIT = v_unit , FILE = 'n_cs_HATS_summary.txt' , STATUS = 'REPLACE' , ACTION = 'WRITE' , IOSTAT = stat)
-        If (stat .NE. 0) Call Output_Message('ERROR:  Cross_Sections: Setup_Cross_Sections:  File open error, '//'n_cs_HATS_summary.txt'//', IOSTAT=',stat,kill=.TRUE.)
+        If (stat .NE. 0) Call Output_Message( 'ERROR:  Cross_Sections: Setup_Cross_Sections:  File open error, ' & 
+                                            & //'n_cs_HATS_summary.txt'//', IOSTAT=',stat,kill=.TRUE. )
     End If
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     !!  CREATE A UNIFIED ENERGY LIST FOR THE CROSS SECTION DATA
@@ -333,7 +340,8 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
             !create file name string and open the ENDF tape file for this isotope
             ENDF_file_name = file_name_start//Trim(isotope_names(i))//'.txt'
             Open(NEWUNIT = ENDF_unit , FILE = ENDF_file_name , STATUS = 'OLD' , ACTION = 'READ' , IOSTAT = stat)
-            If (stat .NE. 0) Call Output_Message('ERROR:  Cross_Sections: Setup_Cross_Sections:  File open error, '//ENDF_file_name//', IOSTAT=',stat,kill=.TRUE.)
+            If (stat .NE. 0) Call Output_Message( 'ERROR:  Cross_Sections: Setup_Cross_Sections:  File open error, ' & 
+                                                & //ENDF_file_name//', IOSTAT=',stat,kill=.TRUE. )
             !count energies in absorption, elastic, and inelastic files (MFs 3 and 4)
             If (first_time .AND. v) v_string = Trim(isotope_names(i))//' ENDF file:'  !FIRST TIME
             DO_SECTIONS: Do
@@ -380,9 +388,15 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
                                 Do j = 1,n_p,3
                                     !Each line in the file has 3 pairs of (eV,barns)
                                     If (n_p-j .GT. 1) Then
-                                        Read(ENDF_unit,'(5E11.6E1)') E_uni_scratch(n_start+j), trash_r, E_uni_scratch(n_start+j+1), trash_r, E_uni_scratch(n_start+j+2)
+                                        Read(ENDF_unit,'(5E11.6E1)') E_uni_scratch(n_start+j), &
+                                                                   & trash_r, &
+                                                                   & E_uni_scratch(n_start+j+1), &
+                                                                   & trash_r, &
+                                                                   & E_uni_scratch(n_start+j+2)
                                     Else If (n_p-j .EQ. 1) Then
-                                        Read(ENDF_unit,'(3E11.6E1)') E_uni_scratch(n_start+j), trash_r, E_uni_scratch(n_start+j+1)
+                                        Read(ENDF_unit,'(3E11.6E1)') E_uni_scratch(n_start+j), &
+                                                                   & trash_r, &
+                                                                   & E_uni_scratch(n_start+j+1)
                                     Else
                                         Read(ENDF_unit,'(1E11.6E1)') E_uni_scratch(n_start+j)
                                     End If
@@ -390,8 +404,10 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
                                         If (Any(MT_disappearance .EQ. MT)) Then  !this is an absorption mode
                                             !add it to the list of absorption modes, inserting in order of acending threshold energy
                                             Do k = 1,n_abs_modes(i)
-                                                If (E_uni_scratch(n_start+j) .LT. abs_thresh(k,i)) Then !this k is where this mode goes in the list
-                                                    If (k .LT. n_abs_modes(i)) Then  !make room by shifting the rest of the list down
+                                                If (E_uni_scratch(n_start+j) .LT. abs_thresh(k,i)) Then 
+                                                !this k is where this mode goes in the list
+                                                    If (k .LT. n_abs_modes(i)) Then 
+                                                    !make room by shifting the rest of the list down
                                                         abs_thresh(k+1:n_abs_modes(i),i) = abs_thresh(k:n_abs_modes(i)-1,i)
                                                         abs_modes(k+1:n_abs_modes(i),i) = abs_modes(k:n_abs_modes(i)-1,i)
                                                     End If
@@ -427,7 +443,8 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
                                 Else If (LTT .EQ. 3) Then !there is a second range of energies later in the section
                                     !advance in the file to the end of the Legendre section
                                     Do j = 1,n_p
-                                        !The first line in each energy contains the energy in eV in the second position and the number of Legendre coefficents in the 5th position
+                                        !The first line in each energy contains the energy in eV in the second position and the 
+                                        !number of Legendre coefficents in the 5th position
                                         Read(ENDF_unit,'(A44,I11)') trash_c, n_a
                                         n_a_lines = (n_a / 6)  !integer divide
                                         If (Mod(n_a,6) .GT. 0) n_a_lines = n_a_lines + 1
@@ -449,7 +466,8 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
                                 ! If (LTT .EQ. 0) Then !da is isotropic, no energies to read
                                 If (LTT .EQ. 1) Then  !da is lists of legendre coeffs
                                     Do j = 1,n_p
-                                        !The first line in each energy contains the energy in eV in the second position and the number of Legendre coefficents in the 5th position
+                                        !The first line in each energy contains the energy in eV in the second position and the 
+                                        !number of Legendre coefficents in the 5th position
                                         Read(ENDF_unit,'(A11,E11.6E1,A22,I11)') trash_c, E_uni_scratch(n_start+j), trash_c, n_a
                                         n_a_lines = (n_a / 6)  !integer divide
                                         If (Mod(n_a,6) .GT. 0) n_a_lines = n_a_lines + 1
@@ -474,7 +492,8 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
                                 Else If (LTT .EQ. 3) Then  !da is tabulated for high energies but legendre for low energies
                                     !Read in low energy Legendre points
                                     Do j = 1,n_p
-                                        !The first line in each energy contains the energy in eV in the second position and the number of Legendre coefficents in the 5th position
+                                        !The first line in each energy contains the energy in eV in the second position and the 
+                                        !number of Legendre coefficents in the 5th position
                                         Read(ENDF_unit,'(A11,E11.6E1,A22,I11)') trash_c, E_uni_scratch(n_start+j), trash_c, n_a
                                         n_a_lines = (n_a / 6)  !integer divide
                                         If (Mod(n_a,6) .GT. 0) n_a_lines = n_a_lines + 1
@@ -523,7 +542,8 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
             If (v) Then
                 Write(v_unit,*)
                 Do i = 1,CS%n_iso
-                    Write(v_unit,'(A,I0,A,I0,A)') Trim(isotope_names(i))//' ENDF tape contains ',n_abs_modes(i),' absorption modes and ',n_inel_lev(i),' inelastic levels'
+                    Write(v_unit,'(A,I0,A,I0,A)') Trim(isotope_names(i))//' ENDF tape contains ',n_abs_modes(i), & 
+                                                & ' absorption modes and ',n_inel_lev(i),' inelastic levels'
                     Do j = 1,n_abs_modes(i)
                         Write(v_unit,'(A,I5,ES26.16E3)') '  ',abs_modes(j,i),abs_thresh(j,i)
                     End Do
@@ -532,9 +552,10 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
             End If
             n_p = n_energies !stash n_energies before it gets overwritten
             E_uni_scratch = E_uni_scratch / 1000._dp  !convert to kev
-            !E_uni_scratch is now a HUGE list of all the energies in all the files we are going to use, sort and eliminate duplicates
+            !E_uni_scratch is now a HUGE list of all the energies in all the files to be used, sort and eliminate duplicates
             Call Union_Sort(E_uni_scratch,n_energies,E_min,E_max)
-            If (n_energies .GT. Huge(CS%n_E_uni)) Call Output_Message('ERROR:  Cross_Sections: Setup_Cross_Sections:  Length of unified energy grid exceeds available index',kill=.TRUE.)
+            If (n_energies .GT. Huge(CS%n_E_uni)) Call Output_Message('ERROR:  Cross_Sections: Setup_Cross_Sections:  Length of &
+                                                                      &unified energy grid exceeds available index',kill=.TRUE.)
             !Allocate and fill the unified energy list
             CS%n_E_uni = n_energies
             Allocate(CS%E_uni(1:n_energies))
@@ -548,7 +569,8 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
                 Write(v_unit,'(A)') 'UNIFIED ENERGY LIST'
                 Write(v_unit,'(A)') half_dash_line
                 Write(v_unit,*)
-                Write(v_unit,'(I0,A,F0.2,A)') CS%n_E_uni,' unique points in unified grid, (',100._dp*Real(CS%n_E_uni,dp)/Real(n_p,dp),'%)'
+                Write(v_unit,'(I0,A,F0.2,A)') CS%n_E_uni,' unique points in unified grid, (', & 
+                                            & 100._dp*Real(CS%n_E_uni,dp)/Real(n_p,dp),'%)'
                 Write(v_unit,'(A7,2A26)') ' Index ','   E [keV]                ','   ln(E)                  '
                 Write(v_unit,'(A7,2A26)') '-------','  ------------------------','  ------------------------'
                 Do i = 1,n_energies
@@ -559,7 +581,7 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
     End Do
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     !!  READ IN INTERACTION CROSS SECTIONS AND ANGULAR DISTRIBUTIONS
-    !Now read each file (yes, again) into its appropriate place in the cross section structure, constructing the integer maps and keys as we go
+    !Now read each file (yes, again) into its place in the cross section structure, constructing the integer maps and keys as we go
     If (v) Then
         Write(v_unit,*)
         Write(v_unit,'(A)') half_dash_line
@@ -573,7 +595,8 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
         !create file name string and open the ENDF tape for this isotope
         ENDF_file_name = file_name_start//Trim(isotope_names(i))//'.txt'
         Open(NEWUNIT = ENDF_unit , FILE = ENDF_file_name , STATUS = 'OLD' , ACTION = 'READ' , IOSTAT = stat)
-        If (stat .NE. 0) Call Output_Message('ERROR:  Cross_Sections: Setup_Cross_Sections:  File open error, '//ENDF_file_name//', IOSTAT=',stat,kill=.TRUE.)
+        If (stat .NE. 0) Call Output_Message( 'ERROR:  Cross_Sections: Setup_Cross_Sections:  File open error, ' & 
+                                            & //ENDF_file_name//', IOSTAT=',stat,kill=.TRUE. )
         !read in absorption, resonance, elastic, and inelastic interaction cross sections and angular distributions
         CS%abs_cs(i)%n_modes = n_abs_modes(i)
         Allocate(CS%abs_cs(i)%thresh(1:n_abs_modes(i)))
@@ -586,7 +609,15 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
             !the next read statement on ENDF_unit will read the first line of MF=3, MT=abs_modes(j,i)
             Call Read_sig_sect(ENDF_unit,Q_scratch,An_scratch,E_scratch,sig_scratch,Interp_scratch,n_p,n_r)
             If (Trim_CS_for_E(n_p,E_scratch,sig_scratch,n_r,Interp_scratch,E_min,E_max)) Then
-                Call Map_and_Store_CS(CS%n_E_uni,CS%E_uni,n_p,E_scratch,sig_scratch,n_r,Interp_Scratch,CS%abs_cs(i)%sig(j),CS%abs_cs(i)%thresh(j))
+                Call Map_and_Store_CS( CS%n_E_uni, & 
+                                     & CS%E_uni, & 
+                                     & n_p, & 
+                                     & E_scratch, & 
+                                     & sig_scratch, & 
+                                     & n_r, & 
+                                     & Interp_Scratch, & 
+                                     & CS%abs_cs(i)%sig(j), & 
+                                     & CS%abs_cs(i)%thresh(j) )
             End If
             Deallocate(E_scratch,sig_scratch,Interp_scratch)
             If (v) Then  !write the stored values for this absorption mode
@@ -640,7 +671,15 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
         !the next read statement on ENDF_unit will read the first line of MF=3, MT=2
         Call Read_sig_sect(ENDF_unit,Q_scratch,CS%An(i),E_scratch,sig_scratch,Interp_scratch,n_p,n_r)
         If (Trim_CS_for_E(n_p,E_scratch,sig_scratch,n_r,Interp_scratch,E_min,E_max)) Then
-            Call Map_and_Store_CS(CS%n_E_uni,CS%E_uni,n_p,E_scratch,sig_scratch,n_r,Interp_Scratch,CS%lev_cs(i)%sig(0),CS%lev_cs(i)%thresh(0))
+            Call Map_and_Store_CS( CS%n_E_uni, & 
+                                 & CS%E_uni, & 
+                                 & n_p, & 
+                                 & E_scratch, & 
+                                 & sig_scratch, & 
+                                 & n_r, & 
+                                 & Interp_Scratch, & 
+                                 & CS%lev_cs(i)%sig(0), & 
+                                 & CS%lev_cs(i)%thresh(0) )
         End If
         Deallocate(E_scratch,sig_scratch,Interp_scratch)
         If (v) Then  !write the stored values for elastic scatter interaction cross section
@@ -659,7 +698,12 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
             Else
                 CS%lev_cs(i)%da(0)%is_iso = .FALSE.
                 If (Trim_AD_for_E(n_p,E_scratch,Ang_dist_scratch,E_min,E_max)) Then
-                    Call Map_and_Store_AD(CS%n_E_uni,CS%E_uni,n_p,E_scratch,Ang_dist_scratch,CS%lev_cs(i)%da(0))
+                    Call Map_and_Store_AD( CS%n_E_uni, & 
+                                         & CS%E_uni, & 
+                                         & n_p, & 
+                                         & E_scratch, & 
+                                         & Ang_dist_scratch, & 
+                                         & CS%lev_cs(i)%da(0) )
                 End If
                 Deallocate(E_scratch,Ang_dist_scratch)
             End If
@@ -695,7 +739,15 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
                 Call Read_sig_sect(ENDF_unit,Q_scratch,An_scratch,E_scratch,sig_scratch,Interp_scratch,n_p,n_r)
                 If (Trim_CS_for_E(n_p,E_scratch,sig_scratch,n_r,Interp_scratch,E_min,E_max)) Then
                     CS%lev_cs(i)%Q(j) = Q_scratch
-                    Call Map_and_Store_CS(CS%n_E_uni,CS%E_uni,n_p,E_scratch,sig_scratch,n_r,Interp_Scratch,CS%lev_cs(i)%sig(j),CS%lev_cs(i)%thresh(j))
+                    Call Map_and_Store_CS( CS%n_E_uni, & 
+                                         & CS%E_uni, & 
+                                         & n_p, & 
+                                         & E_scratch, & 
+                                         & sig_scratch, & 
+                                         & n_r, & 
+                                         & Interp_Scratch, & 
+                                         & CS%lev_cs(i)%sig(j), & 
+                                         & CS%lev_cs(i)%thresh(j) )
                 End If
                 Deallocate(E_scratch,sig_scratch,Interp_scratch)
                 If (v) Then  !write the stored values for this inelastic scatter interaction cross section
@@ -713,7 +765,13 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
                         CS%lev_cs(i)%da(j)%is_iso = .TRUE.
                     Else
                         If (Trim_AD_for_E(n_p,E_scratch,Ang_dist_scratch,E_min,E_max)) Then
-                            Call Map_and_Store_AD(CS%n_E_uni,CS%E_uni,n_p,E_scratch,Ang_dist_scratch,CS%lev_cs(i)%da(j),CS%lev_cs(i)%thresh(j))
+                            Call Map_and_Store_AD( CS%n_E_uni, & 
+                                                 & CS%E_uni, & 
+                                                 & n_p, & 
+                                                 & E_scratch, & 
+                                                 & Ang_dist_scratch, & 
+                                                 & CS%lev_cs(i)%da(j), & 
+                                                 & CS%lev_cs(i)%thresh(j) )
                         End If
                         Deallocate(E_scratch,Ang_dist_scratch)
                     End If
@@ -724,7 +782,8 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
                     If (LTT .EQ. 1) Then
                         If (MaxVal(CS%lev_cs(i)%da(j)%da(:)%n_a) .GT. CS%n_a_max) CS%n_a_max = MaxVal(CS%lev_cs(i)%da(j)%da(:)%n_a)
                     Else If (LTT .EQ. 2) Then
-                        If (MaxVal(CS%lev_cs(i)%da(j)%da(:)%n_a) .GT. CS%n_a_tab_max) CS%n_a_tab_max = MaxVal(CS%lev_cs(i)%da(j)%da(:)%n_a)
+                        If (MaxVal(CS%lev_cs(i)%da(j)%da(:)%n_a) .GT. CS%n_a_tab_max) & 
+                            & CS%n_a_tab_max = MaxVal(CS%lev_cs(i)%da(j)%da(:)%n_a)
                     Else If (LTT .EQ. 3) Then
                         Do k = 1,CS%lev_cs(i)%da(j)%n_da
                             If (CS%lev_cs(i)%da(j)%da(k)%is_legendre) Then
@@ -771,17 +830,28 @@ Subroutine Write_stored_sig(v_unit,sig,n_E_uni,E_uni)
         Write(v_unit,'(I8,I4)') sig%interp(k,1),sig%interp(k,2)
     End Do
     If (Any(sig%interp(:,2).EQ.4) .OR. Any(sig%interp(:,2).EQ.5)) Then !lnsigs are present
-        Write(v_unit,'(3A26,3A9)') '   E-keyed [keV]          ','   sig (b)                ','   ln(sig)                ','    key  ','   index ','   map(s)'
-        Write(v_unit,'(3A26,3A9)') '  ------------------------','  ------------------------','  ------------------------','  -------','  -------','  -------'
+        Write(v_unit,'(3A26,3A9)') '   E-keyed [keV]          ','   sig (b)                ','   ln(sig)                ', & 
+                                 & '    key  ','   index ','   map(s)'
+        Write(v_unit,'(3A26,3A9)') '  ------------------------','  ------------------------','  ------------------------', & 
+                                 & '  -------','  -------','  -------'
     Else  !ln(sig) not stored
         Write(v_unit,'(2A26,3A9)') '   E-keyed [keV]          ','   sig (b)                ','    key  ','   index ','   map(s)'
         Write(v_unit,'(2A26,3A9)') '  ------------------------','  ------------------------','  -------','  -------','  -------'
     End If
     Do k = 1,sig%n_sig
         If (Any(sig%interp(:,2).EQ.4) .OR. Any(sig%interp(:,2).EQ.5)) Then !lnsigs are present
-            Write(v_unit,'(3ES26.16E3,3I9)',ADVANCE='NO') E_uni(sig%E_key(k)) , sig%sig(k) , sig%lnsig(k) , sig%E_key(k) , k , sig%E_map(sig%E_key(k))
+            Write(v_unit,'(3ES26.16E3,3I9)',ADVANCE='NO') E_uni(sig%E_key(k)), &
+                                                        & sig%sig(k), &
+                                                        & sig%lnsig(k), &
+                                                        & sig%E_key(k), &
+                                                        & k, &
+                                                        & sig%E_map(sig%E_key(k))
         Else  !ln(sig) not stored
-            Write(v_unit,'(2ES26.16E3,3I9)',ADVANCE='NO') E_uni(sig%E_key(k)) , sig%sig(k) ,                sig%E_key(k) , k , sig%E_map(sig%E_key(k))
+            Write(v_unit,'(2ES26.16E3,3I9)',ADVANCE='NO') E_uni(sig%E_key(k)), &
+                                                        & sig%sig(k), &
+                                                        & sig%E_key(k), &
+                                                        & k, &
+                                                        & sig%E_map(sig%E_key(k))
         End If
         If (k .EQ. 1) Then
             map_gap = sig%E_key(k) - 1
@@ -832,10 +902,10 @@ Subroutine Write_stored_AD(v_unit,d,n_E_uni,E_uni)
         Write(v_unit,*)
         If (d%da(k)%is_Legendre) Then
             Write(v_unit,'(A9,I7,A19)') '',d%da(k)%n_a,' Legendre Coeffs   '
-            Write(v_unit,'(A9,A26)') '',           '  ------------------------'
+            Write(v_unit,'(A9,A26)') '','  ------------------------'
         Else !tabulated cosine pdf
             Write(v_unit,'(A9,I7,A19,2A26)') '',d%da(k)%n_a,' tabular Cosines   ','    PDF                   ','    ln(PDF)               '
-            Write(v_unit,'(A9,3A26)')            '',     '  ------------------------','  ------------------------','  ------------------------'
+            Write(v_unit,'(A9,3A26)') '','  ------------------------','  ------------------------','  ------------------------'
         End If
         Do a = 1,d%da(k)%n_a
             If (d%da(k)%is_Legendre) Then
@@ -904,9 +974,11 @@ Subroutine Read_sig_sect(cs_unit,Q,An,E_list,sig_list,Int_list,n_p,n_r)
 
     !the second entry of the first line is the mass of the target in neutron masses
     Read(cs_unit,'(2E11.6E1)') trash, An
-    !the second entry of the next line is the Q-value for the reaction, the fifth and sixth entries are the number of interpolation ranges and energy levels in the file
+    !the second entry of the next line is the Q-value for the reaction, the fifth and sixth entries are the number of interpolation 
+    !ranges and energy levels in the file
     Read(cs_unit,'(4E11.6E1,2I11)') trash, Q, trash, trash, n_r, n_p
-    If (n_r .GT. 3) Call Output_Message('ERROR:  Cross_Sections: Read_sig_sect:  Number of interpolation ranges greater than 3:  n_r=',n_r,kill=.TRUE.)
+    If (n_r .GT. 3) Call Output_Message('ERROR:  Cross_Sections: Read_sig_sect:  Number of interpolation ranges &
+                                        &greater than 3:  n_r=',n_r,kill=.TRUE.)
     !The next line has interpolation methods and ranges, read and fill interpolation list
     Allocate(Int_list(1:n_r,1:2))
     Int_list = 0
@@ -917,7 +989,9 @@ Subroutine Read_sig_sect(cs_unit,Q,An,E_list,sig_list,Int_list,n_p,n_r)
     Else !n_r=3
         Read(cs_unit,'(6I11)') Int_list(1,1), Int_list(1,2), Int_list(2,1), Int_list(2,2), Int_list(3,1), Int_list(3,2)
     End If
-    If (Any(Int_list(:,2).GT.5) .OR. Any(Int_list(:,2).LT.1)) Call Output_Message('ERROR:  Cross_Sections: Read_CS_file:  Unknown interpolation scheme.',kill=.TRUE.)
+    If (Any(Int_list(:,2).GT.5) .OR. Any(Int_list(:,2).LT.1)) Then
+        Call Output_Message('ERROR:  Cross_Sections: Read_CS_file:  Unknown interpolation scheme.',kill=.TRUE.)
+    End If
     !Allocate lists
     Allocate(E_list(1:n_p))
     Allocate(sig_list(1:n_p))
@@ -933,7 +1007,8 @@ Subroutine Read_sig_sect(cs_unit,Q,An,E_list,sig_list,Int_list,n_p,n_r)
         End If
     End Do
     !Convert E from eV to keV
-    Q = Abs(Q) / 1000._dp  !also store Q as positive value, negativity of Q for inelastic scatter is handled by energy book-keeeping formulations during transport
+    Q = Abs(Q) / 1000._dp  !Also store Q as positive value, negativity of Q for inelastic scatter is handled by energy 
+                           !book-keeeping formulations during transport
     E_list = E_list / 1000._dp
 End Subroutine Read_sig_sect
 
@@ -954,21 +1029,23 @@ Subroutine Read_da_sect(da_unit,E_list,da_list,n_p,LTT)
     Integer :: n_p_2
     Logical :: new_line
 
-    !check the LTT value on the first line to ensure Legendre Coeffs format
+    !Check the LTT value on the first line to ensure Legendre Coeffs format
     Read(da_unit,'(A33,I11)') trash_c, LTT
     Read(da_unit,'(A33,I11)') trash_c, LCT
     !values must be in CM frame, check and throw error if they are not
     If (LCT .NE. 2) Call Output_Message('ERROR:  Cross_Sections: Read_da_sect:  Incorrectly formatted file, LCT=',LCT,kill=.TRUE.)
     If (LTT .EQ. 0) Return  !LTT=0 indicates isotropic distribution, special handling in calling routine
-    !the 6th entry on the next line energy levels in the file (for LTT=1 or 2, if LTT=3 it is the number of energies for the legendre section)
+    !The 6th entry on the next line energy levels in the file (for LTT=1 or 2, if LTT=3 it is the number of energies for the 
+    !legendre section)
     Read (da_unit,'(A55,I11)') trash_c,n_p
     !Skip the next line
     Read (da_unit,*)
     If (LTT .EQ. 3) Then !there is a second range of energies later in the section
-        !advance in the file to the end of the Legendre section
+        !Ddvance in the file to the end of the Legendre section
         n_skipped_lines = 0
         Do i = 1,n_p
-            !The first line in each energy contains the energy in eV in the second position and the number of Legendre coefficents in the 5th position
+            !The first line in each energy contains the energy in eV in the second position and the number of Legendre coefficents 
+            !in the 5th position
             Read(da_unit,'(A44,I11)') trash_c, n_a
             n_skipped_lines = n_skipped_lines + 1
             n_a_lines = (n_a / 6)  !integer divide
@@ -996,7 +1073,8 @@ Subroutine Read_da_sect(da_unit,E_list,da_list,n_p,LTT)
         da_list%is_legendre = .TRUE.
         da_list%is_tab = .FALSE.
         Do i = 1,n_p
-            !The first line in each energy contains the energy in eV in the second position and the number of Legendre coefficents in the 5th position
+            !The first line in each energy contains the energy in eV in the second position and the number of Legendre coefficents 
+            !in the 5th position
             Read(da_unit,'(4E11.6E1,I11)') trash, E_list(i), trash, trash, da_list(i)%n_a
             Allocate(da_list(i)%a(0:da_list(i)%n_a))
             da_list(i)%a(0) = 0.5_dp
@@ -1030,13 +1108,14 @@ Subroutine Read_da_sect(da_unit,E_list,da_list,n_p,LTT)
                 End If
             End Do
         End Do
-        da_list(i)%ua(2,:) = Log(da_list(i)%ua(2,:))  !Store logarithm of probability density values (reduces cost of interpolations)
+        da_list(i)%ua(2,:) = Log(da_list(i)%ua(2,:)) !Store logarithm of probability density (reduces cost of interpolation)
     Else If (LTT .EQ. 3) Then  !da is tabulated for high energies but legendre for low energies
         !Read in low energy Legendre points
         Do i = 1,n_p
             da_list(i)%is_legendre = .TRUE.
             da_list(i)%is_tab = .FALSE.
-            !The first line in each energy contains the energy in eV in the second position and the number of Legendre coefficents in the 5th position
+            !The first line in each energy contains the energy in eV in the second position and the number of Legendre coefficents 
+            !in the 5th position
             Read(da_unit,'(4E11.6E1,I11)') trash, E_list(i), trash, trash, da_list(i)%n_a
             Allocate(da_list(i)%a(0:da_list(i)%n_a))
             da_list(i)%a(0) = 0.5_dp
@@ -1076,7 +1155,7 @@ Subroutine Read_da_sect(da_unit,E_list,da_list,n_p,LTT)
                     Read(da_unit,'(2E11.6E1)', ADVANCE = 'NO') da_list(i)%ua(1,j), da_list(i)%ua(2,j)
                 End If
             End Do
-            da_list(i)%ua(2,:) = Log(da_list(i)%ua(2,:))  !Store logarithm of probability density values (reduces cost of interpolations)
+            da_list(i)%ua(2,:) = Log(da_list(i)%ua(2,:)) !Store logarithm of probability density (reduces cost of interpolation)
         End Do
         !update total n_p
         n_p = n_p + n_p_2
@@ -1122,8 +1201,12 @@ Subroutine Read_res_sect(res_unit,res_List)
     Else  !this formalism is not supported
         Call Output_Message('ERROR:  Cross_Sections: Read_res_sect:  Incorrectly formatted file, LRF=',LRF,kill=.TRUE.)
     End If
-    If (NRO .NE. 0) Call Output_Message('ERROR:  Cross_Sections: Read_res_sect:  Incorrectly formatted file, NRO=',NRO,kill=.TRUE.)
-    If (NAPS .NE. 1) Call Output_Message('ERROR:  Cross_Sections: Read_res_sect:  Incorrectly formatted file, NAPS=',NAPS,kill=.TRUE.)
+    If (NRO .NE. 0) Then
+        Call Output_Message('ERROR:  Cross_Sections: Read_res_sect:  Incorrectly formatted file, NRO=',NRO,kill=.TRUE.)
+    End If
+    If (NAPS .NE. 1) Then
+        Call Output_Message('ERROR:  Cross_Sections: Read_res_sect:  Incorrectly formatted file, NAPS=',NAPS,kill=.TRUE.)
+    End If
     !read AP and n_L from the next line
     Read(res_unit,'(4E11.6E1,I11)') SPI, AP, trash, trash, nL
     !read AWRI from next line
@@ -1149,13 +1232,20 @@ Subroutine Read_res_sect(res_unit,res_List)
         Js = -1._dp
         !read resonance parameters for this level
         Do r = 1,nR
-            Read(res_unit,'(6E11.6E1)') res_scratch(r,1),res_scratch(r,2),res_scratch(r,3),res_scratch(r,4),res_scratch(r,5),res_scratch(r,6)
+            Read(res_unit,'(6E11.6E1)') res_scratch(r,1), & 
+                                      & res_scratch(r,2), & 
+                                      & res_scratch(r,3), & 
+                                      & res_scratch(r,4), & 
+                                      & res_scratch(r,5), & 
+                                      & res_scratch(r,6)
         End Do
         !check for fission resonances
         If (res_list%is_MLBW) Then
-            If (Any(res_scratch(:,6).NE.0._dp)) Call Output_Message('ERROR:  Cross_Sections: Read_res_sect:  Dude, a fissionable atmosphere is just ridiculous. ',kill=.TRUE.)
+            If (Any(res_scratch(:,6).NE.0._dp)) Call Output_Message('ERROR:  Cross_Sections: Read_res_sect:  Dude, a fissionable &
+                                                                    &atmosphere is just ridiculous. ',kill=.TRUE.)
         Else !res_list%is_RM
-            If (Any(res_scratch(:,5:6).NE.0._dp)) Call Output_Message('ERROR:  Cross_Sections: Read_res_sect:  Dude, a fissionable atmosphere is just ridiculous. ',kill=.TRUE.)
+            If (Any(res_scratch(:,5:6).NE.0._dp)) Call Output_Message('ERROR:  Cross_Sections: Read_res_sect:  Dude, a fissionable &
+                                                                      &atmosphere is just ridiculous. ',kill=.TRUE.)
         End If
         !count unique spin values
         Js = res_scratch(:,2)
@@ -1660,7 +1750,7 @@ Subroutine Map_and_Store_AD(n_E_uni,E_uni,n_p,E_list,AD_list,ad,i_thresh)
         End If
         ad%E_map(i) = j
         !If (check_tab) Then !check for transition between Legendre and Tabular forms
-        !!at the transition between Legendre and tabular firms, there is a double energy point that causes and index error in the map
+        !At the transition between Legendre and tabular firms, there is a double energy point that causes and index error in the map
         !    If (AD_list(j)%is_Legendre .AND. AD_list(j+1)%is_Tab) Then !the next j transitions to tabular format
         !        j = j + 1 !increment the index so it is correct the next time through
         !        check_tab = .FALSE. !this can only occur once, no further need to check
@@ -1717,8 +1807,24 @@ Subroutine sig_T_A(CS,E,sT,sA,iE_get,iE_put)
             sA = sA + CS%iso_fractions(i) * (resT - resS)
         End If
         !background contribution
-        sS = sS + CS%iso_Fractions(i) * sig_Composite(E,CS%n_E_uni,CS%E_uni,CS%lnE_uni,E_index,0,CS%lev_cs(i)%n_lev,CS%lev_cs(i)%thresh,CS%lev_cs(i)%sig)
-        sA = sA + CS%iso_Fractions(i) * sig_Composite(E,CS%n_E_uni,CS%E_uni,CS%lnE_uni,E_index,1,CS%abs_cs(i)%n_modes,CS%abs_cs(i)%thresh,CS%abs_cs(i)%sig)
+        sS = sS + CS%iso_Fractions(i) * sig_Composite( E, & 
+                                                     & CS%n_E_uni, & 
+                                                     & CS%E_uni, & 
+                                                     & CS%lnE_uni, & 
+                                                     & E_index, & 
+                                                     & 0, & 
+                                                     & CS%lev_cs(i)%n_lev, & 
+                                                     & CS%lev_cs(i)%thresh, & 
+                                                     & CS%lev_cs(i)%sig )
+        sA = sA + CS%iso_Fractions(i) * sig_Composite( E, & 
+                                                     & CS%n_E_uni, & 
+                                                     & CS%E_uni, & 
+                                                     & CS%lnE_uni, & 
+                                                     & E_index, & 
+                                                     & 1, & 
+                                                     & CS%abs_cs(i)%n_modes, & 
+                                                     & CS%abs_cs(i)%thresh, & 
+                                                     & CS%abs_cs(i)%sig )
     End Do
     sT = sA + sS
     If (Present(iE_get)) iE_get = E_index
@@ -1754,8 +1860,24 @@ Function sig_T(CS,E,iE_get,iE_put) Result(sT)
             sA = sA + CS%iso_fractions(i) * (resT - resS)
         End If
         !background contribution
-        sS = sS + CS%iso_Fractions(i) * sig_Composite(E,CS%n_E_uni,CS%E_uni,CS%lnE_uni,E_index,0,CS%lev_cs(i)%n_lev,CS%lev_cs(i)%thresh,CS%lev_cs(i)%sig)
-        sA = sA + CS%iso_Fractions(i) * sig_Composite(E,CS%n_E_uni,CS%E_uni,CS%lnE_uni,E_index,1,CS%abs_cs(i)%n_modes,CS%abs_cs(i)%thresh,CS%abs_cs(i)%sig)
+        sS = sS + CS%iso_Fractions(i) * sig_Composite( E, & 
+                                                     & CS%n_E_uni, & 
+                                                     & CS%E_uni, & 
+                                                     & CS%lnE_uni, & 
+                                                     & E_index, & 
+                                                     & 0, & 
+                                                     & CS%lev_cs(i)%n_lev, & 
+                                                     & CS%lev_cs(i)%thresh, & 
+                                                     & CS%lev_cs(i)%sig ) 
+        sA = sA + CS%iso_Fractions(i) * sig_Composite( E, & 
+                                                     & CS%n_E_uni, & 
+                                                     & CS%E_uni, & 
+                                                     & CS%lnE_uni, & 
+                                                     & E_index, & 
+                                                     & 1, & 
+                                                     & CS%abs_cs(i)%n_modes, & 
+                                                     & CS%abs_cs(i)%thresh, & 
+                                                     & CS%abs_cs(i)%sig )
     End Do
     sT = sA + sS
     If (Present(iE_get)) iE_get = E_index
@@ -1788,7 +1910,15 @@ Function sig_S(CS,E,iE_get,iE_put) Result(sS)
             sS = sS + CS%iso_Fractions(i) * resS
         End If
         !background contribution
-        sS = sS + CS%iso_Fractions(i) * sig_Composite(E,CS%n_E_uni,CS%E_uni,CS%lnE_uni,E_index,0,CS%lev_cs(i)%n_lev,CS%lev_cs(i)%thresh,CS%lev_cs(i)%sig)
+        sS = sS + CS%iso_Fractions(i) * sig_Composite( E, & 
+                                                     & CS%n_E_uni, & 
+                                                     & CS%E_uni, & 
+                                                     & CS%lnE_uni, & 
+                                                     & E_index, & 
+                                                     & 0, & 
+                                                     & CS%lev_cs(i)%n_lev, & 
+                                                     & CS%lev_cs(i)%thresh, & 
+                                                     & CS%lev_cs(i)%sig )
     End Do
     If (Present(iE_get)) iE_get = E_index
 End Function sig_S
@@ -1819,7 +1949,15 @@ Function sig_S_iso(CS,iso,E,iE_get,iE_put) Result(sS)
         sS = sS + resS
     End If
     !background contribution
-    sS = sS + sig_Composite(E,CS%n_E_uni,CS%E_uni,CS%lnE_uni,E_index,0,CS%lev_cs(iso)%n_lev,CS%lev_cs(iso)%thresh,CS%lev_cs(iso)%sig)
+    sS = sS + sig_Composite( E, & 
+                           & CS%n_E_uni, & 
+                           & CS%E_uni, & 
+                           & CS%lnE_uni, & 
+                           & E_index, & 
+                           & 0, & 
+                           & CS%lev_cs(iso)%n_lev, & 
+                           & CS%lev_cs(iso)%thresh, & 
+                           & CS%lev_cs(iso)%sig )
     If (Present(iE_get)) iE_get = E_index
 End Function sig_S_iso
 
@@ -1850,7 +1988,15 @@ Function sig_A(CS,E,iE_get,iE_put) Result(sA)
             sA = sA + CS%iso_Fractions(i) * (resT - resS)
         End If
         !background contribution
-        sA = sA + CS%iso_Fractions(i) * sig_Composite(E,CS%n_E_uni,CS%E_uni,CS%lnE_uni,E_index,1,CS%abs_cs(i)%n_modes,CS%abs_cs(i)%thresh,CS%abs_cs(i)%sig)
+        sA = sA + CS%iso_Fractions(i) * sig_Composite( E, & 
+                                                     & CS%n_E_uni, & 
+                                                     & CS%E_uni, & 
+                                                     & CS%lnE_uni, & 
+                                                     & E_index, & 
+                                                     & 1, & 
+                                                     & CS%abs_cs(i)%n_modes, & 
+                                                     & CS%abs_cs(i)%thresh, & 
+                                                     & CS%abs_cs(i)%sig )
     End Do
     If (Present(iE_get)) iE_get = E_index
 End Function sig_A
@@ -1903,11 +2049,12 @@ Pure Subroutine sig_Resonance(r,E,sT,sS)
         Else !r%is_MLBW, MLBW formalism
             Do J = 1,r%L(l)%n_J  !sum over spins (J)
                 !compute the element of the scattering matrix
-                Unn = Exp(CMPLX(0._dp,-two_phi,KIND=dp)) * (cmplx1 + Sum( &  !sum over r
-                                                                          & CMPLX( 0._dp , r%L(l)%J(j)%ErG(:,3)**P/r%L(l)%J(j)%ErG(:,6) , KIND=dp ) / &
-                                                                          & CMPLX( r%L(l)%J(j)%ErG(:,1) - E_eV , -0.5_dp*r%L(l)%J(j)%ErG(:,2) , KIND=dp ) &
-                                                                          & ) &
-                                                           & )
+                Unn = Exp(CMPLX(0._dp,-two_phi,KIND=dp)) * & 
+                    & (cmplx1 + Sum( &  !sum over r
+                                     & CMPLX( 0._dp , r%L(l)%J(j)%ErG(:,3)**P/r%L(l)%J(j)%ErG(:,6) , KIND=dp ) / &
+                                     & CMPLX( r%L(l)%J(j)%ErG(:,1) - E_eV , -0.5_dp*r%L(l)%J(j)%ErG(:,2) , KIND=dp ) &
+                                     & ) &
+                      & )
                 !compute second channel contribution where applicable
                 If (r%L(l)%dj(J)) Then
                     Dj = 2._dp * (1._dp - Cos(two_phi))
@@ -1915,7 +2062,8 @@ Pure Subroutine sig_Resonance(r,E,sT,sS)
                     Dj = 0._dp
                 End If
                 sS = sS + r%L(l)%gj(J) * (Abs(cmplx1 - Unn)**2 + Dj)
-                !compute the absorption cross section (scattering cross section will be added to absorption to obtain total once all levels are summed)
+                !Compute the absorption cross section (scattering cross section will be added to absorption to obtain total once 
+                !all levels are summed)
                 sT = sT + r%L(l)%gj(J) * Sum( &  !sum over r
                                               & r%L(l)%J(j)%ErG(:,3)*r%L(l)%J(j)%ErG(:,4) / &
                                               & ((E_eV - r%L(l)%J(j)%ErG(:,1))**2 + 0.25_dp*r%L(l)%J(j)%ErG(:,2)**2) &
@@ -2053,7 +2201,8 @@ Pure Subroutine Broad_sig_start(E,M,T,v,gamma,vRmin,vRmax)
     Real(dp), Intent(In) :: E,M,T
     Real(dp), Intent(Out) :: v,gamma,vRmin,vRmax
     Real(dp) :: vT
-    Real(dp), Parameter :: twok_B = 2._dp * k_Boltzmann / 1000._dp**2  ![J/K]*[1 km^2 / 1000^2 m^2] Two multiplied by the Boltzmann constant with convenient units locally
+    Real(dp), Parameter :: twok_B = 2._dp * k_Boltzmann / 1000._dp**2  ![J/K]*[1 km^2 / 1000^2 m^2] Two multiplied by the Boltzmann 
+                                                                       !constant with convenient units locally
 
     v = Neutron_Speed(E)
     gamma = Sqrt(M / (twok_b * T))
@@ -2061,7 +2210,8 @@ Pure Subroutine Broad_sig_start(E,M,T,v,gamma,vRmin,vRmax)
     If (vT .LE. v) Then
         vRmin = v - vT
     Else
-        !NOTE Use small VRmin instead of zero to prevent Log(E=0) from appearing in log interpolation cases... 1.E-16 equates to an energy of about 1.E-38 keV
+        !NOTE: Use small VRmin instead of zero to prevent Log(E=0) from appearing in log interpolation cases... 1.E-16 equates to 
+        !an energy of about 1.E-38 keV
         vRmin = 1.E-16_dp  !0._dp
     End If
     vRmax = v + vT
@@ -2415,7 +2565,8 @@ Subroutine Write_Cross_Sections(CS,Broadened_CS,file_name)
     If (Broadened_CS) Then
         Write(unit,'(5A27)') 'Energy [keV]','Total CS [barns]','Total CS [barns]','Absorption CS [barns]','Absorption CS [barns]'
         Write(unit,'(5A27)') '','(0 deg K)','(273.15 deg K)','(0 deg K)','(273.15 deg K)'
-        Write(unit,'(5A27)') '-----------------------','-----------------------','-----------------------','-----------------------','-----------------------'
+        Write(unit,'(5A27)') '-----------------------','-----------------------','-----------------------', &
+                           & '-----------------------','-----------------------'
         Do i = 1,CS%n_E_uni
             Call CS%sig_T_A(CS%E_uni(i),sT,sA)
             Call CS%sig_T_A_broad(CS%E_uni(i),273.15_dp,sTb,sAb)

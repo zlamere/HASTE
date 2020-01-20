@@ -370,7 +370,8 @@ Subroutine Write_Run_Summary(n_img,t_runs,t_waits,n_h_hit,n_h_run,RNG,paths_file
     Integer :: unit,stat
     
     Open(NEWUNIT = unit , FILE = file_name , STATUS = 'REPLACE' , ACTION = 'WRITE' , POSITION = 'APPEND' , IOSTAT = stat)
-    If (stat .NE. 0) Call Output_Message('ERROR:  Results: Write_Run_Summary:  File open error, '//file_name//', IOSTAT=',stat,kill=.TRUE.)
+    If (stat .NE. 0) Call Output_Message( 'ERROR:  Results: Write_Run_Summary:  File open error, '//file_name// & 
+                                        & ', IOSTAT=',stat,kill=.TRUE.)
     Close(unit)
     Call Write_Setup_Information(n_img,t_runs,t_waits,n_h_hit,n_h_run,RNG,paths_files,file_name)
     Call Write_Atmosphere(a,file_name)
@@ -380,7 +381,8 @@ Subroutine Write_Run_Summary(n_img,t_runs,t_waits,n_h_hit,n_h_run,RNG,paths_file
     Call Write_Results_summary(TE_tallies,Dir_tallies,d,Sum(n_h_run),file_name)
 End Subroutine Write_Run_Summary
 
-Subroutine Write_Tally_Grids(TE_list,Dir_list,d,n_h,F_file_name,TE_file_name,t_file_name,E_file_name,d_file_name,m_file_name,o_file_name)
+Subroutine Write_Tally_Grids( TE_list,Dir_list,d,n_h, & 
+                            & F_file_name,TE_file_name,t_file_name,E_file_name,d_file_name,m_file_name,o_file_name)
     Use Kinds, Only: dp
     Use Kinds, Only: id
     Use Tallies, Only: Contrib_array
@@ -407,14 +409,16 @@ Subroutine Write_Tally_Grids(TE_list,Dir_list,d,n_h,F_file_name,TE_file_name,t_f
         !write the total fluence file
         If (Present(F_file_name)) Then
             Open(NEWUNIT = unit , FILE = F_file_name , STATUS = 'REPLACE' , ACTION = 'WRITE' , IOSTAT = stat)
-            If (stat .NE. 0) Call Output_Message('ERROR:  Results: Write_Tally_Grids:  File open error, '//F_file_name//', IOSTAT=',stat,kill=.TRUE.)
+            If (stat .NE. 0) Call Output_Message( 'ERROR:  Results: Write_Tally_Grids:  File open error, '//F_file_name// & 
+                                                & ', IOSTAT=',stat,kill=.TRUE.)
             Call Write_tot_Tallies(unit,N_hist,TE_list%index,TE_list%contribs(1:TE_list%index),TE_list%tot_f_sq)
             Close(unit)
         End If
         !write the complete TE file
         If (Present(TE_file_name)) Then
             Open(NEWUNIT = unit , FILE = TE_file_name , STATUS = 'REPLACE' , ACTION = 'WRITE' , IOSTAT = stat)
-            If (stat .NE. 0) Call Output_Message('ERROR:  Results: Write_Tally_Grids:  File open error, '//TE_file_name//', IOSTAT=',stat,kill=.TRUE.)
+            If (stat .NE. 0) Call Output_Message( 'ERROR:  Results: Write_Tally_Grids:  File open error, '//TE_file_name// & 
+                                                & ', IOSTAT=',stat,kill=.TRUE.)
             !write each time-energy bin's contribution and its standard error
             Call Write_2D_Tallies(unit,N_hist,TE_list%index,TE_list%contribs(1:TE_list%index),d%TE_grid(1),d%TE_grid(2))
             Close(unit)
@@ -423,15 +427,33 @@ Subroutine Write_Tally_Grids(TE_list,Dir_list,d,n_h,F_file_name,TE_file_name,t_f
             If (Present(t_file_name)) Then
                 !write the time integrated results to file
                 Open(NEWUNIT = unit , FILE = t_file_name , STATUS = 'REPLACE' , ACTION = 'WRITE' , IOSTAT = stat)
-                If (stat .NE. 0) Call Output_Message('ERROR:  Results: Write_Tally_Grids:  File open error, '//t_file_name//', IOSTAT=',stat,kill=.TRUE.)
-                Call Write_1D_Tallies(unit,N_hist,TE_list%index,TE_list%contribs(1:TE_list%index),d%TE_grid(1),d%TE_grid(2),1,d%TE_grid(1)%n_bins,TE_list%f_sq_1)
+                If (stat .NE. 0) Call Output_Message( 'ERROR:  Results: Write_Tally_Grids:  File open error, '//t_file_name// & 
+                                                    & ', IOSTAT=',stat,kill=.TRUE.)
+                Call Write_1D_Tallies( unit, & 
+                                     & N_hist, & 
+                                     & TE_list%index, & 
+                                     & TE_list%contribs(1:TE_list%index), & 
+                                     & d%TE_grid(1), & 
+                                     & d%TE_grid(2), & 
+                                     & 1, & 
+                                     & d%TE_grid(1)%n_bins, & 
+                                     & TE_list%f_sq_1 )
                 Close(unit)
             End If
             If (Present(E_file_name)) Then
                 !write the energy integrated results to file
                 Open(NEWUNIT = unit , FILE = E_file_name , STATUS = 'REPLACE' , ACTION = 'WRITE' , IOSTAT = stat)
-                If (stat .NE. 0) Call Output_Message('ERROR:  Results: Write_Tally_Grids:  File open error, '//E_file_name//', IOSTAT=',stat,kill=.TRUE.)
-                Call Write_1D_Tallies(unit,N_hist,TE_list%index,TE_list%contribs(1:TE_list%index),d%TE_grid(1),d%TE_grid(2),2,d%TE_grid(2)%n_bins,TE_list%f_sq_2)
+                If (stat .NE. 0) Call Output_Message( 'ERROR:  Results: Write_Tally_Grids:  File open error, '//E_file_name// & 
+                                                    & ', IOSTAT=',stat,kill=.TRUE.)
+                Call Write_1D_Tallies( unit, & 
+                                     & N_hist, & 
+                                     & TE_list%index, & 
+                                     & TE_list%contribs(1:TE_list%index), & 
+                                     & d%TE_grid(1), & 
+                                     & d%TE_grid(2), & 
+                                     & 2, & 
+                                     & d%TE_grid(2)%n_bins, & 
+                                     & TE_list%f_sq_2 )
                 Close(unit)
             End If
         End If
@@ -440,7 +462,8 @@ Subroutine Write_Tally_Grids(TE_list,Dir_list,d,n_h,F_file_name,TE_file_name,t_f
         !write the complete direction file
         If (Present(d_file_name)) Then
             Open(NEWUNIT = unit , FILE = d_file_name , STATUS = 'REPLACE' , ACTION = 'WRITE' , IOSTAT = stat)
-            If (stat .NE. 0) Call Output_Message('ERROR:  Results: Write_Tally_Grids:  File open error, '//d_file_name//', IOSTAT=',stat,kill=.TRUE.)
+            If (stat .NE. 0) Call Output_Message( 'ERROR:  Results: Write_Tally_Grids:  File open error, '//d_file_name// & 
+                                                & ', IOSTAT=',stat,kill=.TRUE.)
             !write each arrival direction bin's contribution and its standard error
             Call Write_2D_Tallies(unit,N_hist,Dir_list%index,Dir_list%contribs(1:Dir_list%index),d%Dir_grid(1),d%Dir_grid(2))
             Close(unit)
@@ -449,15 +472,33 @@ Subroutine Write_Tally_Grids(TE_list,Dir_list,d,n_h,F_file_name,TE_file_name,t_f
             If (Present(m_file_name)) Then
                 !write the time integrated results to file
                 Open(NEWUNIT = unit , FILE = m_file_name , STATUS = 'REPLACE' , ACTION = 'WRITE' , IOSTAT = stat)
-                If (stat .NE. 0) Call Output_Message('ERROR:  Results: Write_Tally_Grids:  File open error, '//m_file_name//', IOSTAT=',stat,kill=.TRUE.)
-                Call Write_1D_Tallies(unit,N_hist,Dir_list%index,Dir_list%contribs(1:Dir_list%index),d%Dir_grid(1),d%Dir_grid(2),1,d%Dir_grid(1)%n_bins,Dir_list%f_sq_1)
+                If (stat .NE. 0) Call Output_Message( 'ERROR:  Results: Write_Tally_Grids:  File open error, '//m_file_name// & 
+                                                    & ', IOSTAT=',stat,kill=.TRUE.)
+                Call Write_1D_Tallies( unit, & 
+                                     & N_hist, & 
+                                     & Dir_list%index, & 
+                                     & Dir_list%contribs(1:Dir_list%index), & 
+                                     & d%Dir_grid(1), & 
+                                     & d%Dir_grid(2), & 
+                                     & 1, & 
+                                     & d%Dir_grid(1)%n_bins, & 
+                                     & Dir_list%f_sq_1 )
                 Close(unit)
             End If
             If (Present(o_file_name)) Then
                 !write the energy integrated results to file
                 Open(NEWUNIT = unit , FILE = o_file_name , STATUS = 'REPLACE' , ACTION = 'WRITE' , IOSTAT = stat)
-                If (stat .NE. 0) Call Output_Message('ERROR:  Results: Write_Tally_Grids:  File open error, '//o_file_name//', IOSTAT=',stat,kill=.TRUE.)
-                Call Write_1D_Tallies(unit,N_hist,Dir_list%index,Dir_list%contribs(1:Dir_list%index),d%Dir_grid(1),d%Dir_grid(2),2,d%Dir_grid(2)%n_bins,Dir_list%f_sq_2)
+                If (stat .NE. 0) Call Output_Message( 'ERROR:  Results: Write_Tally_Grids:  File open error, '//o_file_name// & 
+                                                    & ', IOSTAT=',stat,kill=.TRUE.)
+                Call Write_1D_Tallies( unit, & 
+                                     & N_hist, & 
+                                     & Dir_list%index, & 
+                                     & Dir_list%contribs(1:Dir_list%index), & 
+                                     & d%Dir_grid(1), & 
+                                     & d%Dir_grid(2), & 
+                                     & 2, & 
+                                     & d%Dir_grid(2)%n_bins, & 
+                                     & Dir_list%f_sq_2 )
                 Close(unit)
             End If
         End If
@@ -510,9 +551,21 @@ Subroutine Write_2D_Tallies(unit,N_hist,index,contribs,grid1,grid2)
         max2 = grid2%bounds(i2)
         mid2 = grid2%Bin_Center(i2)
         f = contribs(i)%f / N_hist
-        If (f .LT. Tiny(f)) Cycle  !f has underflowed to zero, even though contribution was tallied, it's too small to report
+        If (f .LT. Tiny(f)) Cycle  !f has underflowed to zero, the tallied contribution is too small to report
         err = Std_Err(N_hist,contribs(i)%f,contribs(i)%f_sq)
-        Write(unit,'(I11,3ES27.16E3,I14,8ES27.16E3)') i1, min1, max1, mid1, i2, min2, max2, mid2, f, err, err/f, f-std_devs_for_95CI*err, f+std_devs_for_95CI*err
+        Write(unit,'(I11,3ES27.16E3,I14,8ES27.16E3)') i1, & 
+                                                    & min1, & 
+                                                    & max1, & 
+                                                    & mid1, & 
+                                                    & i2, & 
+                                                    & min2, & 
+                                                    & max2, & 
+                                                    & mid2, & 
+                                                    & f, & 
+                                                    & err, & 
+                                                    & err/f, & 
+                                                    & f-std_devs_for_95CI*err, & 
+                                                    & f+std_devs_for_95CI*err
     End Do
 End Subroutine Write_2D_Tallies
 
@@ -551,7 +604,7 @@ Subroutine Write_1D_Tallies(unit,N_hist,index,contribs,grid1,grid2,dim,n,sq_list
                 max1 = grid1%bounds(i)
                 mid1 = grid1%Bin_Center(i)
                 f = Sum(tmp_grid(i,:)) / N_hist
-                If (f .LT. Tiny(f)) Cycle  !f has underflowed to zero, even though contribution was tallied, it's too small to report
+                If (f .LT. Tiny(f)) Cycle  !f has underflowed to zero, the tallied contribution is too small to report
                 err = Std_Err(N_hist,Sum(tmp_grid(i,:)),sq_list(i))
                 Write(unit,'(I11,8ES27.16E3)') i, min1, max1, mid1, f, err, err/f, f-std_devs_for_95CI*err, f+std_devs_for_95CI*err
             End If
@@ -563,7 +616,7 @@ Subroutine Write_1D_Tallies(unit,N_hist,index,contribs,grid1,grid2,dim,n,sq_list
                 max2 = grid2%bounds(i)
                 mid2 = grid2%Bin_Center(i)
                 f = Sum(tmp_grid(:,i)) / N_hist
-                If (f .LT. Tiny(f)) Cycle  !f has underflowed to zero, even though contribution was tallied, it's too small to report
+                If (f .LT. Tiny(f)) Cycle  !f has underflowed to zero, the tallied contribution is too small to report
                 err = Std_Err(N_hist,Sum(tmp_grid(:,i)),sq_list(i))
                 Write(unit,'(I11,8ES27.16E3)') i, min2, max2, mid2, f, err, err/f, f-std_devs_for_95CI*err, f+std_devs_for_95CI*err
             End If
@@ -594,17 +647,34 @@ Subroutine Write_Results_summary(TE_list,Dir_List,d,n_h,file_name)
     N_hist = Real(n_h,dp)
     n_img = n_Workers()
     Open(NEWUNIT = unit , FILE = file_name , STATUS = 'UNKNOWN' , ACTION = 'WRITE' , POSITION = 'APPEND' , IOSTAT = stat)
-    If (stat .NE. 0) Call Output_Message('ERROR:  Results: Write_Results:  File open error, '//file_name//', IOSTAT=',stat,kill=.TRUE.)
+    If (stat .NE. 0) Call Output_Message( 'ERROR:  Results: Write_Results:  File open error, '//file_name// & 
+                                        & ', IOSTAT=',stat,kill=.TRUE.)
     Write(unit,'(A)') half_dash_line
     Write(unit,'(A)') 'TALLIES'
     Write(unit,'(A)') half_dash_line
-    Write(unit,'(A,I11)')           '  Number of TE bins:             ',d%TE_grid(1)%n_bins * d%TE_grid(2)%n_bins
-    Write(unit,'(A,I11,A,F6.2,A)') '  Number of TE bins w/ tallies:  ',TE_list%index,' (',100._dp*Real(TE_list%index,dp)/Real(d%TE_grid(1)%n_bins*d%TE_grid(2)%n_bins,dp),'% of detector grid)'
-    If (n_img .EQ. 1) Write(unit,'(A,I11,A,F6.2,A)') '  TE bins list size (% used):    ',TE_list%size,' (',100._dp*Real(TE_list%index,dp)/Real(TE_list%size,dp),'%)'
+    Write(unit,'(A,I11)')          '  Number of TE bins:             ',d%TE_grid(1)%n_bins * d%TE_grid(2)%n_bins
+    Write(unit,'(A,I11,A,F6.2,A)') '  Number of TE bins w/ tallies:  ', & 
+                                 & TE_list%index, & 
+                                 & ' (', & 
+                                 & 100._dp*Real(TE_list%index,dp)/Real(d%TE_grid(1)%n_bins*d%TE_grid(2)%n_bins,dp), & 
+                                 & '% of detector grid)'
+    If (n_img .EQ. 1) Write(unit,'(A,I11,A,F6.2,A)') '  TE bins list size (% used):    ', & 
+                                                   & TE_list%size, & 
+                                                   & ' (', & 
+                                                   & 100._dp*Real(TE_list%index,dp)/Real(TE_list%size,dp), & 
+                                                   & '%)'
     Write(unit,*)
     Write(unit,'(A,I11)')          '  Number of Dir bins:            ',d%Dir_grid(1)%n_bins * d%Dir_grid(2)%n_bins
-    Write(unit,'(A,I11,A,F6.2,A)') '  Number of Dir bins w/ tallies: ',Dir_list%index,' (',100._dp*Real(Dir_list%index,dp)/Real(d%Dir_grid(1)%n_bins*d%Dir_grid(2)%n_bins,dp),'% of detector grid)'
-    If (n_img .EQ. 1) Write(unit,'(A,I11,A,F6.2,A)') '  Dir bins list size (% used):   ',Dir_list%size,' (',100._dp*Real(Dir_list%index,dp)/Real(Dir_list%size,dp),'%)'
+    Write(unit,'(A,I11,A,F6.2,A)') '  Number of Dir bins w/ tallies: ', & 
+                                 & Dir_list%index, & 
+                                 & ' (', & 
+                                 & 100._dp*Real(Dir_list%index,dp)/Real(d%Dir_grid(1)%n_bins*d%Dir_grid(2)%n_bins,dp), & 
+                                 & '% of detector grid)'
+    If (n_img .EQ. 1) Write(unit,'(A,I11,A,F6.2,A)') '  Dir bins list size (% used):   ', & 
+                                                   & Dir_list%size, & 
+                                                   & ' (', & 
+                                                   & 100._dp*Real(Dir_list%index,dp)/Real(Dir_list%size,dp), & 
+                                                   & '%)'
     Write(unit,*)
     Write(unit,*)
     Write(unit,'(A)') half_dash_line
@@ -615,38 +685,95 @@ Subroutine Write_Results_summary(TE_list,Dir_List,d,n_h,file_name)
     Else
         Write(unit,'(A)') 'Total Fluence:'
         Write(unit,'(5A27)') 'F [n/km^2 per source n]','Std Err','Rel Std Err','95% CI Low','95% CI High'
-        Write(unit,'(5A27)') '-----------------------','-----------------------','-----------------------','-----------------------','-----------------------'
+        Write(unit,'(5A27)') '-----------------------','-----------------------','-----------------------', & 
+                           & '-----------------------','-----------------------'
         Call Write_tot_Tallies(unit,N_hist,TE_list%index,TE_list%contribs(1:TE_list%index),TE_list%tot_f_sq)
         Write(unit,*)
         Write(unit,'(A)') 'Fluence by Time-Energy bin:'
-        Write(unit,'(A11,3A27,A14,8A27)') 'Time bin','t-low [s]','t-high [s]','t-mid [s]','Energy bin','E-low [keV]','E-high [keV]','E-mid [keV]','F [n/km^2 per source n]','Std Err','Rel Std Err','95% CI Low','95% CI High'
-        Write(unit,'(A11,3A27,A14,8A27)') '----------','-----------------------','-----------------------','-----------------------','----------','-----------------------','-----------------------','-----------------------','-----------------------','-----------------------','-----------------------','-----------------------','-----------------------'
+        Write(unit,'(A11,3A27,A14,8A27)') 'Time bin','t-low [s]','t-high [s]','t-mid [s]', & 
+                                        & 'Energy bin','E-low [keV]','E-high [keV]','E-mid [keV]', & 
+                                        & 'F [n/km^2 per source n]','Std Err','Rel Std Err','95% CI Low','95% CI High'
+        Write(unit,'(A11,3A27,A14,8A27)') '----------','-----------------------','-----------------------', & 
+                                        & '-----------------------','----------','-----------------------', & 
+                                        & '-----------------------','-----------------------','-----------------------', & 
+                                        & '-----------------------','-----------------------','-----------------------', & 
+                                        & '-----------------------'
         Call Write_2D_Tallies(unit,N_hist,TE_list%index,TE_list%contribs(1:TE_list%index),d%TE_grid(1),d%TE_grid(2))
         Write(unit,*)
         Write(unit,'(A)') 'Fluence by Time bin:'
-        Write(unit,'(A11,8A27)') 'Time bin','t-low [s]','t-high [s]','t-mid [s]','F [n/km^2 per source n]','Std Err','Rel Std Err','95% CI Low','95% CI High'
-        Write(unit,'(A11,8A27)') '----------','-----------------------','-----------------------','-----------------------','-----------------------','-----------------------','-----------------------','-----------------------','-----------------------'
-        Call Write_1D_Tallies(unit,N_hist,TE_list%index,TE_list%contribs(1:TE_list%index),d%TE_grid(1),d%TE_grid(2),1,d%TE_grid(1)%n_bins,TE_list%f_sq_1)
+        Write(unit,'(A11,8A27)') 'Time bin','t-low [s]','t-high [s]','t-mid [s]', & 
+                               & 'F [n/km^2 per source n]','Std Err','Rel Std Err','95% CI Low','95% CI High'
+        Write(unit,'(A11,8A27)') '----------','-----------------------','-----------------------','-----------------------', & 
+                               & '-----------------------','-----------------------','-----------------------', & 
+                               & '-----------------------','-----------------------'
+        Call Write_1D_Tallies( unit, & 
+                             & N_hist, & 
+                             & TE_list%index, & 
+                             & TE_list%contribs(1:TE_list%index), & 
+                             & d%TE_grid(1), & 
+                             & d%TE_grid(2), & 
+                             & 1, & 
+                             & d%TE_grid(1)%n_bins, & 
+                             & TE_list%f_sq_1 )
         Write(unit,*)
         Write(unit,'(A)') 'Fluence by Energy bin:'
-        Write(unit,'(A11,8A27)') 'Energy bin','E-low [keV]','E-high [keV]','E-mid [keV]','F [n/km^2 per source n]','Std Err','Rel Std Err','95% CI Low','95% CI High'
-        Write(unit,'(A11,8A27)') '----------','-----------------------','-----------------------','-----------------------','-----------------------','-----------------------','-----------------------','-----------------------','-----------------------'
-        Call Write_1D_Tallies(unit,N_hist,TE_list%index,TE_list%contribs(1:TE_list%index),d%TE_grid(1),d%TE_grid(2),2,d%TE_grid(2)%n_bins,TE_list%f_sq_2)
+        Write(unit,'(A11,8A27)') 'Energy bin','E-low [keV]','E-high [keV]','E-mid [keV]', & 
+                               & 'F [n/km^2 per source n]','Std Err','Rel Std Err','95% CI Low','95% CI High'
+        Write(unit,'(A11,8A27)') '----------','-----------------------','-----------------------','-----------------------', & 
+                               & '-----------------------','-----------------------','-----------------------', & 
+                               & '-----------------------','-----------------------'
+        Call Write_1D_Tallies( unit, & 
+                             & N_hist, & 
+                             & TE_list%index, & 
+                             & TE_list%contribs(1:TE_list%index), & 
+                             & d%TE_grid(1), & 
+                             & d%TE_grid(2), & 
+                             & 2, & 
+                             & d%TE_grid(2)%n_bins, & 
+                             & TE_list%f_sq_2 )
         Write(unit,*)
         Write(unit,'(A)') 'Fluence by Arrival Direction Bin:'
-        Write(unit,'(A11,3A27,A14,8A27)') 'Mu bin','mu-low','mu-high','mu-mid','Omega bin','omega-low [rad]','omega-high [rad]','omega-mid [rad]','F [n/km^2 per source n]','Std Err','Rel Std Err','95% CI Low','95% CI High'
-        Write(unit,'(A11,3A27,A14,8A27)') '----------','-----------------------','-----------------------','-----------------------','----------','-----------------------','-----------------------','-----------------------','-----------------------','-----------------------','-----------------------','-----------------------','-----------------------'
+        Write(unit,'(A11,3A27,A14,8A27)') 'Mu bin','mu-low','mu-high','mu-mid', & 
+                                        & 'Omega bin','omega-low [rad]','omega-high [rad]','omega-mid [rad]', & 
+                                        & 'F [n/km^2 per source n]','Std Err','Rel Std Err','95% CI Low','95% CI High'
+        Write(unit,'(A11,3A27,A14,8A27)') '----------','-----------------------','-----------------------', & 
+                                        & '-----------------------','----------','-----------------------', & 
+                                        & '-----------------------','-----------------------','-----------------------', & 
+                                        & '-----------------------','-----------------------','-----------------------', & 
+                                        & '-----------------------'
         Call Write_2D_Tallies(unit,N_hist,Dir_list%index,Dir_list%contribs(1:Dir_list%index),d%Dir_grid(1),d%Dir_grid(2))
         Write(unit,*)
         Write(unit,'(A)') 'Fluence by Arrival Direction Mu bin:'
-        Write(unit,'(A11,8A27)') 'Mu bin','mu-low','mu-high','mu-mid','F [n/km^2 per source n]','Std Err','Rel Std Err','95% CI Low','95% CI High'
-        Write(unit,'(A11,8A27)') '----------','-----------------------','-----------------------','-----------------------','-----------------------','-----------------------','-----------------------','-----------------------','-----------------------'
-        Call Write_1D_Tallies(unit,N_hist,Dir_list%index,Dir_list%contribs(1:Dir_list%index),d%Dir_grid(1),d%Dir_grid(2),1,d%Dir_grid(1)%n_bins,Dir_list%f_sq_1)
+        Write(unit,'(A11,8A27)') 'Mu bin','mu-low','mu-high','mu-mid', & 
+                               & 'F [n/km^2 per source n]','Std Err','Rel Std Err','95% CI Low','95% CI High'
+        Write(unit,'(A11,8A27)') '----------','-----------------------','-----------------------','-----------------------', & 
+                               & '-----------------------','-----------------------','-----------------------', & 
+                               & '-----------------------','-----------------------'
+        Call Write_1D_Tallies( unit, & 
+                             & N_hist, & 
+                             & Dir_list%index, & 
+                             & Dir_list%contribs(1:Dir_list%index), & 
+                             & d%Dir_grid(1), & 
+                             & d%Dir_grid(2), & 
+                             & 1, & 
+                             & d%Dir_grid(1)%n_bins, & 
+                             & Dir_list%f_sq_1 )
         Write(unit,*)
         Write(unit,'(A)') 'Fluence by Arrival Direction Omega bin:'
-        Write(unit,'(A11,8A27)') 'Omega bin','omega-low [rad]','omega-high [rad]','omega-mid [rad]','F [n/km^2 per source n]','Std Err','Rel Std Err','95% CI Low','95% CI High'
-        Write(unit,'(A11,8A27)') '----------','-----------------------','-----------------------','-----------------------','-----------------------','-----------------------','-----------------------','-----------------------','-----------------------'
-        Call Write_1D_Tallies(unit,N_hist,Dir_list%index,Dir_list%contribs(1:Dir_list%index),d%Dir_grid(1),d%Dir_grid(2),2,d%Dir_grid(2)%n_bins,Dir_list%f_sq_2)
+        Write(unit,'(A11,8A27)') 'Omega bin','omega-low [rad]','omega-high [rad]','omega-mid [rad]', & 
+                               & 'F [n/km^2 per source n]','Std Err','Rel Std Err','95% CI Low','95% CI High'
+        Write(unit,'(A11,8A27)') '----------','-----------------------','-----------------------','-----------------------', & 
+                               & '-----------------------','-----------------------','-----------------------', & 
+                               & '-----------------------','-----------------------'
+        Call Write_1D_Tallies( unit, & 
+                             & N_hist, & 
+                             & Dir_list%index, & 
+                             & Dir_list%contribs(1:Dir_list%index), & 
+                             & d%Dir_grid(1), & 
+                             & d%Dir_grid(2), & 
+                             & 2, & 
+                             & d%Dir_grid(2)%n_bins, & 
+                             & Dir_list%f_sq_2 )
         Write(unit,*)
         Write(unit,*)
     End If
