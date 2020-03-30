@@ -280,7 +280,7 @@ Contains
             End If
         Else  !transfer orbits include elliptical 
         !HACK Elliptical transfers and large u_speed introduce the complication of multiple roots, currently only one TOF is found
-        !UNDONE The elliptical cases in this routine also do not account for complication of the available velocity function: 
+        !UNDONE The elliptical cases in this routine also do not account for complication of the available velocity function:
         !UNDONE Multiple roots are ignored (either not found, or could potentially prevent convergence)
             !find transfer orbit TOF where minV TOF is same as Lambert TOF
             !initial guess is minimum energy flight time from r1 to sat at time of scatter
