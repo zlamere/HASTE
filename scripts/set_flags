@@ -16,18 +16,22 @@ PREP_FLAGS="-cpp -DLIN_OS -DGFORT"
 OBJ_DIR="../build/obj/"
 DIR_FLAGS="-I${OBJ_DIR} -J${OBJ_DIR}"
 MATH_FLAGS="-ffinite-math-only -fno-signed-zeros -fwrapv"
-ALWAYS_FLAGS="${MATH_FLAGS} -ffree-line-length-0 -fimplicit-none -fexceptions -fnon-call-exceptions -ffpe-trap=invalid,zero,overflow -fmax-errors=5 ${DIR_FLAGS}"
+ALWAYS_FLAGS="${MATH_FLAGS} -fimplicit-none -fexceptions -fnon-call-exceptions -ffpe-trap=invalid,zero,overflow -fmax-errors=5 ${DIR_FLAGS}"
 # DEVELOPMENT Flags (fastest compile cycle, no object files, no linking)
 SYNTAX_FLAGS="-O0 -fmax-errors=5 -Wall -Wextra -pedantic ${ALWAYS_FLAGS} -fsyntax-only"
 # DEBUG Compiler Flags (for debug builds, fast compile with full debug information)
 DEBUG_FLAGS="-g -Og -Wall -pedantic -fcheck=all -fbacktrace ${ALWAYS_FLAGS}"
 # RELEASE Compiler Flags (optimize for runtime speed)
 RELEASE_FLAGS="-Ofast ${ALWAYS_FLAGS}"
-# RASPBERRY PI RELEASE Compiler Flags (because this development environment is super-high performance!)
-RELEASE_FLAGS_PI="-Ofast -mcpu=cortex-a53 -mfloat-abi=hard -mfpu=neon-fp-armv8 -mneon-for-64bits -mtune=cortex-a53 ${ALWAYS_FLAGS}"
+# SUPER RELEASE Compiler Flags (optimize for runtime speed and current architecture)
+RELEASE_FLAGS_SUPER="-Ofast -mcpu=native -mtune=native -march=native ${ALWAYS_FLAGS}"
 
-# Set compiler flags based on command flag
+# Set preprocessor/compiler/library flags based on command line flag(s)
+# Default to debugging settings
 COMP_FLAGS="${DEBUG_FLAGS}"
+# Default to no libraries
+LIB_FLAGS=""
+# Adjust based on command line flag(s)
 while getopts 'sdrqwp:ck' flag; do
   case "${flag}" in
     s) COMP_FLAGS="${SYNTAX_FLAGS}"
@@ -36,7 +40,7 @@ while getopts 'sdrqwp:ck' flag; do
        ;;
     r) COMP_FLAGS="${RELEASE_FLAGS}"
        ;;
-    q) COMP_FLAGS="${RELEASE_FLAGS_PI}"
+    q) COMP_FLAGS="${RELEASE_FLAGS_SUPER}"
        ;;
     w) PREP_FLAGS="${PREP_FLAGS} -ULIN_OS"
        ;;
@@ -47,7 +51,7 @@ while getopts 'sdrqwp:ck' flag; do
        #COMP_FLAGS="${COMP_FLAGS} -fcoarray=single"
        #LIB_FLAGS="${COMP_FLAGS} -lcaf_single"
        COMP_FLAGS="${COMP_FLAGS} -fcoarray=lib"
-       LIB_FLAGS="${COMP_FLAGS} -lcaf_mpi"
+       LIB_FLAGS="${LIB_FLAGS} -lcaf_mpi"
        ;;
     k) PREP_FLAGS="${PREP_FLAGS} -DCHECK_B -DCHECK_L"
        ;;

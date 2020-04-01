@@ -43,11 +43,12 @@ Module Sources
         Logical :: has_velocity  !T indicates source has velocity to be added to new neutrons
         Logical :: exoatmospheric  !T indicates source is outside atmosphere, F indicates source IN the atmosphere
         Integer :: E_dist_index,A_dist_index
-        Logical :: E_A_dist_coupled  !T indicates that the energy and direction distributions (in the rest frame of the source) are coupled
-        Logical :: aniso_dist  !T indicates a source with a non-uniform direction distribution of emitted particles (in the rest frame of the source)
-        Real(dp) :: E_high   ![keV] energy description, E_high=E_low for 'Point', specifies energy range for 'Uniform', specifies cutoff energies for 'Watt235'
+        Logical :: E_A_dist_coupled  !T indicates energy and direction (in the rest frame of the source) are coupled
+        Logical :: aniso_dist  !T indicates non-uniform direction dist of emitted particles (in the rest frame of the source)
+        Real(dp) :: E_high   ![keV] energy description
+                             !E_high=E_low for 'Point', specifies range for 'Uniform', specifies cutoff energies for 'Watt235'
         Real(dp) :: E_low
-        Real(dp) :: A_hat(1:3),B_hat(1:3),C_hat(1:3)  !basis vectors determining distribution of emission angles for direct contributions
+        Real(dp) :: A_hat(1:3),B_hat(1:3),C_hat(1:3)  !basis vectors for distribution of emission angles for direct contributions
         Type(Tab_1d_Type) :: Etab
         Type(Tab_1d_Type) :: Atab
         Type(Tab_2d_Type) :: EAtab
@@ -107,7 +108,8 @@ Function Setup_Source(setup_file_name,run_file_name,R_top_atm) Result(s)
                                  & source_E_dist,E_high,E_low,source_A_dist
     
     Open(NEWUNIT = setup_unit , FILE = setup_file_name , STATUS = 'OLD' , ACTION = 'READ' , IOSTAT = stat)
-    If (stat .NE. 0) Call Output_Message('ERROR:  Neutron_Source: Initialize_Neutron_Source:  File open error, '//setup_file_name//', IOSTAT=',stat,kill=.TRUE.)
+    If (stat .NE. 0) Call Output_Message( 'ERROR:  Neutron_Source: Initialize_Neutron_Source:  File open error, ' & 
+                                        & //setup_file_name//', IOSTAT=',stat,kill=.TRUE. )
     Read(setup_unit,NML = NeutronSourceList)
     Close(setup_unit)
     Select Case(position_geometry)
@@ -173,7 +175,8 @@ Function Setup_Source(setup_file_name,run_file_name,R_top_atm) Result(s)
         s%E_dist_index = source_EA_dist_tab
         s%aniso_dist = .TRUE.
         !UNDONE Coupled 2-d tabulated enegy-angle distribution
-        Call Output_Message('ERROR:  Neutron_Source: Initialize_Neutron_Source: Coupled Energy-Angle distribution not yet implemented.',kill=.TRUE.)
+        Call Output_Message('ERROR:  Neutron_Source: Initialize_Neutron_Source: Coupled Energy-Angle distribution not yet &
+                           &implemented.',kill=.TRUE.)
     Else  !independednt energy and angle distributions
         s%E_A_dist_coupled = .FALSE.
         Select Case (source_A_dist)
@@ -191,7 +194,8 @@ Function Setup_Source(setup_file_name,run_file_name,R_top_atm) Result(s)
                 s%aniso_dist = .TRUE.
             !UNDONE Tabulated angular source distribution type
             Case Default
-                Call Output_Message('ERROR:  Neutron_Source: Initialize_Neutron_Source: Undefined source angular distribution',kill=.TRUE.)
+                Call Output_Message( 'ERROR:  Neutron_Source: Initialize_Neutron_Source: Undefined source angular distribution', & 
+                                   & kill=.TRUE. )
         End Select
         Select Case (source_E_dist)
             Case ('Line')
@@ -210,17 +214,20 @@ Function Setup_Source(setup_file_name,run_file_name,R_top_atm) Result(s)
                 s%E_dist_index = source_E_dist_tab
             !UNDONE Source distributions for Type 3, 5, 8, and 13
             Case Default
-                Call Output_Message('ERROR:  Neutron_Source: Initialize_Neutron_Source: Undefined source energy distribution',kill=.TRUE.)
+                Call Output_Message( 'ERROR:  Neutron_Source: Initialize_Neutron_Source: Undefined source energy distribution', & 
+                                   & kill=.TRUE.)
         End Select
     End If
     If (All(s%d .EQ. 0._dp) .AND. s%aniso_dist) Then  !no source direction is specified, but an anisotropic distribution is selected
         !source direction is needed for anisotropic angular distributions of emitted particles
-        Call Output_Message('ERROR:  Neutron_Source: Initialize_Neutron_Source: Source forward direction must be specified for angular distributions',kill=.TRUE.)
+        Call Output_Message('ERROR:  Neutron_Source: Initialize_Neutron_Source: Source forward direction must be specified for &
+                           &angular distributions',kill=.TRUE.)
     End If
     !write out processed source information
     If (Worker_Index() .EQ. 1) Then
         Open(NEWUNIT = setup_unit , FILE = run_file_name , STATUS = 'OLD' , ACTION = 'WRITE' , POSITION = 'APPEND' , IOSTAT = stat)
-        If (stat .NE. 0) Call Output_Message('ERROR:  Sources: Setup_Source:  File open error, '//run_file_name//', IOSTAT=',stat,kill=.TRUE.)
+        If (stat .NE. 0) Call Output_Message( 'ERROR:  Sources: Setup_Source:  File open error, '//run_file_name// & 
+                                            & ', IOSTAT=',stat,kill=.TRUE. )
         Write(setup_unit,NML = NeutronSourceList)
         Write(setup_unit,*)
         Close(setup_unit)
@@ -272,7 +279,8 @@ Subroutine Sample_E_and_D(source,RNG,E,OmegaHat,w)
             Case (source_E_dist_Watt235)
                 E = Sample_Watt235(RNG,source%E_high)
             Case Default
-                Call Output_Message('ERROR:  Neutron_Source: Sample_Neutron_Source_Energy: Undefined source energy distribution',kill=.TRUE.)
+                Call Output_Message( 'ERROR:  Neutron_Source: Sample_Neutron_Source_Energy: Undefined source energy distribution' & 
+                                   & ,kill=.TRUE.)
         End Select
         Select Case (source%A_dist_index)
             Case (source_A_dist_Iso)
@@ -287,7 +295,8 @@ Subroutine Sample_E_and_D(source,RNG,E,OmegaHat,w)
                 E = Sample_Watt235(RNG,source%E_high)
                 w = 1._dp
             Case Default
-                Call Output_Message('ERROR:  Neutron_Source: Sample_Neutron_Source_Energy: Undefined source energy distribution',kill=.TRUE.)
+                Call Output_Message( 'ERROR:  Neutron_Source: Sample_Neutron_Source_Energy: Undefined source energy distribution' & 
+                                   & ,kill=.TRUE.)
         End Select
     End If
 End Subroutine Sample_E_and_D
@@ -341,7 +350,8 @@ Subroutine Write_Source(s,file_name)
     Integer :: unit,stat
     
     Open(NEWUNIT = unit , FILE = file_name , STATUS = 'UNKNOWN' , ACTION = 'WRITE' , POSITION = 'APPEND' , IOSTAT = stat)
-    If (stat .NE. 0) Call Output_Message('ERROR:  Sources: Write_Source:  File open error, '//file_name//', IOSTAT=',stat,kill=.TRUE.)
+    If (stat .NE. 0) Call Output_Message( 'ERROR:  Sources: Write_Source:  File open error, '//file_name// & 
+                                        & ', IOSTAT=',stat,kill=.TRUE.)
     Write(unit,'(A)') half_dash_line
     Write(unit,'(A)') 'SOURCE INFORMATION'
     Write(unit,'(A)') half_dash_line
@@ -349,7 +359,9 @@ Subroutine Write_Source(s,file_name)
     Write(unit,'(A,ES24.16E3,A)') '    x = ',s%r(1),' km'
     Write(unit,'(A,ES24.16E3,A)') '    y = ',s%r(2),' km'
     Write(unit,'(A,ES24.16E3,A)') '    z = ',s%r(3),' km'
-    Write(unit,'(A,ES24.16E3,A)') '    Right Ascension = ',Acos(s%r(1)/(Vector_Length(s%r)*Cos(Asin(s%r(3)/Vector_Length(s%r))))) / (Pi/180._dp),' deg'
+    Write(unit,'(A,ES24.16E3,A)') '    Right Ascension = ', & 
+                                & Acos(s%r(1)/(Vector_Length(s%r)*Cos(Asin(s%r(3)/Vector_Length(s%r))))) / (Pi/180._dp), & 
+                                & ' deg'
     Write(unit,'(A,ES24.16E3,A)') '    Declination     = ',Asin(s%r(3)/Vector_Length(s%r)) / (Pi/180._dp),' deg'
     Write(unit,'(A,ES24.16E3,A)') '    Geometric Alt   = ',Vector_Length(s%r)-R_Earth,' km'
     If (s%exoatmospheric) Then

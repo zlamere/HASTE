@@ -346,7 +346,9 @@ Subroutine Do_Illinois(f,a,fa,b,fb,r,fr,old_fr)
         mrep = 1._dp
         mfar = 0.5_dp
         Do j = 1,10 !index limits number of illinois refinements so a simple sign-change indicates success
-        !If a normal exit is not encountered in 10 iterations, the repeating bracket is still refined with each iterations, but the routine terminates without moving the other bracket.  This (excessively) poor performance of False-Position w/ Illinois should be rare.
+        !If a normal exit is not encountered in 10 iterations, the repeating bracket is still refined with each iterations, 
+        !but the routine terminates without moving the other bracket.  This (excessively) poor performance of False-Position w/ 
+        !Illinois should be rare.
             !move repeating bracket
             rep = r
             frep = fr

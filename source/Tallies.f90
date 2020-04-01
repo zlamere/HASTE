@@ -35,8 +35,9 @@ Module Tallies
     
     Type :: Contrib_array
         Real(dp) :: tot_f_sq  !sum of squared contributions for computing variance of total flux at the detector
-        Real(dp), Allocatable :: f_sq_1(:)  !sum of squared contributions for computing variance of total flux in each 1st index bin at the detector
-        Real(dp), Allocatable :: f_sq_2(:)  !sum of squared contributions for computing variance of total flux in each 2nd index bin at the detector
+        !sum of squared contributions for computing variance of total flux in each n-th index bin at the detector
+        Real(dp), Allocatable :: f_sq_1(:)  !1st index
+        Real(dp), Allocatable :: f_sq_2(:)  !2nd index
         Integer :: index  !number of bins in list with contributions, index is less than or equal to size
         Integer :: size  !extent of the list, size is greater than or equal to index
         Type(Contrib_quadruplet), Allocatable :: contribs(:)  !list of indexes and contributions to the grid
@@ -82,10 +83,13 @@ Subroutine Tally_History(t,n,contribs,n1,contribs1,n2,contribs2)
     !resize the list if necessary
     If (t%size .LT. t%index + n) Call Resize_Contrib_Array(t,n)
     !check if the first contribution belongs at the head of the list
-    If ( (t%index .EQ. 0) .OR. &  !this is the first set of tallies
-       & (contribs(1)%i1 .LT. t%contribs(1)%i1) .OR. &  !this contribution is earlier in 1st index than the earliest contribution in the list
-       & ((contribs(1)%i1 .EQ. t%contribs(1)%i1).AND.(contribs(1)%i2 .LT. t%contribs(1)%i2)) ) &  !this contribution is the same 1st index, but lower in 2nd index than the first contribution in the list
-       & Then !add the bin to the head of the list
+    If ( (t%index .EQ. 0) & !this is the first set of tallies
+       & .OR. & 
+       & (contribs(1)%i1 .LT. t%contribs(1)%i1) & !this contribution is lower in 1st index than the first in the list
+       & .OR. & 
+       & ((contribs(1)%i1 .EQ. t%contribs(1)%i1).AND.(contribs(1)%i2 .LT. t%contribs(1)%i2)) ) & 
+         !this contribution is the same 1st index, but lower in 2nd index than the first in the list
+    & Then !add the bin to the head of the list
         !move the current entries down to make room at the top
         t%contribs(2:t%index+1) = t%contribs(1:t%index)
         t%index = t%index + 1

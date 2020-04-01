@@ -28,16 +28,18 @@ Module Setups
 #   endif
     
     Type :: Paths_Files_Type
-        Character(:), Allocatable :: app_title  !name and version of program
-        Character(:), Allocatable :: program_exe  !path and name of the running executable
-        Character(:), Allocatable :: setup_file  !specifies setup file, default is 'HATS_Setup.txt' in the same directory as the executable
-        Character(:), Allocatable :: log_file_name  !specifies log file, default is 'HATS_log.txt' in the default results directory
-        Character(:), Allocatable :: run_file_name  !specifies run file, default is 'HATS-setup.txt' in the default directory
-        Character(:), Allocatable :: resources_directory    !specifies resources directory, default assumes resources folder is in same directory as setup file
-        Character(:), Allocatable :: cs_setup_file  !specifies setup file for cross sections, this file sets atmospheric constituents and what cross section data is available
-        Character(:), Allocatable :: results_directory  !specifies results directory, default assumes results folder is in same directory as setup file
-        Character(:), Allocatable :: file_suffix  !specifies suffix to be appended to file names
-        Character(:), Allocatable :: output_folder  !specifies folder in results folder, this variable is an interim holder, thes value is appended to results path by HATS Setup
+        Character(:), Allocatable :: app_title !name and version of program
+        Character(:), Allocatable :: program_exe !path and name of the running executable
+        Character(:), Allocatable :: setup_file !specifies setup file, default is 'HATS_Setup.txt' in the current working directory
+        Character(:), Allocatable :: log_file_name !specifies log file, default is 'HATS_log.txt' in the default results directory
+        Character(:), Allocatable :: run_file_name !specifies run file, default is 'HATS-setup.txt' in the default directory
+        Character(:), Allocatable :: resources_directory !specifies resources dir, default is 'Resources' in current working dir
+        Character(:), Allocatable :: cs_setup_file  !specifies setup file for cross sections
+                                                    !this file sets atmospheric constituents and specifies what data is available
+        Character(:), Allocatable :: results_directory !specifies results dir, default is 'Results' in current working dir
+        Character(:), Allocatable :: file_suffix !specifies suffix to be appended to file names
+        Character(:), Allocatable :: output_folder !specifies sub-folder in results folder,
+                                                   !this variable is an interim holder, and is appended to results path during setup
         Character(:), Allocatable :: TE_file_name
         Character(:), Allocatable :: t_file_name
         Character(:), Allocatable :: E_file_name
@@ -68,9 +70,10 @@ Subroutine Setup_HATS(prompt_for_exit,screen_progress,paths_files,n_neutron_hist
     Type(paths_files_type), Intent(InOut) :: paths_files
     Integer(id), Intent(Out) :: n_neutron_histories
     Logical, Intent(Out) :: absolute_n_histories
-    Character(*), Intent(In), Optional :: setup_file  !if specified, overrides default setup file name and setup file specified by command line
+    Character(*), Intent(In), Optional :: setup_file  !if specified, overrides default and command line setup file names
     Character(:), Allocatable :: file_suffix  !specifies suffix to be appended to file names
-    Character(:), Allocatable :: output_folder  !specifies folder in results folder, this variable is an interim holder, thes value is appended to results path by HATS Setup
+    Character(:), Allocatable :: output_folder  !specifies sub-folder in results folder,
+                                                !this variable is an interim holder, and is appended to results path during setup
     Logical :: force_overwrite
     Integer :: setup_unit,stat,num_cmd_args
     Integer :: pathlen, status
@@ -98,7 +101,8 @@ Subroutine Setup_HATS(prompt_for_exit,screen_progress,paths_files,n_neutron_hist
     If (Present(setup_file)) paths_files%setup_file = setup_file
     !open setup file and read namelist
     Open(NEWUNIT = setup_unit , FILE = paths_files%setup_file , STATUS = 'OLD' , ACTION = 'READ' , IOSTAT = stat)
-    If (stat .NE. 0) Call Output_Message('ERROR:  Setups: Setup_HATS:  File open error, '//paths_files%setup_file//', IOSTAT=',stat,kill=.TRUE.)
+    If (stat .NE. 0) Call Output_Message( 'ERROR:  Setups: Setup_HATS:  File open error, '//paths_files%setup_file// & 
+                                        & ', IOSTAT=',stat,kill=.TRUE.)
     Read(setup_unit,NML = ProgramSetupList)
     Close(setup_unit)
 #   if LIN_OS
@@ -131,12 +135,25 @@ Subroutine Setup_HATS(prompt_for_exit,screen_progress,paths_files,n_neutron_hist
     paths_files%m_file_name = ''
     paths_files%o_file_name = ''
     paths_files%s_file_name = ''
-    Call Create_Output_File_names(paths_files%results_directory,paths_files%file_suffix,paths_files%log_file_name,paths_files%TE_file_name,paths_files%t_file_name,paths_files%E_file_name,paths_files%f_file_name,paths_files%d_file_name,paths_files%m_file_name,paths_files%o_file_name,paths_files%s_file_name,paths_files%run_file_name)
+    Call Create_Output_File_names( paths_files%results_directory, & 
+                                 & paths_files%file_suffix, & 
+                                 & paths_files%log_file_name, & 
+                                 & paths_files%TE_file_name, & 
+                                 & paths_files%t_file_name, & 
+                                 & paths_files%E_file_name, & 
+                                 & paths_files%f_file_name, & 
+                                 & paths_files%d_file_name, & 
+                                 & paths_files%m_file_name, & 
+                                 & paths_files%o_file_name, & 
+                                 & paths_files%s_file_name, & 
+                                 & paths_files%run_file_name )
     !Create backup setup file in results folder and write namelist
     If (Worker_Index() .EQ. 1) Then
         !the backup setup file will not contain any continuation or study set configuration information
-        Open(NEWUNIT = setup_unit , FILE = paths_files%run_file_name , STATUS = 'REPLACE' , ACTION = 'WRITE' , POSITION = 'APPEND' , IOSTAT = stat)
-        If (stat .NE. 0) Call Output_Message('ERROR:  Setups: Setup_HATS:  File open error, '//paths_files%run_file_name//', IOSTAT=',stat,kill=.TRUE.)
+        Open( NEWUNIT = setup_unit , FILE = paths_files%run_file_name , STATUS = 'REPLACE' , ACTION = 'WRITE' , & 
+            & POSITION = 'APPEND' , IOSTAT = stat )
+        If (stat .NE. 0) Call Output_Message( 'ERROR:  Setups: Setup_HATS:  File open error, '//paths_files%run_file_name// & 
+                                            & ', IOSTAT=',stat,kill=.TRUE.)
         Write(setup_unit,NML = ProgramSetupList)
         Write(setup_unit,*)
         Close(setup_unit)
@@ -268,11 +285,16 @@ Subroutine Check_folders_exist(paths_files)
     Type(paths_files_type), Intent(In) :: paths_files
     
     !Check if resources directories exist
-    If (.NOT. Check_Directory(paths_files%resources_directory)) Call Output_Message('ERROR:  Setups: Setup_HATS:  Resources directory not found: '//paths_files%resources_directory,kill=.TRUE.)
+    If (.NOT. Check_Directory(paths_files%resources_directory)) Then
+        Call Output_Message( 'ERROR:  Setups: Setup_HATS:  Resources directory not found: '// & 
+                           & paths_files%resources_directory,kill=.TRUE. )
+    End If
     !Check if results directories exist
     If (.NOT. Check_Directory(paths_files%results_directory)) Call Create_Directory(paths_files%results_directory)
     If (paths_files%output_folder .NE. '')  Then !output folder is specified
-        If (.NOT. Check_Directory(paths_files%results_directory)) Call Create_Directory(paths_files%results_directory//paths_files%output_folder)
+        If (.NOT. Check_Directory(paths_files%results_directory)) Then
+            Call Create_Directory(paths_files%results_directory//paths_files%output_folder)
+        End If
     End if
 End Subroutine Check_folders_exist
 
@@ -289,11 +311,13 @@ Subroutine Setup_Estimator(setup_file_name,run_file_name,n_neutron_histories,abs
     
     !open setup file and read namelist
     Open(NEWUNIT = setup_unit , FILE = setup_file_name , STATUS = 'OLD' , ACTION = 'READ' , IOSTAT = stat)
-    If (stat .NE. 0) Call Output_Message('ERROR:  Setups: Setup_Estimator:  File open error, '//setup_file_name//', IOSTAT=',stat,kill=.TRUE.)
+    If (stat .NE. 0) Call Output_Message( 'ERROR:  Setups: Setup_Estimator:  File open error, '//setup_file_name// & 
+                                        & ', IOSTAT=',stat,kill=.TRUE. )
     Read(setup_unit,NML = EstimatorSetupList)
     Close(setup_unit)
     Open(NEWUNIT = setup_unit , FILE = run_file_name , STATUS = 'OLD' , ACTION = 'WRITE' , POSITION = 'APPEND' , IOSTAT = stat)
-    If (stat .NE. 0) Call Output_Message('ERROR:  Setups: Setup_Estimator:  File open error, '//run_file_name//', IOSTAT=',stat,kill=.TRUE.)
+    If (stat .NE. 0) Call Output_Message( 'ERROR:  Setups: Setup_Estimator:  File open error, '//run_file_name// & 
+                                        & ', IOSTAT=',stat,kill=.TRUE. )
     Write(setup_unit,NML = EstimatorSetupList)
     Write(setup_unit,*)
     Close(setup_unit)
@@ -491,7 +515,7 @@ Subroutine Initialize_Paths_Files(paths_files)
     Class(Paths_Files_Type), Intent(InOut) :: paths_files
     Character(9), Parameter :: empty_string = '<<EMPTY>>'
 
-    !allocate character variables with an arbitrary length, each assignment statement then auto-reallocates them to the correct length
+    !allocate character variables with an arbitrary length, each assignment statement then reallocates them to the correct length
     Allocate(Character(max_path_len) :: paths_files%app_title)
     paths_files%app_title = empty_string
     Allocate(Character(max_path_len) :: paths_files%program_exe)
@@ -553,16 +577,32 @@ Subroutine Write_Setup_Information(n_img,t_runs,t_waits,n_h_hit,n_h_run,RNG,path
     Integer :: i
     
     Open(NEWUNIT = unit , FILE = file_name , STATUS = 'UNKNOWN' , ACTION = 'WRITE' , POSITION = 'APPEND' , IOSTAT = stat)
-    If (stat .NE. 0) Call Output_Message('ERROR:  Setups: Write_Setup_Information:  File open error, '//file_name//', IOSTAT=',stat,kill=.TRUE.)
+    If (stat .NE. 0) Call Output_Message( 'ERROR:  Setups: Write_Setup_Information:  File open error, '//file_name// & 
+                                        & ', IOSTAT=',stat,kill=.TRUE. )
     Write(unit,'(A)') full_dash_line
     Write(unit,'(A)') paths_files%app_title
     Write(unit,'(A)') full_dash_line
+    Write(unit,'(A)') '   Copyright (C) 2017  Whitman T. Dailey'
+    Write(unit,*)
+    Write(unit,'(A)') '   This program is free software: you can redistribute it and/or modify'
+    Write(unit,'(A)') '   it under the terms of the GNU General Public License version 3 as'
+    Write(unit,'(A)') '   published by the Free Software Foundation.'
+    Write(unit,*)
+    Write(unit,'(A)') '   This program is distributed in the hope that it will be useful,'
+    Write(unit,'(A)') '   but WITHOUT ANY WARRANTY; without even the implied warranty of'
+    Write(unit,'(A)') '   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the'
+    Write(unit,'(A)') '   GNU General Public License for more details.'
+    Write(unit,*)
+    Write(unit,'(A)') '   You should have received a copy of the GNU General Public License'
+    Write(unit,'(A)') '   along with this program.  If not, see <http://www.gnu.org/licenses/>.'
+    Write(unit,'(A)') full_dash_line
+    Write(unit,*)
     Write(unit,'(2A)') '  Run Complete: ',Date_Time_string()
     Write(unit,'(A,F11.3,A)') '  Total Compute Time: ',Sum(t_runs),' sec'
     Write(unit,'(A,F11.3,A)') '  Min Compute Time:   ',MinVal(t_runs),' sec'
     Write(unit,'(A,F11.3,A)') '  Max Compute Time:   ',MaxVal(t_runs),' sec'
     !spin time is computed as time spent waiting (sources of waiting are different run end times and random number generation)
-    Write(unit,'(A,F7.2,A)') '  Spin Fraction:  ',100._dp * (Sum(t_runs) - Sum(t_waits) - Sum(MaxVal(t_runs)-t_runs)) / Sum(t_runs),'%'
+    Write(unit,'(A,F7.2,A)') '  Spin Fraction:  ',100._dp*(Sum(t_runs)-Sum(t_waits)-Sum(MaxVal(t_runs)-t_runs)) / Sum(t_runs),'%'
     hostname = Get_Host_Name()
     If (n_img .GT. 1) Then
         Write(unit,'(A,I0,A)') '  Host: '//Trim(hostname)//', ',n_img,' coarray images'
@@ -601,7 +641,13 @@ Subroutine Write_Setup_Information(n_img,t_runs,t_waits,n_h_hit,n_h_run,RNG,path
     Write(unit,'(A,I11)') '  RNG Array Used:      ',RNG%q_index - 1
     Write(unit,'(A,I11)') '  RNG Array Refreshes: ',RNG%q_refreshed
     Write(unit,'(A,I18)') '  Total R used:        ',RNG%q_refreshed * Int(RNG%q_size,id) + Int(RNG%q_index - 1,id)
-    Write(unit,'(A,I0,A,I0,A,F6.2,A)') '  Number of Histories:  ',Sum(n_h_hit),' contributing, ',Sum(n_h_run),' total run, (',100._dp*Real(Sum(n_h_hit),dp)/Real(Sum(n_h_run),dp),'% efficency)'
+    Write(unit,'(A,I0,A,I0,A,F6.2,A)') '  Number of Histories:  ', & 
+                                     & Sum(n_h_hit), & 
+                                     & ' contributing, ', & 
+                                     & Sum(n_h_run), & 
+                                     & ' total run, (', & 
+                                     & 100._dp*Real(Sum(n_h_hit),dp)/Real(Sum(n_h_run),dp), & 
+                                     & '% efficency)'
     Write(unit,'(A)') '  Histories per image/thread:'
     Write(unit,'(A11,2A17)') 'Image','Contributing','Total Run'
     Write(unit,'(A11,2A17)') '-----','---------------','---------------'
