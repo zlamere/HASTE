@@ -2,7 +2,7 @@
 !   Copyright (C) 2017  Whitman T. Dailey
 !   
 !   This program is free software: you can redistribute it and/or modify
-!   it under the terms of the GNU General Public License version 3 as 
+!   it under the terms of the GNU General Public License version 3 as
 !   published by the Free Software Foundation.
 !   
 !   This program is distributed in the hope that it will be useful,
@@ -14,7 +14,7 @@
 !   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 !-------------------------------------------------------------------------------
 Module Random_Directions
-    
+
     Implicit None
     Private
     Public :: Isotropic_Azimuth
@@ -22,7 +22,7 @@ Module Random_Directions
     Public :: Isotropic_Omega_hat
     Public :: Neutron_Anisotropic_mu0cm
     Public :: mu_omega_2_OmegaHat
-    
+
     Interface Neutron_Anisotropic_mu0cm
         Module Procedure Neutron_Anisotropic_mu0cm_Legendre
         Module Procedure Neutron_Anisotropic_mu0cm_TablePDF
@@ -38,7 +38,7 @@ Function Isotropic_Azimuth(RNG) Result(w)
     Implicit None
     Real(dp) :: w
     Type(RNG_Type), Intent(InOut) :: RNG
-    
+
     w = TwoPi * RNG%Get_Random()
 End Function Isotropic_Azimuth
 
@@ -49,41 +49,38 @@ Function Isotropic_mu(RNG) Result(mu)
     Implicit None
     Real(dp) :: mu
     Type(RNG_Type), Intent(InOut) :: RNG
-    
+
     mu = 2._dp * RNG%Get_Random() - 1._dp
 End Function Isotropic_mu
 
 Function mu_omega_2_OmegaHat(xi,w) Result(Omegahat)
+    !Converts angles (polar cosine and azimuthal rotation) to a unit vector
     Use Kinds, Only: dp
     Implicit None
     Real(dp) :: OmegaHat(1:3)
-    Real(dp), Intent(In) :: xi,w
+    Real(dp), Intent(In) :: xi !cosine of the polar scattering angle
+    Real(dp), Intent(In) :: w  !azimuthal scattering angle
     Real(dp) :: nu,mu,eta
-    
+
     nu = Sqrt(1._dp - xi**2)
     mu = nu * Cos(w)
     eta = nu * Sin(w)
-    OmegaHat = (/ mu, eta, xi /)    
+    OmegaHat = (/ mu, eta, xi /)
 End Function mu_omega_2_OmegaHat
 
 Function Isotropic_Omega_hat(RNG) Result(OmegaHat)
+    !Reutrns an isotropic random direction
     Use Kinds, Only: dp
     Use Random_Numbers, Only: RNG_Type
     Implicit None
-    Real(dp):: OmegaHat(1:3)        ! Result
+    Real(dp):: OmegaHat(1:3)
     Type(RNG_Type), Intent(InOut) :: RNG
-    Real(dp):: xi                   ! z direction cosine = cos(theta), theta is angle from zHat
-    !Real(dp):: nu                   ! sin(theta)
-    Real(dp):: omega                ! angle from xHat toward yHat around zHat
-    !Real(dp):: mu, eta              ! x and y direction cosines
-    
+    Real(dp):: xi  ! z direction cosine = cos(theta), theta is angle from zHat
+    Real(dp):: w   ! angle from xHat toward yHat around zHat
+
     xi = Isotropic_mu(RNG)
-    !nu = Sqrt(1._dp - xi**2)
-    omega = Isotropic_Azimuth(RNG)
-    !mu = nu * Cos(omega)
-    !eta = nu * Sin(omega)
-    !OmegaHat = (/ mu, eta, xi /)
-    OmegaHat = mu_omega_2_OmegaHat(xi,omega)
+    w = Isotropic_Azimuth(RNG)
+    OmegaHat = mu_omega_2_OmegaHat(xi,w)
 End Function Isotropic_Omega_hat
 
 Function Neutron_Anisotropic_mu0cm_Legendre(n,a,RNG) Result(mu0cm)
@@ -105,10 +102,10 @@ Function Neutron_Anisotropic_mu0cm_Legendre(n,a,RNG) Result(mu0cm)
     Real(dp) :: muOld                    ! [] used to test for convergence
     Real(dp) :: muMin, muMax             ! [] bounds for bisection (when Newton jumps out of bounds)
     Real(dp) :: pdf, CDF                 ! [] pdf and cdf of mu0cm
-    Integer :: i        
-    Real(dp) :: x                        ! [] 
+    Integer :: i
+    Real(dp) :: x                        ! []
     Real(dp), Parameter :: AbsTol = 1.E-12_dp      ! tolerance for convergence
-    
+
     xi = RNG%Get_Random()
     mu0cm = 2._dp * xi - 1._dp
     If (n .EQ. 0) Return ! Isotropic scatter
@@ -121,7 +118,8 @@ Function Neutron_Anisotropic_mu0cm_Legendre(n,a,RNG) Result(mu0cm)
         Else If (Abs(x) .LE. 1._dp + 10._dp * Spacing(1._dp)) Then
             mu0cm = Sign(1._dp, x)
         Else
-            Call Output_Message("ERROR:  Random_Directions: Neutron_Anisotropic_mu0cm_Legendre:  Linearly-anisotropic scatter out of range.",kill=.TRUE.)
+            Call Output_Message('ERROR:  Random_Directions: Neutron_Anisotropic_mu0cm_Legendre:  & 
+                                &Linearly-anisotropic scatter out of range.',kill=.TRUE.)
         End If
         Return
     End If
@@ -134,27 +132,26 @@ Function Neutron_Anisotropic_mu0cm_Legendre(n,a,RNG) Result(mu0cm)
     muMin = -1._dp
     muMax =  1._dp
     i = 0
-    Do !i = 0,50  ! 41 iterations will meet tolerance by bisection
+    Do i = 1,42  ! 41 iterations will meet tolerance by bisection
         muOld = mu0cm
         Call Legendre_P(mu0cm,n+1,P)
         CDF = Dot_Product(b, P)
         If (Abs(CDF-xi) .LE. AbsTol) Return  !Normal exit for guessing correct mu0cm
-        If (CDF .LE. xi) Then ! tighten boundaries 
+        If (CDF .LE. xi) Then ! tighten boundaries
             MuMin = mu0cm
         Else
             MuMax = mu0cm
         End If
-        ! Try Newton's method
+        ! Try Newtons method
         pdf = Dot_Product(a,P(0:n))
-        mu0cm = mu0cm - (CDF - xi) / pdf 
-        ! Use bisection if Newton's method jumps outside the current bisection interval
+        mu0cm = mu0cm - (CDF - xi) / pdf
+        ! Use bisection if Newtons method jumps outside the current bisection interval
         If (mu0cm.LT.muMin .OR. mu0cm.GT.muMax) mu0cm = 0.5_dp * (muMin + muMax)
         If (Abs(mu0cm - muOld) .LE. AbsTol) Return  !Normal exit for convergence on mu0cm
-        If (i .GT. 50) Exit  !unconverged exit
-        i = i + 1
     End Do
     !If we get this far, no normal exit
-    Call Output_Message('ERROR:  Random_Directions: Neutron_Anisotropic_mu0cm_Legendre:  Failed to converge in',i,' iterations.',kill=.TRUE.)
+    Call Output_Message('ERROR:  Random_Directions: Neutron_Anisotropic_mu0cm_Legendre:  Failed to converge in', & 
+                       & i,' iterations.',kill=.TRUE.)
 End Function Neutron_Anisotropic_mu0cm_Legendre
 
 Function Neutron_Anisotropic_mu0cm_tablePDF(n1,ua1,n2,ua2,Econv,RNG) Result(mu0cm)
@@ -170,9 +167,10 @@ Function Neutron_Anisotropic_mu0cm_tablePDF(n1,ua1,n2,ua2,Econv,RNG) Result(mu0c
     Real(dp), Intent(In) :: Econv
     Type(RNG_Type), Intent(InOut) :: RNG
     Real(dp) :: maxP
-    
+
     If (Econv.GE.0._dp .AND. Econv.LE.1._dp) Then !interpolation between E1 and E2
-        maxP = Max(MaxVal(ua1(:,2)),MaxVal(ua2(:,2)))
+        ! maxP = Max(MaxVal(ua1(:,2)),MaxVal(ua2(:,2)))
+        maxP = Exp(Max(MaxVal(ua1(:,2)),MaxVal(ua2(:,2))))
     Else !extrapolating outside range E1 to E2
         maxP = 1._dp  !this is not the most efficent, but this case would not be encountered frequently
     End If
@@ -208,19 +206,18 @@ Function Photon_Aniosotropic_mu_Incoherent(RNG,a) Result(mu)
     Real(dp) :: kn
     Real(dp) :: mu2p1 !(mu**2 + 1._dp)
     Real(dp) :: amamup1 !(a - a*mu + 1._dp) OR (1._dp+a(1._dp-mu))
-    
+
     Do  !sampling by geometric rejection
         !sample mu from coherent scattering distribution
         mu = Photon_Aniosotropic_mu_Coherent(RNG)
-        !compute the value of the KN distribution at this mu 
-        !this is the KN distributon scaled on 0 < f(mu) < TWO  (using this scaled value eliminates a multiplication here and a multiplication in the following check for acceptance)
+        !compute the value of the KN distribution at this mu
+        !This is the KN distributon scaled on 0 < f(mu) < TWO  (using this scaled value eliminates a multiplication here and a 
+        ! multiplication in the following check for acceptance)
         mu2p1 = 1._dp + mu**2
         amamup1 = 1._dp + a * (1._dp - mu)
         kn = mu2p1 * (1._dp + (a**2 * (mu2p1 - 2._dp*mu) / (mu2p1 * amamup1))) / amamup1**2
-        !mu2p1amamup1 = mu2p1 * amamup1
-        !kn = mu2p1amamup1**2 * amamup1 * (mu2p1amamup1 + a**2 * (mu2p1 - 2._dp*mu))  !alternate formulation?  Need to check, might be cheaper to compute
         !if the probability of KN at this mu, exceeds the probability of the sampled distribution
-        If ( kn .GT. mu2p1*RNG%Get_Random() ) Exit  !If ( kn .GT. (0.5_dp*(1._dp + mu**2))*RNG%Get_Random() ) Exit
+        If ( kn .GT. mu2p1*RNG%Get_Random() ) Exit
     End Do
 End Function Photon_Aniosotropic_mu_Incoherent
 

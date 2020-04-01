@@ -1,0 +1,8 @@
+/build/obj
+/testing/PRNGs/Resources
+/testing/n_CS/Resources
+/.VSCodeCounter
+*.out
+*.tst
+*.stream
+*.o

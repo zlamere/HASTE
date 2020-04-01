@@ -9,7 +9,7 @@ Do i = 1,10
     Write(*,'(A,I0,A)',ADVANCE='NO') 'Testing...',i,creturn
     Call Wait(500)
 End Do
-Write(*,'(A)') 'Done.          '
+Write(*,'(A)') 'Did it work?          '
 Write(*,*)
 
 End Program

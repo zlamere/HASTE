@@ -22,7 +22,7 @@ FNAME="testPRNGmt2203"
 echo "Compiling and linking testPRNGs..."
 gfortran $GFORT_FLAGS -o ${SRC_PATH}${FNAME}.out ${SRC_PATH}${FNAME}.f90 $OBJ_FILES
 echo "Copying resource files..."
-rm -r ${SRC_PATH}Resources
+rm -fr ${SRC_PATH}Resources
 cp -r ../source/resources ${SRC_PATH}Resources
 
 #RUN THE TEST PROGRAM

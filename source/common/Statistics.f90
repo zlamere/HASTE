@@ -41,7 +41,7 @@ Elemental Function Std_Err_real_N(N,mu,mu_sq) Result(s_mu)
     Use Kinds, Only: dp
     Implicit None
     Real(dp) :: s_mu
-    Real(dp), Intent(In) :: N  !n is passed as a real representation of the integer quantity to accomodate numbers bigger than Huge(n)
+    Real(dp), Intent(In) :: N  !n is passed as a real representation of the integer quantity to accomodate numbers > Huge(n)
     Real(dp), Intent(In) :: mu  !sum of N estimates
     Real(dp), Intent(In) :: mu_sq  !sum of squares of N estimates
     Real(dp) :: x

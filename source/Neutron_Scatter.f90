@@ -49,7 +49,7 @@ Module Neutron_Scatter
         Real(dp) :: sig_T
         Integer :: target_index  !index of the target isotope
         Real(dp) :: An  !mass of the target isotope in neutron masses
-        Real(dp) :: vAir(1:3)  !intermediate quantity for computing vA, saved as a side effect in case all materials/mechanims are computed
+        Real(dp) :: vAir(1:3)  !side effect of computing vA, saved in case all materials/mechanims are computed
         Real(dp) :: vA(1:3)  ![km/s] velocity vector of the target nucleus
         Integer :: level  !sampled level of scatter
         Real(dp) :: Q  !Q-value for chosen scatter level
@@ -58,13 +58,17 @@ Module Neutron_Scatter
         Real(dp), Allocatable :: a(:)  !anisotropic scatter coeffs
         Integer :: n_a1,n_a2  !number of tabulated cosine pdf pairs
         Real(dp) :: a_tab_Econv
-        Real(dp), Allocatable :: a_tab1(:,:),a_tab2(:,:)  !tabulated scatter cosine pdf values at energies above and below the incident energy
-        Real(dp), Allocatable :: iso_cs(:)  !relative scatter cross section of each isotope at last computed energy, saved as a side effect in case all materials/mechanims are computed
-        Real(dp), Allocatable :: lev_cs(:)  !relative scatter cross section of each level at last computed energy, saved as a side effect in case all materials/mechanims are computed
+        Real(dp), Allocatable :: a_tab1(:,:),a_tab2(:,:)  !tabulated scatter cosine pdf values at energies +/- the incident energy
+        Real(dp), Allocatable :: iso_cs(:)  !relative scatter cross section of each isotope at last computed energy
+                                            !saved as a side effect in case all materials/mechanims are computed
+        Real(dp), Allocatable :: lev_cs(:)  !relative scatter cross section of each level at last computed energy
+                                            !saved as a side effect in case all materials/mechanims are computed
         Real(dp) :: Omega_hat0_cm(1:3)
         Real(dp) :: u(1:3),u_speed
-        Real(dp) :: s1cm  !speed after the scatter in CM frame is computed as a side effect of the next-event procedure, saving it reduces operations in following scatter simulation
-        Real(dp) :: A_hat(1:3),B_hat(1:3),C_hat(1:3)  !cartesian basis in CM frame is computed as a side effect of the next-event procedure, saving it reduces operations in following scatter simulation
+        Real(dp) :: s1cm  !speed after the scatter in CM frame is computed as a side effect of the next-event procedure,
+                          !saving it reduces operations in following scatter simulation
+        Real(dp) :: A_hat(1:3),B_hat(1:3),C_hat(1:3)  !cartesian basis in CM frame computed as a side effect of next-event procedure
+                                                      !saving it reduces operations in following scatter simulation
     End Type
     
     Type Scatter_Model_Type
@@ -140,11 +144,18 @@ Function Setup_Scatter_Model(setup_file_name,resources_directory,cs_setup_file,r
                                   & Diatomic_Atm,Rotating_Earth,Wind
     
     Open(NEWUNIT = setup_unit , FILE = setup_file_name , STATUS = 'OLD' , ACTION = 'READ' , IOSTAT = stat)
-    If (stat .NE. 0) Call Output_Message('ERROR:  Neutron_Scatter: Setup_Scatter_Model:  File open error, '//setup_file_name//', IOSTAT=',stat,kill=.TRUE.)
+    If (stat .NE. 0) Call Output_Message( 'ERROR:  Neutron_Scatter: Setup_Scatter_Model:  File open error, '//setup_file_name// & 
+                                        & ', IOSTAT=',stat,kill=.TRUE.)
     Read(setup_unit,NML = NeutronScatterList)
     Close(setup_unit)
-    If (n_scatters.EQ.-1 .AND. .NOT.estimate_each_scatter) Call Output_Message('ERROR:  Neutron_Scatter: Setup_Scatter_Model:  estimate_each_scatter must be .TRUE. for n_scatters = -1 (unlimited)',kill=.TRUE.)
-    If (n_scatters.EQ.0 .AND. .NOT.direct_contribution) Call Output_Message('ERROR:  Neutron_Scatter: Setup_Scatter_Model:  direct_contribution must be .TRUE. for n_scatters = 0',kill=.TRUE.)
+    If (n_scatters.EQ.-1 .AND. .NOT.estimate_each_scatter) Then
+        Call Output_Message('ERROR:  Neutron_Scatter: Setup_Scatter_Model:  & 
+                           &estimate_each_scatter must be .TRUE. for n_scatters = -1 (unlimited)',kill=.TRUE.)
+    End If
+    If (n_scatters.EQ.0 .AND. .NOT.direct_contribution) Then
+        Call Output_Message('ERROR:  Neutron_Scatter: Setup_Scatter_Model:  direct_contribution must be .TRUE. for &
+                           &n_scatters = 0',kill=.TRUE.)
+    End If
     Select Case (scatter_model)
         Case('IsoCM')
             ScatMod%aniso_dist = .FALSE.
@@ -158,7 +169,8 @@ Function Setup_Scatter_Model(setup_file_name,resources_directory,cs_setup_file,r
         If (n_scatters.EQ.0 .OR. estimate_each_scatter) Then
             ScatMod%direct_contribution = direct_contribution
         Else
-            Call Output_Message('ERROR:  Neutron_Scatter: Setup_Scatter_Model:  direct_contribution cannot be TRUE w/ n_scatters.NE.0 or estimate_each_scatter=FALSE ',kill=.TRUE.)
+            Call Output_Message('ERROR:  Neutron_Scatter: Setup_Scatter_Model:  direct_contribution cannot be TRUE w/ &
+                               &n_scatters.NE.0 or estimate_each_scatter=FALSE ',kill=.TRUE.)
         End If
     End If
     ScatMod%estimate_each_scatter = estimate_each_scatter
@@ -172,7 +184,8 @@ Function Setup_Scatter_Model(setup_file_name,resources_directory,cs_setup_file,r
         Case('An-fast')
             !UNDONE Fast analog option not yet implemented
             !ScatMod%fast_analog = .TRUE.
-            Call Output_Message('ERROR:  Neutron_Scatter: Setup_Scatter_Model:  Fast Analog Monte-Carlo game not yet implemented',kill=.TRUE.)
+            Call Output_Message('ERROR:  Neutron_Scatter: Setup_Scatter_Model:  Fast Analog Monte-Carlo game not &
+                               &yet implemented',kill=.TRUE.)
             ERROR STOP
         Case Default
             Call Output_Message('ERROR:  Neutron_Scatter: Setup_Scatter_Model:  Undefined Monte-Carlo game',kill=.TRUE.)
@@ -206,15 +219,16 @@ Function Setup_Scatter_Model(setup_file_name,resources_directory,cs_setup_file,r
     !initialize scatter parameters for sampled scatter, except the lev_cs array (it is not used for the sampled scatter)
     Allocate(ScatMod%scat%a(0:ScatMod%CS%n_a_max))
     ScatMod%scat%a = 0._dp
-    Allocate(ScatMod%scat%a_tab1(1:ScatMod%CS%n_a_tab_max,1:2))
+    Allocate(ScatMod%scat%a_tab1(1:2,1:ScatMod%CS%n_a_tab_max))
     ScatMod%scat%a_tab1 = 0._dp
-    Allocate(ScatMod%scat%a_tab2(1:ScatMod%CS%n_a_tab_max,1:2))
+    Allocate(ScatMod%scat%a_tab2(1:2,1:ScatMod%CS%n_a_tab_max))
     ScatMod%scat%a_tab2 = 0._dp
     Allocate(ScatMod%scat%iso_cs(1:ScatMod%CS%n_iso))
     ScatMod%scat%iso_cs = 0._dp
     If (Worker_Index() .EQ. 1) Then
         Open(NEWUNIT = setup_unit , FILE = run_file_name , STATUS = 'OLD' , ACTION = 'WRITE' , POSITION = 'APPEND' , IOSTAT = stat)
-        If (stat .NE. 0) Call Output_Message('ERROR:  Neutron_Scatter: Setup_Scatter_Model:  File open error, '//run_file_name//', IOSTAT=',stat,kill=.TRUE.)
+        If (stat .NE. 0) Call Output_Message( 'ERROR:  Neutron_Scatter: Setup_Scatter_Model:  File open error, '//run_file_name// & 
+                                            & ', IOSTAT=',stat,kill=.TRUE.)
         Write(setup_unit,NML = NeutronScatterList)
         Write(setup_unit,*)
         Close(setup_unit)
@@ -227,7 +241,8 @@ Subroutine Sample_Scatter(ScatMod,n,atm,RNG)
     Use Global, Only: Z_hat,X_hat
     Use Atmospheres, Only: Atmosphere_Type
     Use Random_Numbers, Only: RNG_Type
-    Use n_Cross_Sections, Only: sig_composite
+    Use n_Cross_Sections, Only: sig_Composite
+    Use n_Cross_Sections, Only: sig_Resonance
     Use Utilities, Only: Bisection_Search
     Use Utilities, Only: Vector_Length
     Use Utilities, Only: Unit_Vector
@@ -252,6 +267,7 @@ Subroutine Sample_Scatter(ScatMod,n,atm,RNG)
     Real(dp) :: E_apparent
     Real(dp) :: T
     Real(dp) :: v0(1:3),v0cm(1:3)
+    Real(dp) :: resT,resS
     
     !Get atmosphere total/absorption and isotope scatter cross sections at the point of scatter
     If (ScatMod%Rotating_Earth .OR. ScatMod%Wind) Then
@@ -339,8 +355,20 @@ Subroutine Sample_Scatter(ScatMod,n,atm,RNG)
             level_cs = 0._dp
             Do i = 0,ScatMod%CS%lev_cs(iso)%n_lev
                 If (E_index .LE. ScatMod%CS%lev_cs(iso)%thresh(i)) Exit  !insufficent energy for this or any higher inelastic level
-                level_cs(i) = sig_Composite(E_cm,ScatMod%CS%n_E_uni,ScatMod%CS%E_uni,ScatMod%CS%lnE_uni,E_index,1,1,ScatMod%CS%lev_cs(iso)%thresh(i),ScatMod%CS%lev_cs(iso)%sig(i))
+                level_cs(i) = sig_Composite( E_cm, & 
+                                           & ScatMod%CS%n_E_uni, & 
+                                           & ScatMod%CS%E_uni, & 
+                                           & ScatMod%CS%lnE_uni, & 
+                                           & E_index, & 
+                                           & 1, & 
+                                           & 1, & 
+                                           & ScatMod%CS%lev_cs(iso)%thresh(i), & 
+                                           & ScatMod%CS%lev_cs(iso)%sig(i) )
             End Do
+            If (ScatMod%CS%has_res_cs(iso)) Then  !resonance contribution needs to be added to level 0 (elastic)
+                Call sig_Resonance(ScatMod%CS%res_cs(iso),E_cm,resT,resS)
+                level_cs(0) = level_cs(0) + resS
+            End If
             r = RNG%Get_Random() * Sum(level_cs)
             Do i = 0,ScatMod%CS%lev_cs(iso)%n_Lev
                 If (r .LT. Sum(level_cs(0:i))) Then
@@ -371,14 +399,14 @@ Subroutine Sample_Scatter(ScatMod,n,atm,RNG)
             ScatMod%scat%da_is_legendre = .FALSE.
             ScatMod%scat%n_a1 = ScatMod%CS%lev_cs(iso)%da(lev)%da(index1)%n_a
             ScatMod%scat%n_a2 = ScatMod%CS%lev_cs(iso)%da(lev)%da(index2)%n_a
-            ScatMod%scat%a_tab1(1:ScatMod%scat%n_a1,:) = ScatMod%CS%lev_cs(iso)%da(lev)%da(index1)%ua
-            ScatMod%scat%a_tab2(1:ScatMod%scat%n_a2,:) = ScatMod%CS%lev_cs(iso)%da(lev)%da(index2)%ua
+            ScatMod%scat%a_tab1(:,1:ScatMod%scat%n_a1) = ScatMod%CS%lev_cs(iso)%da(lev)%da(index1)%ua
+            ScatMod%scat%a_tab2(:,1:ScatMod%scat%n_a2) = ScatMod%CS%lev_cs(iso)%da(lev)%da(index2)%ua
             ScatMod%scat%a_tab_Econv = (E_cm - E1) / (E2 - E1)
         End If
     End If
     !speed of neutron after scatter is independent of direction in CM frame
-    ScatMod%scat%s1cm = Neutron_Speed( ( E_cm + ScatMod%scat%An * Neutron_Energy(ScatMod%scat%vA - ScatMod%scat%u) - ScatMod%scat%Q) * &
-                                       & ScatMod%scat%An / (ScatMod%scat%An + 1._dp) )
+    ScatMod%scat%s1cm = Neutron_Speed( ( E_cm + ScatMod%scat%An*Neutron_Energy(ScatMod%scat%vA-ScatMod%scat%u) - ScatMod%scat%Q) * &
+                                       & ScatMod%scat%An / (ScatMod%scat%An+1._dp) )
 End Subroutine Sample_Scatter
 
 Subroutine Set_Scatter_prep(ScatMod,scat)
@@ -395,8 +423,8 @@ Subroutine Set_Scatter_prep(ScatMod,scat)
     !Set up arrays for angular distributions
     Allocate(scat%a(0:ScatMod%CS%n_a_max))
     scat%a = 0._dp
-    Allocate(scat%a_tab1(1:ScatMod%CS%n_a_tab_max,1:2))
-    Allocate(scat%a_tab2(1:ScatMod%CS%n_a_tab_max,1:2))
+    Allocate(scat%a_tab1(1:2,1:ScatMod%CS%n_a_tab_max))
+    Allocate(scat%a_tab2(1:2,1:ScatMod%CS%n_a_tab_max))
     scat%a_tab1 = 0._dp
     scat%a_tab2 = 0._dp
     !Get precomputed isotope cross sections from sampled scatter
@@ -409,7 +437,8 @@ Subroutine Set_Scatter_iso(ScatMod,n,atm,RNG,scat,iso,n_lev,E_cm,i_E_cm)
     Use Global, Only: X_hat,Z_hat
     Use Atmospheres, Only: Atmosphere_Type
     Use Random_Numbers, Only: RNG_Type
-    Use n_Cross_Sections, Only: sig_composite
+    Use n_Cross_Sections, Only: sig_Composite
+    Use n_Cross_Sections, Only: sig_Resonance
     Use Utilities, Only: Bisection_Search
     Use Utilities, Only: Vector_Length
     Use Utilities, Only: Unit_Vector
@@ -432,6 +461,7 @@ Subroutine Set_Scatter_iso(ScatMod,n,atm,RNG,scat,iso,n_lev,E_cm,i_E_cm)
     Integer :: target_el
     Real(dp) :: An_prime,Mn
     Real(dp) :: v0(1:3),v0cm(1:3)
+    Real(dp) :: resT,resS
     
     !Set target isotope
     scat%target_index = iso
@@ -487,8 +517,20 @@ Subroutine Set_Scatter_iso(ScatMod,n,atm,RNG,scat,iso,n_lev,E_cm,i_E_cm)
         Do i = 0,ScatMod%CS%lev_cs(iso)%n_lev
             If (i_E_cm .LE. ScatMod%CS%lev_cs(iso)%thresh(i)) Exit  !insufficent energy for this or any higher inelastic level
             n_lev = i
-            scat%lev_cs(i) = sig_Composite(E_cm,ScatMod%CS%n_E_uni,ScatMod%CS%E_uni,ScatMod%CS%lnE_uni,i_E_cm,1,1,ScatMod%CS%lev_cs(iso)%thresh(i),ScatMod%CS%lev_cs(iso)%sig(i))
+            scat%lev_cs(i) = sig_Composite( E_cm, & 
+                                          & ScatMod%CS%n_E_uni, & 
+                                          & ScatMod%CS%E_uni, & 
+                                          & ScatMod%CS%lnE_uni, & 
+                                          & i_E_cm, & 
+                                          & 1, & 
+                                          & 1, & 
+                                          & ScatMod%CS%lev_cs(iso)%thresh(i), & 
+                                          & ScatMod%CS%lev_cs(iso)%sig(i) )
         End Do
+        If (ScatMod%CS%has_res_cs(iso)) Then  !resonance contribution needs to be added to level 0 (elastic)
+            Call sig_Resonance(ScatMod%CS%res_cs(iso),E_cm,resT,resS)
+            scat%lev_cs(0) = scat%lev_cs(0) + resS
+        End If
         If (n_lev .GT. 0) Then
             scat%lev_cs = scat%lev_cs / Sum(scat%lev_cs)
         Else
@@ -527,15 +569,17 @@ Subroutine Set_Scatter_lev(ScatMod,scat,lev,E_cm,i_E_cm)
             Allocate(a2(0:scat%n_a))
             a1 = 0._dp
             a2 = 0._dp
-            a1(0:ScatMod%CS%lev_cs(scat%target_index)%da(lev)%da(index1)%n_a) = ScatMod%CS%lev_cs(scat%target_index)%da(lev)%da(index1)%a
-            a2(0:ScatMod%CS%lev_cs(scat%target_index)%da(lev)%da(index2)%n_a) = ScatMod%CS%lev_cs(scat%target_index)%da(lev)%da(index2)%a
+            a1(0:ScatMod%CS%lev_cs(scat%target_index)%da(lev)%da(index1)%n_a) = &
+                                                                         & ScatMod%CS%lev_cs(scat%target_index)%da(lev)%da(index1)%a
+            a2(0:ScatMod%CS%lev_cs(scat%target_index)%da(lev)%da(index2)%n_a) = &
+                                                                         & ScatMod%CS%lev_cs(scat%target_index)%da(lev)%da(index2)%a
             scat%a(0:scat%n_a) = Linear_Interp(E_cm,E1,E2,a1,a2)
         Else !angular dist is expressed in tabulated cosine pdf values
             scat%da_is_legendre = .FALSE.
             scat%n_a1 = ScatMod%CS%lev_cs(scat%target_index)%da(lev)%da(index1)%n_a
             scat%n_a2 = ScatMod%CS%lev_cs(scat%target_index)%da(lev)%da(index2)%n_a
-            scat%a_tab1(1:scat%n_a1,:) = ScatMod%CS%lev_cs(scat%target_index)%da(lev)%da(index1)%ua
-            scat%a_tab2(1:scat%n_a2,:) = ScatMod%CS%lev_cs(scat%target_index)%da(lev)%da(index2)%ua
+            scat%a_tab1(:,1:scat%n_a1) = ScatMod%CS%lev_cs(scat%target_index)%da(lev)%da(index1)%ua
+            scat%a_tab2(:,1:scat%n_a2) = ScatMod%CS%lev_cs(scat%target_index)%da(lev)%da(index2)%ua
             scat%a_tab_Econv = (E_cm - E1) / (E2 - E1)
         End If
     End If
@@ -586,7 +630,6 @@ End Function Apparent_Energy
 
 Function Scattered_Direction(mu,omega,A_hat,B_hat,C_hat) Result(Omega_hat)
     Use Kinds, Only: dp
-    Use Global, Only: X_Hat, Z_Hat
     Use Utilities, Only: Unit_Vector
     Use Utilities, Only: Cross_Product
     Implicit None
@@ -682,7 +725,8 @@ Subroutine Write_Scatter_Model(s,file_name)
     Integer :: unit,stat
     
     Open(NEWUNIT = unit , FILE = file_name , STATUS = 'UNKNOWN' , ACTION = 'WRITE' , POSITION = 'APPEND' , IOSTAT = stat)
-    If (stat .NE. 0) Call Output_Message('ERROR:  Neutron_Scatter: Write_Scatter_Model:  File open error, '//file_name//', IOSTAT=',stat,kill=.TRUE.)
+    If (stat .NE. 0) Call Output_Message( 'ERROR:  Neutron_Scatter: Write_Scatter_Model:  File open error, '//file_name// & 
+                                        & ', IOSTAT=',stat,kill=.TRUE.)
     Write(unit,'(A)') half_dash_line
     Write(unit,'(A)') 'SCATTER MODEL INFORMATION'
     Write(unit,'(A)') half_dash_line

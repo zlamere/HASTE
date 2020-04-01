@@ -80,7 +80,8 @@ Function Setup_RNG(setup_file_name,run_file_name) Result(RNG)
     
     !open setup file and read namelist
     Open(NEWUNIT = setup_unit , FILE = setup_file_name , STATUS = 'OLD' , ACTION = 'READ' , IOSTAT = stat)
-    If (stat .NE. 0) Call Output_Message('ERROR:  Random_Numbers: Setup_RNG:  File open error, '//setup_file_name//', IOSTAT=',stat,kill=.TRUE.)
+    If (stat .NE. 0) Call Output_Message('ERROR:  Random_Numbers: Setup_RNG:  File open error, '// & 
+                                        & setup_file_name//', IOSTAT=',stat,kill=.TRUE.)
     Read(setup_unit,NML = RNGSetupList)
     Close(setup_unit)
     If (RNG_seed_random) Then  !use current clock time as seed
@@ -95,7 +96,8 @@ Function Setup_RNG(setup_file_name,run_file_name) Result(RNG)
     End If
     If (t .EQ. 1) Then  !Worker 1 writes setup information back out to file
         Open(NEWUNIT = setup_unit , FILE = run_file_name , STATUS = 'OLD' , ACTION = 'WRITE' , POSITION = 'APPEND' , IOSTAT = stat)
-        If (stat .NE. 0) Call Output_Message('ERROR:  Random_Numbers: Setup_RNG:  File open error, '//run_file_name//', IOSTAT=',stat,kill=.TRUE.)
+        If (stat .NE. 0) Call Output_Message('ERROR:  Random_Numbers: Setup_RNG:  File open error, '// & 
+                                            & run_file_name//', IOSTAT=',stat,kill=.TRUE.)
         Write(setup_unit,NML = RNGSetupList)
         Write(setup_unit,*)
         Close(setup_unit)
@@ -107,8 +109,8 @@ Subroutine Initialize_RNG(RNG,seed,thread,size)  !Initializes a RNG and returns 
         Use MKL_VSL, Only: vslnewstream,VSL_BRNG_MT2203,VSL_BRNG_SFMT19937
         Use MKL_VSL, Only: VSL_ERROR_OK,VSL_STATUS_OK
         Use MKL_VSL, Only: vdrnguniform,VSL_RNG_METHOD_UNIFORM_STD
+        Use Kinds, Only: dp
 #   endif
-    Use Kinds, Only: dp
     Use FileIO_Utilities, Only: Output_Message
     Implicit None
     Class(RNG_Type),Intent(Out) :: RNG
@@ -138,9 +140,13 @@ Subroutine Initialize_RNG(RNG,seed,thread,size)  !Initializes a RNG and returns 
         Else  !serial execution, use SIMD-oriented fast MT19937
             rng_stat = vslnewstream(RNG%stream,VSL_BRNG_SFMT19937,RNG%seed)
         End If
-        If (Not(rng_stat.EQ.VSL_ERROR_OK .OR. rng_stat.EQ.VSL_STATUS_OK)) Call Output_Message('ERROR:  Random_Numbers: Initialize_RNG:  MKL RNG stream creation failed, STAT = ',rng_stat,kill=.TRUE.)
+        If (Not(rng_stat.EQ.VSL_ERROR_OK .OR. rng_stat.EQ.VSL_STATUS_OK)) & 
+            & Call Output_Message('ERROR:  Random_Numbers: Initialize_RNG:  MKL RNG stream creation failed, STAT = ', & 
+                                 & rng_stat,kill=.TRUE.)
         rng_stat = vdrnguniform(VSL_RNG_METHOD_UNIFORM_STD,RNG%stream,RNG%q_size,RNG%q,0._dp,1._dp)
-        If (Not(rng_stat.EQ.VSL_ERROR_OK .OR. rng_stat.EQ.VSL_STATUS_OK)) Call Output_Message('ERROR:  Random_Numbers: Initialize_RNG:  MKL RNG stream initial fill q failed, STAT = ',rng_stat,kill=.TRUE.)
+        If (Not(rng_stat.EQ.VSL_ERROR_OK .OR. rng_stat.EQ.VSL_STATUS_OK)) & 
+            & Call Output_Message('ERROR:  Random_Numbers: Initialize_RNG:  MKL RNG stream initial fill q failed, STAT = ', & 
+                                 & rng_stat,kill=.TRUE.)
 #   else
         If (Present(thread)) Then  !parallel execution, uses local set of MT2203
             Call RNG%stream%seed(thread+1,RNG%seed)  !add 1 to thread since MT2203 PRNGs are numbered beginning with 1...
@@ -214,7 +220,9 @@ Subroutine Refresh_Random_Array(RNG)
     Call SYSTEM_CLOCK(c)  !for tracking wait time
 #   if IMKL
         rng_stat = vdrnguniform(VSL_RNG_METHOD_UNIFORM_STD,RNG%stream,RNG%q_size,RNG%q,0._dp,1._dp)
-        If (Not(rng_stat.EQ.VSL_ERROR_OK .OR. rng_stat.EQ.VSL_STATUS_OK)) Call Output_Message('ERROR:  Random_Numbers: Refresh_Random_Array:  MKL RNG q_fill failed, STAT = ',rng_stat,kill=.TRUE.)
+        If (Not(rng_stat.EQ.VSL_ERROR_OK .OR. rng_stat.EQ.VSL_STATUS_OK)) & 
+            & Call Output_Message('ERROR:  Random_Numbers: Refresh_Random_Array:  MKL RNG q_fill failed, STAT = ', & 
+                                 & rng_stat,kill=.TRUE.)
 #   else
         Do i = 1,RNG%q_size
             RNG%q(i) = RNG%stream%r()
@@ -273,7 +281,8 @@ Subroutine Save_RNG(RNG,dir)
     fname = dir//'RNGstate'//i_char//'.bin'
 #   if IMKL
         stat = vslsavestreamF( RNG%stream, fname )
-        If (stat .NE. 0) Call Output_Message('ERROR:  Random_Numbers: Save_RNG:  File open error, '//fname//', IOSTAT=',stat,kill=.TRUE.)
+        If (stat .NE. 0) Call Output_Message('ERROR:  Random_Numbers: Save_RNG:  File open error, '// & 
+                                            & fname//', IOSTAT=',stat,kill=.TRUE.)
 #   else
         Call RNG%stream%save(fname)
 #   endif
@@ -311,7 +320,8 @@ Subroutine Load_RNG(RNG,dir)
     fname = dir//'RNGstate'//i_char//'.bin'
 #   if IMKL
         stat = vslloadstreamF( RNG%stream, fname )
-        If (stat .NE. 0) Call Output_Message('ERROR:  Random_Numbers: Load_RNG:  File open error, '//fname//', IOSTAT=',stat,kill=.TRUE.)
+        If (stat .NE. 0) Call Output_Message('ERROR:  Random_Numbers: Load_RNG:  File open error, '// & 
+                                            & fname//', IOSTAT=',stat,kill=.TRUE.)
 #   else
         Call RNG%stream%load(fname)
 #   endif

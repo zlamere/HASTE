@@ -253,7 +253,8 @@ Function Hits_Earth(r1,r2,v1,v2)
     Real(dp), Intent(In) :: v1(1:3),v2(1:3)
     
     Hits_Earth = .FALSE.
-    If (Dot_Product(r1,v1).LT.0._dp .AND. Dot_Product(r2,v2).GT.0._dp) Then  !periapsis occurs between r1 and r2, check for collision
+    If (Dot_Product(r1,v1).LT.0._dp .AND. Dot_Product(r2,v2).GT.0._dp) Then
+        !periapsis occurs between r1 and r2, check for collision
         If (Radius_of_Perigee(r1,v1) .LT. R_Earth) Hits_Earth = .TRUE.
     End If
 End Function Hits_Earth
@@ -690,7 +691,9 @@ Subroutine Lambert_f_g(r0_vec,r_vec,t,long_way,f,g,g_dot)
     r0 = Vector_Length(r0_vec)
     r = Vector_Length(r_vec)
     A = Sqrt(r * r0 + Dot_Product(r0_vec,r_vec))
-    If (A .LT. tolerance) Then  !when A=0, this is a near-180deg transfer, universal variable formulation does not have unique solution, use Battin's method instead
+    If (A .LT. tolerance) Then
+        !when A=0, this is a near-180deg transfer, universal variable formulation does not have unique solution,
+        !use Battin's method instead
         Print *,'ERROR:  Astro_Utilities: Lambert_f_g:  Lambert-Battin not yet supported.'
         ERROR STOP
         !UNDONE  Lambert-Battin method for near-180deg transfers
@@ -728,7 +731,7 @@ Subroutine Find_C_S(z,C,S)
     Real(dp), Intent(In) :: z
     Real(dp), Intent(Out) :: C,S
     Real(dp) :: sqrt_Z
-    Real(dp), Parameter :: series_thresh = 3.1732_dp  !Threshold below which to use series representation, chosen to preserve 15 digits of precision
+    Real(dp), Parameter :: series_thresh = 3.1732_dp  !Threshold below which to use series representation, preserves 15 digits
     
     If (Abs(z) .GT. series_thresh) Then  !direct evaluation of formulae
         If (z .GT. 0._dp) Then

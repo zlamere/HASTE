@@ -80,9 +80,9 @@ Use FileIO_Utilities, Only: Delta_Time
 
 Implicit None
 
-Character(max_line_len), Parameter :: title = 'High-Altitude Transport to Space for Neutrons (HATS-n) v0.9.02, 25 Dec 2018'
+Character(max_line_len), Parameter :: title = 'High-Altitude Transport to Space for Neutrons (HATS-n) v0.10.00, 02 Jun 2019'
 Integer(id) :: n_histories
-Logical :: absolute_n_histories  !specifies whether number of histories is an absolute limit, or a goal to accumulate contributions on
+Logical :: absolute_n_histories  !specifies whether number of histories is an absolute limit or a target number of contributions   
 Logical :: prompt_exit  !specifies whether the simulation will wait for user unput before exiting
 Logical :: screen_progress  !determines if progress will be updated on screen during run
 Type(Source_Type) :: source  !contains data defining neutron source
@@ -130,8 +130,14 @@ End If
     End If
 # endif
 RNG = Setup_RNG(paths_files%setup_file,paths_files%run_file_name)
-atmosphere = Setup_Atmosphere(paths_files%setup_file,paths_files%resources_directory,paths_files%run_file_name,paths_files%cs_setup_file)
-ScatterModel = Setup_Scatter_Model(paths_files%setup_file,paths_files%resources_directory,paths_files%cs_setup_file,paths_files%run_file_name)
+atmosphere = Setup_Atmosphere( paths_files%setup_file, & 
+                             & paths_files%resources_directory, & 
+                             & paths_files%run_file_name, & 
+                             & paths_files%cs_setup_file )
+ScatterModel = Setup_Scatter_Model( paths_files%setup_file, & 
+                                  & paths_files%resources_directory, & 
+                                  & paths_files%cs_setup_file, & 
+                                  & paths_files%run_file_name)
 source = Setup_Source(paths_files%setup_file,paths_files%run_file_name,atmosphere%R_top)
 detector = Setup_Detector(paths_files%setup_file,paths_files%run_file_name,paths_files%s_file_name,atmosphere%R_top)
 TE_Tallies = Setup_Tallies(detector%TE_grid(1)%n_bins,detector%TE_grid(2)%n_bins)
@@ -160,11 +166,9 @@ p = 0_id
 n_done = 0_id
 !start a clock to track processing time
 Call SYSTEM_CLOCK(c_start)
-If (screen_progress) Then  !run histories, periodically updating progress to the display
-    c_last = c_start
-    Do
-        !update progress on screen
-        If (Delta_Time(clock_then = c_last,clock_now = c_now) .GT. 1._dp) Then  !only update ETTC if elapsed time is more than a second
+Do !run histories, periodically updating progress to the display if required
+    If (screen_progress) Then  !update progress on screen
+        If (Delta_Time(clock_then = c_last,clock_now = c_now) .GT. 1._dp) Then  !only update ETTC if elapsed time >1 second
             c_last = c_now
             If (p .GT. 0_id) Then
                 dt = Delta_Time(clock_then = c_start)
@@ -177,46 +181,73 @@ If (screen_progress) Then  !run histories, periodically updating progress to the
                       & HH,':',MM,':',SS, & !ETTC
                       & Real(n_img*ScatterModel%next_events(1),dp) / (dt / 60._dp), & !Next-Events per minute
                       & Real(n_img*p,dp) / (dt / 60._dp), & !Histories per minute
-                      & 100._dp * gMean(Std_Err(p,TE_tallies%contribs(1:TE_tallies%index)%f,TE_tallies%contribs(1:TE_tallies%index)%f_sq) / TE_tallies%contribs(1:TE_tallies%index)%f),'% ', & !Geometric Mean Relative Standard Error
+                      & 100._dp * gMean( Std_Err( p, & 
+                                                & TE_tallies%contribs(1:TE_tallies%index)%f, & 
+                                                & TE_tallies%contribs(1:TE_tallies%index)%f_sq) / & 
+                                       & TE_tallies%contribs(1:TE_tallies%index)%f & 
+                                       & ),'% ', & !Geometric Mean Relative Standard Error
                       & 100._dp * Real(p,dp) / Real(n_done,dp),'% ', & !Percent efficency
                       & creturn
             End If 
         End If
-        !run a history
-        Call Do_Neutron(source,detector,atmosphere,ScatterModel,RNG,contributed)
-        n_done = n_done + 1_id
-        If (contributed .OR. absolute_n_histories) Then
-            p = p + 1_id
-            !add the contributions from this history to the main time-energy and arrival direction contribution lists
-            Call TE_Tallies%Tally_History(detector%TE_contrib_index,detector%TE_contribs_this_history(1:detector%TE_contrib_index),detector%TE_grid(1)%n_bins,detector%TE_contribs_t,detector%TE_grid(2)%n_bins,detector%TE_contribs_E)
-            Call Dir_Tallies%Tally_History(detector%Dir_contrib_index,detector%Dir_contribs_this_history(1:detector%Dir_contrib_index),detector%Dir_grid(1)%n_bins,detector%Dir_contribs_mu,detector%Dir_grid(2)%n_bins,detector%Dir_contribs_omega)
-        End If
-        If (p .GE. n_p) Exit
-    End Do
-Else  !run histories, WITHOUT updating progress to the display
-    Do
-        !run a history
-        Call Do_Neutron(source,detector,atmosphere,ScatterModel,RNG,contributed)
-        n_done = n_done + 1_id
-        If (contributed .OR. absolute_n_histories) Then
-            p = p + 1_id
-            !add the contributions from this history to the main time-energy and arrival direction contribution lists
-            Call TE_Tallies%Tally_History(detector%TE_contrib_index,detector%TE_contribs_this_history(1:detector%TE_contrib_index),detector%TE_grid(1)%n_bins,detector%TE_contribs_t,detector%TE_grid(2)%n_bins,detector%TE_contribs_E)
-            Call Dir_Tallies%Tally_History(detector%Dir_contrib_index,detector%Dir_contribs_this_history(1:detector%Dir_contrib_index),detector%Dir_grid(1)%n_bins,detector%Dir_contribs_mu,detector%Dir_grid(2)%n_bins,detector%Dir_contribs_omega)
-        End If
-        If (p .GE. n_p) Exit
-    End Do
-End If
+    End If
+    !run a history
+    Call Do_Neutron(source,detector,atmosphere,ScatterModel,RNG,contributed)
+    n_done = n_done + 1_id
+    If (contributed .OR. absolute_n_histories) Then
+        p = p + 1_id
+        !add the contributions from this history to the main time-energy and arrival direction contribution lists
+        Call TE_Tallies%Tally_History( detector%TE_contrib_index, & 
+                                     & detector%TE_contribs_this_history(1:detector%TE_contrib_index), & 
+                                     & detector%TE_grid(1)%n_bins, & 
+                                     & detector%TE_contribs_t, & 
+                                     & detector%TE_grid(2)%n_bins, & 
+                                     & detector%TE_contribs_E)
+        Call Dir_Tallies%Tally_History( detector%Dir_contrib_index, & 
+                                      & detector%Dir_contribs_this_history(1:detector%Dir_contrib_index), & 
+                                      & detector%Dir_grid(1)%n_bins, & 
+                                      & detector%Dir_contribs_mu, & 
+                                      & detector%Dir_grid(2)%n_bins, & 
+                                      & detector%Dir_contribs_omega)
+    End If
+    If (p .GE. n_p) Exit
+End Do
 !record final completion time
 t_tot = Delta_Time(clock_then = c_start)
-If (i_img.EQ.1 .AND. detector%shape_data) Call Close_Slice_Files(detector%n_slices,detector%TE_grid(1)%collect_shape,detector%TE_grid(1)%slice_unit,detector%TE_grid(2)%collect_shape,detector%TE_grid(2)%slice_unit)
+If (i_img.EQ.1 .AND. detector%shape_data) Call Close_Slice_Files( detector%n_slices, & 
+                                                                & detector%TE_grid(1)%collect_shape, & 
+                                                                & detector%TE_grid(1)%slice_unit, & 
+                                                                & detector%TE_grid(2)%collect_shape, & 
+                                                                & detector%TE_grid(2)%slice_unit)
 # if CAF
     !Write image results to disk
-    Call Image_Result_to_Disk(t_tot,RNG%t_wait,n_p,n_done,TE_Tallies,Dir_Tallies,ScatterModel%n_kills,ScatterModel%next_events,ScatterModel%n_no_tally,ScatterModel%n_uncounted)
+    Call Image_Result_to_Disk( t_tot, & 
+                             & RNG%t_wait, & 
+                             & n_p, & 
+                             & n_done, & 
+                             & TE_Tallies, & 
+                             & Dir_Tallies, & 
+                             & ScatterModel%n_kills, & 
+                             & ScatterModel%next_events, & 
+                             & ScatterModel%n_no_tally, & 
+                             & ScatterModel%n_uncounted)
     SYNC ALL
     If (i_img .EQ. 1) Then
         !Gather image results from temporary files to image 1
-        Call Image_Results_from_Disk(detector%TE_grid(1)%n_bins,detector%TE_grid(2)%n_bins,detector%Dir_grid(1)%n_bins,detector%Dir_grid(2)%n_bins,t_runs,t_waits,n_hist_run,n_hist_hit,TE_Tallies,Dir_Tallies,ScatterModel%n_kills,ScatterModel%next_events,ScatterModel%n_no_tally,ScatterModel%n_uncounted)
+        Call Image_Results_from_Disk( detector%TE_grid(1)%n_bins, & 
+                                    & detector%TE_grid(2)%n_bins, & 
+                                    & detector%Dir_grid(1)%n_bins, & 
+                                    & detector%Dir_grid(2)%n_bins, & 
+                                    & t_runs, & 
+                                    & t_waits, & 
+                                    & n_hist_run, & 
+                                    & n_hist_hit, & 
+                                    & TE_Tallies, & 
+                                    & Dir_Tallies, & 
+                                    & ScatterModel%n_kills, & 
+                                    & ScatterModel%next_events, & 
+                                    & ScatterModel%n_no_tally, & 
+                                    & ScatterModel%n_uncounted)
     End If
 # else
     Allocate(t_runs(1:1))
@@ -235,13 +266,39 @@ If (i_img .EQ. 1) Then
               & 0,':',0,':',0, & !ETTC
               & Real(ScatterModel%next_events(1),dp) / (Sum(t_runs) / 60._dp), & !Next-Events per minute
               & Real(Sum(n_hist_run),dp) / (Sum(t_runs) / 60._dp), & !Histories per minute
-              & 100._dp * gMean(Std_Err(Sum(n_hist_run),TE_tallies%contribs(1:TE_tallies%index)%f,TE_tallies%contribs(1:TE_tallies%index)%f_sq) / TE_tallies%contribs(1:TE_tallies%index)%f),' %', & !Geometric Mean Relative Standard Error
+              & 100._dp * gMean( Std_Err( Sum(n_hist_run), & 
+                                        & TE_tallies%contribs(1:TE_tallies%index)%f, & 
+                                        & TE_tallies%contribs(1:TE_tallies%index)%f_sq) /  & 
+                               & TE_tallies%contribs(1:TE_tallies%index)%f & 
+                               & ),' %', & !Geometric Mean Relative Standard Error
               & 100._dp * Real(Sum(n_hist_hit),dp) / Real(Sum(n_hist_run),dp),'% ' !Percent efficency
     End If
     !Write results
     Write(*,'(A)', ADVANCE = 'NO') 'Writing output... '
-    Call Write_Run_Summary(n_img,t_runs,t_waits,n_hist_hit,n_hist_run,RNG,paths_files,atmosphere,ScatterModel,source,detector,TE_Tallies,Dir_Tallies,paths_files%log_file_name)
-    Call Write_Tally_Grids(TE_Tallies,Dir_Tallies,detector,Sum(n_hist_run),paths_files%F_file_name,paths_files%TE_file_name,paths_files%t_file_name,paths_files%E_file_name,paths_files%d_file_name,paths_files%m_file_name,paths_files%o_file_name)
+    Call Write_Run_Summary( n_img, & 
+                          & t_runs, & 
+                          & t_waits, & 
+                          & n_hist_hit, & 
+                          & n_hist_run, & 
+                          & RNG, & 
+                          & paths_files, & 
+                          & atmosphere, & 
+                          & ScatterModel, & 
+                          & source,detector, & 
+                          & TE_Tallies, & 
+                          & Dir_Tallies, & 
+                          & paths_files%log_file_name)
+    Call Write_Tally_Grids( TE_Tallies, & 
+                          & Dir_Tallies, & 
+                          & detector, & 
+                          & Sum(n_hist_run), & 
+                          & paths_files%F_file_name, & 
+                          & paths_files%TE_file_name, & 
+                          & paths_files%t_file_name, & 
+                          & paths_files%E_file_name, & 
+                          & paths_files%d_file_name, & 
+                          & paths_files%m_file_name, & 
+                          & paths_files%o_file_name)
 #   if CAF
         !cleanup temp files
         Call Cleanup_temp_files()
