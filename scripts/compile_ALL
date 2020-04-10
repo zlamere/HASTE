@@ -58,4 +58,4 @@ FNAME="Results"; . ./compile_it
 
 # MAIN PROGRAM
 SRC_PATH="../source/"
-FNAME="HATS_DRIVER"; . ./compile_it
+FNAME="HASTE_DRIVER"; . ./compile_it

@@ -59,11 +59,11 @@ FNAME="Results"; . ./compile_it
 # MAIN PROGRAM
 SRC_PATH="../source/"
 BLD_PATH="../build/"
-FNAME="HATS_DRIVER"
-echo "Compiling and linking HATS..."
-gfortran $GFORT_FLAGS -o ${BLD_PATH}HATS.out ${SRC_PATH}${FNAME}.f90 $OBJ_FILES $LIB_FLAGS
+FNAME="HASTE_DRIVER"
+echo "Compiling and linking HASTE..."
+gfortran $GFORT_FLAGS -o ${BLD_PATH}HASTE.out ${SRC_PATH}${FNAME}.f90 $OBJ_FILES $LIB_FLAGS
 echo "Copying resource files..."
 rm -fr ${BLD_PATH}Resources
 cp -r ../source/resources ${BLD_PATH}Resources
-mv -f ${BLD_PATH}Resources/HATS_Setup.txt ${BLD_PATH}HATS_Setup.txt
+mv -f ${BLD_PATH}Resources/HASTE_Setup.txt ${BLD_PATH}HASTE_Setup.txt
 echo "Done."

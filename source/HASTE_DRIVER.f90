@@ -1,7 +1,7 @@
 !-------------------------------------------------------------------------------
-!   High-Altitude Transport to Space for Neutrons (HATS-n)
+!   High-Altitude to Space Transport Estimator for Neutrons (HASTEn)
 !   
-!   The High-Altitude Transport to Space (HATS) estimator is a high fidelity 
+!   The High-Altitude to Space Transport Estimator (HASTE) is a high fidelity 
 !   Monte Carlo code written in modern Fortran for estimating the radiation 
 !   field seen by a space-based detector from a point source in or above the 
 !   atmosphere.
@@ -21,7 +21,7 @@
 !   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 !-------------------------------------------------------------------------------
 !   Version History
-!   0.0     Initial version based on HASTE-n TE and HASTE-n
+!   0.0     Initial version based on HASTE-n TE and HASTE-n by K.Mathews
 !   0.1     Initial release candidate, debugged & ready for studies.  Ready for
 !           multithreading or coarray implementations.
 !   0.2     Initial coarray implementation.
@@ -33,18 +33,18 @@
 !           section implementation for speed.
 !   0.7     Revised EPL quadrature routines, Kepler Problem solver, & gravity 
 !           divergence approach.
-!   0.8     Opened development to HATSwg, migrated project to Github.
+!   0.8     Opened development to community WG, migrated project to Github.
 !   0.9     Major portability revision: gFortran compiler, IA32/IA64/ARM 
 !           architectures now supported
 !-------------------------------------------------------------------------------
-Program HATS
+Program HASTE
 
 Use Kinds, Only: dp  !double precision real
 Use Kinds, Only: il  !long integer
 Use Kinds, Only: id  !double integer
 Use Random_Numbers, Only: RNG_Type
 Use Random_Numbers, Only: Setup_RNG
-Use Setups, Only: Setup_HATS
+Use Setups, Only: Setup_HASTE
 Use Setups, Only: Paths_Files_Type
 Use Setups, Only: Create_Output_File_names
 Use Atmospheres, Only: Atmosphere_Type
@@ -80,7 +80,7 @@ Use FileIO_Utilities, Only: Delta_Time
 
 Implicit None
 
-Character(max_line_len), Parameter :: title = 'High-Altitude Transport to Space for Neutrons (HATS-n) v0.10.00, 02 Jun 2019'
+Character(max_line_len), Parameter :: title = 'High-Altitude to Space Transport Estimator for Neutrons (HASTEn) v0.10.02, 31 Mar 2020'
 Integer(id) :: n_histories
 Logical :: absolute_n_histories  !specifies whether number of histories is an absolute limit or a target number of contributions   
 Logical :: prompt_exit  !specifies whether the simulation will wait for user unput before exiting
@@ -112,7 +112,7 @@ If (i_img .EQ. 1) Then
     Write(*,'(A)') title
     Write(*,'(A)') full_dash_line
     Write(*,'(A)') 'Setting up... '
-    Call Setup_HATS(prompt_exit,screen_progress,paths_files,n_histories,absolute_n_histories)
+    Call Setup_HASTE(prompt_exit,screen_progress,paths_files,n_histories,absolute_n_histories)
     paths_files%app_title = title
 #   if CAF
         Write(*,'(I6,A)') n_img,' images sharing histories'
@@ -320,4 +320,4 @@ End If
     End If
 # endif
 
-End Program HATS
+End Program HASTE
