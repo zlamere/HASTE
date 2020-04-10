@@ -17,7 +17,7 @@ Module Setups
 
     Implicit None
     Private
-    Public :: Setup_HATS
+    Public :: Setup_HASTE
     Public :: Paths_Files_Type
     Public :: Write_Setup_Information
     Public :: Create_Output_File_names
@@ -30,9 +30,9 @@ Module Setups
     Type :: Paths_Files_Type
         Character(:), Allocatable :: app_title !name and version of program
         Character(:), Allocatable :: program_exe !path and name of the running executable
-        Character(:), Allocatable :: setup_file !specifies setup file, default is 'HATS_Setup.txt' in the current working directory
-        Character(:), Allocatable :: log_file_name !specifies log file, default is 'HATS_log.txt' in the default results directory
-        Character(:), Allocatable :: run_file_name !specifies run file, default is 'HATS-setup.txt' in the default directory
+        Character(:), Allocatable :: setup_file !specifies setup file, default is 'HASTE_Setup.txt' in the current working directory
+        Character(:), Allocatable :: log_file_name !specifies log file, default is 'HASTE_log.txt' in the default results directory
+        Character(:), Allocatable :: run_file_name !specifies run file, default is 'HASTE-setup.txt' in the default directory
         Character(:), Allocatable :: resources_directory !specifies resources dir, default is 'Resources' in current working dir
         Character(:), Allocatable :: cs_setup_file  !specifies setup file for cross sections
                                                     !this file sets atmospheric constituents and specifies what data is available
@@ -54,7 +54,7 @@ Module Setups
     
 Contains
 
-Subroutine Setup_HATS(prompt_for_exit,screen_progress,paths_files,n_neutron_histories,absolute_n_histories,setup_file)
+Subroutine Setup_HASTE(prompt_for_exit,screen_progress,paths_files,n_neutron_histories,absolute_n_histories,setup_file)
     !Reads in problem data, method data, physics data
     !Initializes processes and variables
     Use Kinds, Only: dp
@@ -91,17 +91,17 @@ Subroutine Setup_HATS(prompt_for_exit,screen_progress,paths_files,n_neutron_hist
     Allocate(Character(max_path_len) :: file_suffix)
     !Get path and name of executable
     Call GET_COMMAND_ARGUMENT(0, path, pathlen, status)
-    If (status .NE. 0) Call Output_Message('ERROR:  Setups: Setup_HATS:  Read command line argument 0 failed',kill=.TRUE.)
+    If (status .NE. 0) Call Output_Message('ERROR:  Setups: Setup_HASTE:  Read command line argument 0 failed',kill=.TRUE.)
     paths_files%program_exe = Trim(path)
     !default values for files and directories
     Call Working_Directory(GETdir=path,s=slash)
-    paths_files%setup_file = Trim(path)//'HATS_Setup.txt'
+    paths_files%setup_file = Trim(path)//'HASTE_Setup.txt'
     paths_files%resources_directory = Trim(path)//'Resources'//slash
     paths_files%results_directory = Trim(path)//'Results'//slash
     If (Present(setup_file)) paths_files%setup_file = setup_file
     !open setup file and read namelist
     Open(NEWUNIT = setup_unit , FILE = paths_files%setup_file , STATUS = 'OLD' , ACTION = 'READ' , IOSTAT = stat)
-    If (stat .NE. 0) Call Output_Message( 'ERROR:  Setups: Setup_HATS:  File open error, '//paths_files%setup_file// & 
+    If (stat .NE. 0) Call Output_Message( 'ERROR:  Setups: Setup_HASTE:  File open error, '//paths_files%setup_file// & 
                                         & ', IOSTAT=',stat,kill=.TRUE.)
     Read(setup_unit,NML = ProgramSetupList)
     Close(setup_unit)
@@ -152,7 +152,7 @@ Subroutine Setup_HATS(prompt_for_exit,screen_progress,paths_files,n_neutron_hist
         !the backup setup file will not contain any continuation or study set configuration information
         Open( NEWUNIT = setup_unit , FILE = paths_files%run_file_name , STATUS = 'REPLACE' , ACTION = 'WRITE' , & 
             & POSITION = 'APPEND' , IOSTAT = stat )
-        If (stat .NE. 0) Call Output_Message( 'ERROR:  Setups: Setup_HATS:  File open error, '//paths_files%run_file_name// & 
+        If (stat .NE. 0) Call Output_Message( 'ERROR:  Setups: Setup_HASTE:  File open error, '//paths_files%run_file_name// & 
                                             & ', IOSTAT=',stat,kill=.TRUE.)
         Write(setup_unit,NML = ProgramSetupList)
         Write(setup_unit,*)
@@ -160,7 +160,7 @@ Subroutine Setup_HATS(prompt_for_exit,screen_progress,paths_files,n_neutron_hist
     End If
     !Read in the next setup namelist
     Call Setup_Estimator(paths_files%setup_file,paths_files%run_file_name,n_neutron_histories,absolute_n_histories)
-End Subroutine Setup_HATS
+End Subroutine Setup_HASTE
 
 Subroutine Create_Output_File_names(dir,suff,log_name,TE_name,T_name,E_name,F_name,D_name,M_name,O_name,S_name,run_name)
     Implicit None
@@ -170,8 +170,8 @@ Subroutine Create_Output_File_names(dir,suff,log_name,TE_name,T_name,E_name,F_na
     
     !Construct file names
     !Construct log file name
-    log_name = dir//'HATS-Log'//suff//'.txt'
-    If (Present(run_name)) run_name = dir//'HATS-setup'//suff//'.txt'
+    log_name = dir//'HASTE-Log'//suff//'.txt'
+    If (Present(run_name)) run_name = dir//'HASTE-setup'//suff//'.txt'
     !Construct neutron output file names
     TE_name = dir//'TE_fluence'//suff//'.txt'
     T_name = dir//'T_fluence'//suff//'.txt'
@@ -205,7 +205,7 @@ Subroutine Check_files_exist(overwrite,n_cmd_args,paths_files)
         file_name(5) = paths_files%results_directory//paths_files%output_folder//'ArrDirs'//paths_files%file_suffix//'.txt'
         file_name(6) = paths_files%results_directory//paths_files%output_folder//'ArrDirs_mu'//paths_files%file_suffix//'.txt'
         file_name(7) = paths_files%results_directory//paths_files%output_folder//'ArrDirs_omega'//paths_files%file_suffix//'.txt'
-        file_name(8) = paths_files%results_directory//paths_files%output_folder//'HATS-Log'//paths_files%file_suffix//'.txt'
+        file_name(8) = paths_files%results_directory//paths_files%output_folder//'HASTE-Log'//paths_files%file_suffix//'.txt'
         Do i = 1,n_names
             INQUIRE(FILE = file_name(i) , EXIST = file_exists(i))
         End Do
@@ -286,7 +286,7 @@ Subroutine Check_folders_exist(paths_files)
     
     !Check if resources directories exist
     If (.NOT. Check_Directory(paths_files%resources_directory)) Then
-        Call Output_Message( 'ERROR:  Setups: Setup_HATS:  Resources directory not found: '// & 
+        Call Output_Message( 'ERROR:  Setups: Setup_HASTE:  Resources directory not found: '// & 
                            & paths_files%resources_directory,kill=.TRUE. )
     End If
     !Check if results directories exist

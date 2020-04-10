@@ -298,9 +298,9 @@ Function Setup_Cross_Sections(resources_directory,cs_setup_file,elastic_only,ani
     CS%has_res_cs = .FALSE.
     Allocate(CS%res_cs(1:CS%n_iso))
     If (v) Then  !create a  file for verbose output
-        Open(NEWUNIT = v_unit , FILE = 'n_cs_HATS_summary.txt' , STATUS = 'REPLACE' , ACTION = 'WRITE' , IOSTAT = stat)
+        Open(NEWUNIT = v_unit , FILE = 'n_cs_HASTE_summary.txt' , STATUS = 'REPLACE' , ACTION = 'WRITE' , IOSTAT = stat)
         If (stat .NE. 0) Call Output_Message( 'ERROR:  Cross_Sections: Setup_Cross_Sections:  File open error, ' & 
-                                            & //'n_cs_HATS_summary.txt'//', IOSTAT=',stat,kill=.TRUE. )
+                                            & //'n_cs_HASTE_summary.txt'//', IOSTAT=',stat,kill=.TRUE. )
     End If
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     !!  CREATE A UNIFIED ENERGY LIST FOR THE CROSS SECTION DATA

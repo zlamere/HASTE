@@ -1,13 +1,13 @@
-# Contributing to HATS
+# Contributing to HASTE
 We welcome all kinds of input! Feel free to:
 - Report a bug
 - Discuss the state of the code
 - Submit fixes
 - Propose new features
 
-## Writing Code for HATS
+## Writing Code for HASTE
 We're open to ANY contributions to improve the project, but expect *energetic* discussion to justify code not following these guidlines!
-- HATS is written exclusively in modern Fortran (specifically Fortran 2008). We are not equipped to support a multi-language project at this time.
+- HASTE is written exclusively in modern Fortran (specifically Fortran 2008). We are not equipped to support a multi-language project at this time.
 - Avoid the use of language extensions. Where extensions are used, specify conditional compilation (by a "C-style" preprocessor) for the code utilizing the language extension with alternative standard-compliant code as the default compilation path. Conditional flags for gFortran and Intel Fortran are currently in use in the code (GFORT and IFORT respectively).
 - Strive to be self-documenting! Thoroughly comment your code (describe the procedure throughout the procedure) and use descriptive procedure/variable names.
 - Avoid use of variables with the SAVE attribute (this includes module variables and some other data-sharing constructs). These can introduce challenges when adapting the code for massivley parallel architectures. Similarly, avoid use of recursive procedures.
