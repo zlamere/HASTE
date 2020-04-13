@@ -163,7 +163,9 @@ Function Setup_Detector(setup_file_name,run_file_name,slice_file_name,R_top_atm)
             n_decades = log_max - log_min
             n_bins = n_decades * t_bins_per_decade
             Allocate(d%TE_grid(1)%bounds(0:n_bins))
-            ForAll(i = 0:n_bins) d%TE_grid(1)%bounds(i) = 10._dp**(Real(log_min,dp) + Real(i,dp) / Real(t_bins_per_decade,dp))
+            Do CONCURRENT (i = 0:n_bins)
+                d%TE_grid(1)%bounds(i) = 10._dp**(Real(log_min,dp) + Real(i,dp) / Real(t_bins_per_decade,dp))
+            End Do
             d%TE_grid(1)%log_min = log_min
             d%TE_grid(1)%log_max = log_max
             d%TE_grid(1)%n_decades = n_decades
@@ -171,7 +173,9 @@ Function Setup_Detector(setup_file_name,run_file_name,slice_file_name,R_top_atm)
             d%TE_grid(1)%log_spacing = .FALSE.
             n_bins = Ceiling((t_max - t_min) / t_res)
             Allocate(d%TE_grid(1)%bounds(0:n_bins))
-            ForAll(i = 0:n_bins) d%TE_grid(1)%bounds(i) = t_min + Real(i,dp) * t_res
+            Do CONCURRENT (i = 0:n_bins)
+                d%TE_grid(1)%bounds(i) = t_min + Real(i,dp) * t_res
+            End Do
             d%TE_grid(1)%res = t_res
         Case Default
             Call Output_Message('ERROR:  Detectors: Setup_Detector:  Undefined t grid spacing',kill=.TRUE.)
@@ -191,7 +195,9 @@ Function Setup_Detector(setup_file_name,run_file_name,slice_file_name,R_top_atm)
             n_decades = log_max - log_min
             n_bins = n_decades * E_bins_per_decade
             Allocate(d%TE_grid(2)%bounds(0:n_bins))
-            ForAll(i = 0:n_bins) d%TE_grid(2)%bounds(i) = 10._dp**(Real(log_min,dp) + Real(i,dp) / Real(E_bins_per_decade,dp))
+            Do CONCURRENT (i = 0:n_bins)
+                d%TE_grid(2)%bounds(i) = 10._dp**(Real(log_min,dp) + Real(i,dp) / Real(E_bins_per_decade,dp))
+            End Do
             d%TE_grid(2)%log_min = log_min
             d%TE_grid(2)%log_max = log_max
             d%TE_grid(2)%n_decades = n_decades
@@ -199,7 +205,9 @@ Function Setup_Detector(setup_file_name,run_file_name,slice_file_name,R_top_atm)
             d%TE_grid(2)%log_spacing = .FALSE.
             n_bins = Ceiling((E_max - E_min) / E_res)
             Allocate(d%TE_grid(2)%bounds(0:n_bins))
-            ForAll(i = 0:n_bins) d%TE_grid(2)%bounds(i) = E_min + Real(i,dp) * E_res
+            Do CONCURRENT (i = 0:n_bins)
+                d%TE_grid(2)%bounds(i) = E_min + Real(i,dp) * E_res
+            End Do
             d%TE_grid(2)%res = E_res
         Case Default
             Call Output_Message('ERROR:  Detectors: Setup_Detector:  Undefined E grid spacing',kill=.TRUE.)
@@ -214,7 +222,9 @@ Function Setup_Detector(setup_file_name,run_file_name,slice_file_name,R_top_atm)
     d%Dir_grid(1)%n_bins = n_mu_bins
     d%Dir_grid(1)%log_spacing = .FALSE.
     Allocate(d%Dir_grid(1)%bounds(0:n_mu_bins))
-    ForAll(i = 0:n_mu_bins) d%Dir_grid(1)%bounds(i) = -1._dp + Real(i,dp) * d%Dir_grid(1)%res
+    Do CONCURRENT (i = 0:n_mu_bins)
+        d%Dir_grid(1)%bounds(i) = -1._dp + Real(i,dp) * d%Dir_grid(1)%res
+    End Do
     !create omega grid
     d%Dir_grid(2)%min = -Pi
     d%Dir_grid(2)%max = Pi
@@ -222,7 +232,9 @@ Function Setup_Detector(setup_file_name,run_file_name,slice_file_name,R_top_atm)
     d%Dir_grid(2)%n_bins = n_omega_bins
     d%Dir_grid(2)%log_spacing = .FALSE.
     Allocate(d%Dir_grid(2)%bounds(0:n_omega_bins))
-    ForAll(i = 0:n_omega_bins) d%Dir_grid(2)%bounds(i) = -Pi + Real(i,dp) * d%Dir_grid(2)%res
+    Do CONCURRENT (i = 0:n_omega_bins)
+        d%Dir_grid(2)%bounds(i) = -Pi + Real(i,dp) * d%Dir_grid(2)%res
+    End Do
     !Initialize contribution lists
     d%TE_contrib_index = 0
     d%Contrib_size = 2**8
@@ -254,7 +266,9 @@ Function Setup_Detector(setup_file_name,run_file_name,slice_file_name,R_top_atm)
                 Allocate(d%TE_grid(i)%collect_shape(1:d%n_slices))
                 d%TE_grid(i)%collect_shape = .TRUE.
                 Allocate(d%TE_grid(i)%slice_bin(1:d%n_slices))
-                ForAll(j = 1:d%n_slices) d%TE_grid(i)%slice_bin(j) = j * d%TE_grid(i)%n_bins / d%n_slices
+                Do CONCURRENT (j = 1:d%n_slices)
+                    d%TE_grid(i)%slice_bin(j) = j * d%TE_grid(i)%n_bins / d%n_slices
+                End Do
                 Allocate(d%TE_grid(i)%slice_c(1:d%n_slices))
                 d%TE_grid(i)%slice_c = 0
                 Allocate(d%TE_grid(i)%slice_unit(1:d%n_slices))
