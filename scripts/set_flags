@@ -9,6 +9,7 @@ set -e
 #  - Runtime checking (use '-k' to enable all)
 #    - Checking of atmosphere base layer selections (-DCHECK_B)
 #    - Checking of pathlength integral quadratures (-DCHECK_L)
+#  - Extended precision types, i.e. 16+ byte words (-DEXTP)
 PREP_FLAGS="-cpp -DLIN_OS -DGFORT"
 # Additional preprocessor flags may be appended to this using the '-p' flag from the command line
 

@@ -20,10 +20,12 @@ Module Kinds
 
     Integer, Parameter :: sp = Selected_Real_Kind(p=6)   !single precision
     Integer, Parameter :: dp = Selected_Real_Kind(p=15)  !double precision
-    Integer, Parameter :: qp = Selected_Real_Kind(p=33)  !quadruple precision
+#   if EXTP
+        Integer, Parameter :: qp = Selected_Real_Kind(p=33)  !quadruple precision
+#   endif
 
-    Integer, Parameter :: is = Selected_Int_Kind(3)  !short word, +/- 10**4
+    Integer, Parameter :: is = Selected_Int_Kind(4)  !short word, +/- 10**4
     Integer, Parameter :: il = Selected_Int_Kind(8)  !long word, +/- 10**8
-    Integer, Parameter :: id = Selected_Int_Kind(14)  !double word, +/- 10**14
+    Integer, Parameter :: id = Selected_Int_Kind(18)  !double word, +/- 10**18
     
 End Module Kinds
