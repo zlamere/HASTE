@@ -10,8 +10,9 @@ We're open to ANY contributions to improve the project, but expect *energetic* d
 - HASTE is written exclusively in modern Fortran (specifically Fortran 2008). We are not equipped to support a multi-language project at this time.
 - Avoid the use of language extensions. Where extensions are used, specify conditional compilation (by a "C-style" preprocessor) for the code utilizing the language extension with alternative standard-compliant code as the default compilation path. Conditional flags for gFortran and Intel Fortran are currently in use in the code (GFORT and IFORT respectively).
 - Strive to be self-documenting! Thoroughly comment your code (describe the procedure throughout the procedure) and use descriptive procedure/variable names.
-- Avoid use of variables with the SAVE attribute (this includes module variables and some other data-sharing constructs). These can introduce challenges when adapting the code for massivley parallel architectures. Similarly, avoid use of recursive procedures.
-- **NO deleted or depreciated language features.** This includes `GOTO`, `ASSIGN`, integer `FORMAT`, and `PAUSE` among others. Please use modern and standard-compliant code in these instances. Also avoid use of `COMMON` blocks and `DATA` statements (there are better ways to achieve the same behavior).
+- Avoid use of variables with the SAVE attribute (this includes module variables and some other data-sharing constructs). These can introduce challenges when adapting the code for massivley parallel architectures. Similarly, avoid use of recursive procedures where recursion could result in side-effects or other inintended behavior.
+- **NO deleted or depreciated language features.** This includes `GOTO`, `ASSIGN`, integer `FORMAT`, and `PAUSE` among others. Use modern and standard-compliant code in these instances.
+  - Avoid use of obsolescent features such as `COMMON` blocks, `DATA` statements, and `FORALL` statements or constructs (there are better modern ways to achieve the same behavior).
 - **NO implicit typing... EVER.** All types **must** be explicitly declared. ALL modules and procedures **must** have **`Implicit None`** declared in their scope. Mixed-type arithmetic should be coded with explicit standard-compliant type-conversions.
 - Order your indexes appropriately for efficent memory access. Fortran array indexes are in **column-major** order. If an array is going to be sliced or accessed sequentially frequently, the index along which it is going to be sliced should be the lowest dimension. i.e.:
   - Slicing:
@@ -25,7 +26,7 @@ We're open to ANY contributions to improve the project, but expect *energetic* d
       End Do
     End Do
     ```
-- Use consistent and standard-compliant style. (No tabs, 4-space indentation)
+- Use consistent and standard-compliant style. (No tabs, 4-space indentation, limited use of all-caps, etc.)
 
 ## Making Contributions
 Pull requests are the best way to propose changes to the codebase. We actively welcome your pull requests:
